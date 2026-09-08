@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MealBudgetDiet">
-  <rect width="512" height="512" rx="128" fill="#14221d"/>
-  <path d="M128 168h256v54c0 89-55 150-128 150s-128-61-128-150v-54Z" fill="#bbf451"/>
-  <path d="M168 128v83M256 112v99M344 128v83" fill="none" stroke="#f2f6f3" stroke-width="28" stroke-linecap="round"/>
-  <path d="M168 396h176" fill="none" stroke="#f2f6f3" stroke-width="28" stroke-linecap="round"/>
+  <rect width="512" height="512" rx="128" fill="#080d18"/>
+  <path d="M128 168h256v54c0 89-55 150-128 150s-128-61-128-150v-54Z" fill="#3b82f6"/>
+  <path d="M168 128v83M256 112v99M344 128v83" fill="none" stroke="#eaf2ff" stroke-width="28" stroke-linecap="round"/>
+  <path d="M168 396h176" fill="none" stroke="#eaf2ff" stroke-width="28" stroke-linecap="round"/>
 </svg>
