@@ -1,6 +1,6 @@
 # MealBudgetDiet 시스템 아키텍처
 
-- 문서 버전: 1.0
+- 문서 버전: 1.1
 - 기준 요구사항: [requirements.md](requirements.md)
 - 아키텍처 유형: 모듈형 모놀리스
 - 대상 플랫폼: 모바일 우선 PWA
@@ -30,6 +30,7 @@
 | Server state | TanStack Query | 조회 캐시와 변경 후 무효화 |
 | Form | React Hook Form, Zod | 입력 상태와 클라이언트 검증 |
 | Chart | Recharts | 일별 추이와 카테고리 통계 |
+| Push | Web Push, Service Worker, VAPID | 조건부 예산 알림 |
 | Backend test | JUnit 5, Testcontainers, REST Assured | 단위·통합·API 테스트 |
 | Frontend test | Vitest, Playwright | 컴포넌트·E2E 테스트 |
 | Local environment | Docker Compose | PostgreSQL과 로컬 실행 환경 |
@@ -47,6 +48,7 @@ flowchart TD
     E --> A["Spring Boot REST API"]
     A --> D["PostgreSQL"]
     A --> M["Email Provider"]
+    A --> P["Web Push Service"]
 ```
 
 ### 3.1 단일 Origin
@@ -78,6 +80,7 @@ com.mealbudgetdiet
 ├── expense        # 식비와 카테고리
 ├── budget         # 기본·월별 예산
 ├── analytics      # 대시보드, 통계, CSV
+├── notification   # 푸시 구독, 예산 알림 판정과 발송
 └── shared         # 공통 예외, 시간, API 응답, 보안 컨텍스트
 ```
 
@@ -91,6 +94,9 @@ flowchart TD
     B["budget"] --> L
     A["analytics"] --> E
     A --> B
+    N["notification"] --> E
+    N --> B
+    N --> L
 ```
 
 - 다른 모듈의 JPA Repository를 직접 호출하지 않는다.
@@ -254,6 +260,37 @@ Path: /
 - 앱 shell과 offline 안내 화면만 캐시한다.
 - 인증 API와 식비 데이터 응답은 오프라인 저장 대상으로 삼지 않는다.
 - 네트워크 연결이 없으면 쓰기 작업을 큐에 넣지 않고 즉시 안내한다.
+- 사용자가 명시적으로 허용한 기기만 Web Push 구독을 등록한다.
+- 알림 권한을 거부해도 식비 관리 기능은 정상적으로 사용할 수 있다.
+
+### 8.4 월 예산 여유 푸시
+
+식비 신규 등록 트랜잭션이 성공하면 현재 월 식비인 경우에만 예산 알림 조건을 평가한다.
+
+```text
+monthlyUsageRate >= 80
+AND
+remainingBudget / remainingDays > (monthlyBudget / daysInMonth) * 2
+```
+
+정수 나눗셈과 반올림 오차를 피하기 위해 실제 비교는 교차 곱셈으로 수행한다.
+
+```text
+totalSpent * 100 >= monthlyBudget * 80
+AND
+remainingBudget * daysInMonth > monthlyBudget * remainingDays * 2
+```
+
+처리 흐름:
+
+1. 식비 저장과 동일한 트랜잭션에서 현재 월 합계와 적용 예산을 조회한다.
+2. 등록 시점의 Asia/Seoul 날짜를 기준으로 오늘 포함 남은 일수를 계산한다.
+3. 두 조건을 모두 만족하면 월별 알림 이벤트 생성을 시도한다.
+4. `unique (ledger_id, alert_month, alert_type)` 제약조건으로 월 1회만 생성한다.
+5. 트랜잭션 커밋 후 비동기 dispatcher가 활성 push subscription에 발송한다.
+6. 실패한 전송은 제한된 횟수만 재시도하고 만료 endpoint는 비활성화한다.
+
+외부 메시지 브로커는 사용하지 않는다. PostgreSQL에 알림 이벤트와 기기별 전송 상태를 저장하는 작은 transactional outbox 방식으로 유실과 중복을 제어한다. 푸시 payload에는 고유 notification ID를 포함하고 서비스 워커는 같은 ID의 중복 표시를 방지한다.
 
 ## 9. API 설계 원칙
 
@@ -364,6 +401,7 @@ Pull Request와 main push 시 다음 작업을 수행한다.
 | 통계 | JdbcClient SQL | 집계 의도와 실행 계획을 명확히 관리 |
 | 목록 조회 | 커서 페이지 | ‘더 보기’와 데이터 추가 중 정렬 안정성 |
 | 동시 수정 | optimistic lock | 소규모 공유 편집에서 조용한 덮어쓰기 방지 |
+| 예산 푸시 | DB outbox + Web Push | 월 1회 조건 판정과 재시도 상태를 일관되게 관리 |
 | 데모 분리 | 별도 app + DB | 실제 개인정보 접근 경로 차단 |
 
 ## 16. 도입하지 않는 구성
