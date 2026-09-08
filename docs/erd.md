@@ -56,7 +56,7 @@ erDiagram
         uuid id PK
         uuid ledger_id FK
         uuid created_by_user_id FK
-        char token_hash UK
+        varchar token_hash UK
         timestamptz revoked_at
         bigint use_count
         timestamptz last_used_at
@@ -99,7 +99,7 @@ erDiagram
     PASSWORD_RESET_TOKENS {
         uuid id PK
         uuid user_id FK
-        char token_hash UK
+        varchar token_hash UK
         timestamptz expires_at
         timestamptz used_at
         timestamptz created_at
@@ -211,7 +211,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 | id | uuid | N | PK |
 | ledger_id | uuid | N | ledgers FK |
 | created_by_user_id | uuid | Y | users FK |
-| token_hash | char(64) | N | SHA-256 hex, unique |
+| token_hash | varchar(64) | N | SHA-256 hex, unique |
 | revoked_at | timestamptz | Y | null이면 활성 |
 | use_count | bigint | N | 기본값 0 |
 | last_used_at | timestamptz | Y | 최근 사용 시각 |
@@ -301,7 +301,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 |---|---|:---:|---|
 | id | uuid | N | PK |
 | user_id | uuid | N | users FK |
-| token_hash | char(64) | N | SHA-256 hex, unique |
+| token_hash | varchar(64) | N | SHA-256 hex, unique |
 | expires_at | timestamptz | N | 기본 발급 후 30분 |
 | used_at | timestamptz | Y | 사용 완료 시각 |
 | created_at | timestamptz | N | 발급 시각 |

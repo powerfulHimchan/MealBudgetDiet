@@ -23,7 +23,7 @@ public class Invitation {
 	@Column(name = "created_by_user_id")
 	private UUID createdByUserId;
 
-	@Column(name = "token_hash", nullable = false, length = 64, unique = true, columnDefinition = "char(64)")
+	@Column(name = "token_hash", nullable = false, length = 64, unique = true)
 	private String tokenHash;
 
 	@Column(name = "revoked_at")

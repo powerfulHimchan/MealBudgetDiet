@@ -42,7 +42,7 @@ CREATE TABLE invitations (
     id uuid PRIMARY KEY,
     ledger_id uuid NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
     created_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
-    token_hash char(64) NOT NULL UNIQUE,
+    token_hash varchar(64) NOT NULL UNIQUE,
     revoked_at timestamptz,
     use_count bigint NOT NULL DEFAULT 0,
     last_used_at timestamptz,
