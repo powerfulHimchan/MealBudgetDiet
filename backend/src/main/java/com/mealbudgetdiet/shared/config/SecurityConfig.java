@@ -2,6 +2,7 @@ package com.mealbudgetdiet.shared.config;
 
 import java.io.IOException;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -15,6 +16,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.session.web.http.DefaultCookieSerializer;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -62,6 +64,19 @@ public class SecurityConfig {
 	@Bean
 	SecurityContextRepository securityContextRepository() {
 		return new HttpSessionSecurityContextRepository();
+	}
+
+	@Bean
+	DefaultCookieSerializer cookieSerializer(
+		@Value("${server.servlet.session.cookie.secure:false}") boolean secureCookie
+	) {
+		var serializer = new DefaultCookieSerializer();
+		serializer.setCookieName("MBD_SESSION");
+		serializer.setCookiePath("/");
+		serializer.setUseHttpOnlyCookie(true);
+		serializer.setSameSite("Lax");
+		serializer.setUseSecureCookie(secureCookie);
+		return serializer;
 	}
 
 	private static void writeProblem(HttpServletResponse response, int status, String code, String detail)
