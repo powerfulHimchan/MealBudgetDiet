@@ -70,9 +70,9 @@ class AuthenticationFlowIntegrationTest {
 			.andExpect(jsonPath("$.role").value("ADMIN"))
 			.andReturn();
 
-		adminSession = result.getResponse().getCookie("MBD_SESSION");
-		assertThat(adminSession).isNotNull();
-		assertThat(adminSession.isHttpOnly()).isTrue();
+		String setCookie = result.getResponse().getHeader("Set-Cookie");
+		assertThat(setCookie).isNotNull().contains("MBD_SESSION=").contains("HttpOnly");
+		adminSession = sessionCookie(setCookie);
 		assertThat(jdbcTemplate.queryForObject("select count(*) from categories", Integer.class)).isEqualTo(5);
 		assertThat(jdbcTemplate.queryForObject("select password_hash from users", String.class))
 			.startsWith("{bcrypt}")
@@ -149,5 +149,12 @@ class AuthenticationFlowIntegrationTest {
 
 		mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
 			.andExpect(status().isUnauthorized());
+	}
+
+	private Cookie sessionCookie(String setCookieHeader) {
+		String prefix = "MBD_SESSION=";
+		int valueStart = setCookieHeader.indexOf(prefix) + prefix.length();
+		int valueEnd = setCookieHeader.indexOf(';', valueStart);
+		return new Cookie("MBD_SESSION", setCookieHeader.substring(valueStart, valueEnd));
 	}
 }
