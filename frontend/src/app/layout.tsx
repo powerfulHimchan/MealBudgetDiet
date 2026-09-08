@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "MealBudgetDiet" },
 };
 
-export const viewport: Viewport = { themeColor: "#14221d", colorScheme: "light" };
+export const viewport: Viewport = { themeColor: "#080d18", colorScheme: "light" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
