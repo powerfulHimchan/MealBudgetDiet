@@ -2,6 +2,7 @@ name: Frontend screenshots
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches: [chore/ui-screenshots]
 
