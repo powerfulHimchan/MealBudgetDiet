@@ -6,7 +6,28 @@
 
 ## Project status
 
-현재 요구사항과 시스템 설계를 완료하고 구현을 준비하고 있습니다.
+요구사항과 시스템 설계를 마치고, Spring Boot·Next.js·PostgreSQL 기반의 실행 가능한 프로젝트 골격을 구성하고 있습니다.
+
+## Tech stack
+
+- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS, PWA
+- Backend: Java 21, Spring Boot 4, Spring Security, Spring Data JPA, Flyway
+- Data: PostgreSQL 18, Spring Session JDBC
+- Test & delivery: JUnit 5, Testcontainers, Docker Compose, GitHub Actions
+
+## Run locally
+
+Docker가 설치되어 있다면 저장소 루트에서 전체 서비스를 실행할 수 있습니다.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+- Web: http://localhost:3000
+- Backend health: http://localhost:8080/api/v1/system/health
+
+개별 개발 서버는 `frontend/README.md`와 `backend/HELP.md`를 참고하세요.
 
 ## Documentation
 
