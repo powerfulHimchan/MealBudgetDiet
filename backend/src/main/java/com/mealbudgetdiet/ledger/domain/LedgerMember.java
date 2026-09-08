@@ -46,4 +46,32 @@ public class LedgerMember {
 	public MemberRole getRole() {
 		return role;
 	}
+
+	public LedgerMemberId getId() {
+		return id;
+	}
+
+	public MemberStatus getStatus() {
+		return status;
+	}
+
+	public Instant getJoinedAt() {
+		return joinedAt;
+	}
+
+	public void changeRole(MemberRole role) {
+		this.role = role;
+	}
+
+	public void leave(Instant leftAt) {
+		this.status = MemberStatus.LEFT;
+		this.leftAt = leftAt;
+	}
+
+	public void rejoin(MemberRole role, Instant joinedAt) {
+		this.role = role;
+		this.status = MemberStatus.ACTIVE;
+		this.joinedAt = joinedAt;
+		this.leftAt = null;
+	}
 }

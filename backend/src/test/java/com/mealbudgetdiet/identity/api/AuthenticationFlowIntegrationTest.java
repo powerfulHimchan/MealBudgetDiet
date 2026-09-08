@@ -95,9 +95,9 @@ class AuthenticationFlowIntegrationTest {
 		UUID ownerId = jdbcTemplate.queryForObject("select id from users where email = 'owner@example.com'", UUID.class);
 		String rawCode = "MBD-TEST-7K2P";
 		jdbcTemplate.update("""
-			insert into invitations (id, ledger_id, created_by_user_id, token_hash)
-			values (?, ?, ?, ?)
-			""", UUID.randomUUID(), ledgerId, ownerId, tokenHasher.hash(rawCode));
+			insert into invitations (id, ledger_id, created_by_user_id, token_hash, code_suffix)
+			values (?, ?, ?, ?, ?)
+			""", UUID.randomUUID(), ledgerId, ownerId, tokenHasher.hash(rawCode), "7K2P");
 
 		mockMvc.perform(post("/api/v1/auth/register")
 				.with(csrf())

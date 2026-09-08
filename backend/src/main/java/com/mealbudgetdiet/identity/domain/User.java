@@ -71,4 +71,15 @@ public class User {
 	public UserStatus getStatus() {
 		return status;
 	}
+
+	public void withdraw() {
+		this.status = UserStatus.WITHDRAWN;
+		this.passwordHash = null;
+	}
+
+	public void reactivate(String passwordHash, String displayName) {
+		this.passwordHash = passwordHash;
+		this.displayName = displayName;
+		this.status = UserStatus.ACTIVE;
+	}
 }

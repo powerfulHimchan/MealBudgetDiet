@@ -13,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mealbudgetdiet.identity.application.IdentityService;
 import com.mealbudgetdiet.ledger.domain.Ledger;
 import com.mealbudgetdiet.ledger.domain.LedgerMember;
+import com.mealbudgetdiet.ledger.domain.LedgerMemberId;
 import com.mealbudgetdiet.ledger.domain.MemberRole;
+import com.mealbudgetdiet.ledger.domain.MemberStatus;
 import com.mealbudgetdiet.ledger.infrastructure.InvitationRepository;
 import com.mealbudgetdiet.ledger.infrastructure.LedgerMemberRepository;
 import com.mealbudgetdiet.ledger.infrastructure.LedgerRepository;
@@ -95,7 +97,17 @@ public class OnboardingService {
 		}
 
 		var user = identityService.createUser(email, password, displayName);
-		memberRepository.save(new LedgerMember(invitation.getLedgerId(), user.getId(), MemberRole.MEMBER));
+		var memberId = new LedgerMemberId(invitation.getLedgerId(), user.getId());
+		var membership = memberRepository.findById(memberId);
+		if (membership.isPresent()) {
+			if (membership.get().getStatus() == MemberStatus.ACTIVE) {
+				throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_ALREADY_ACTIVE", "이미 장부에 참여 중입니다.");
+			}
+			membership.get().rejoin(MemberRole.MEMBER, clock.instant());
+		}
+		else {
+			memberRepository.save(new LedgerMember(invitation.getLedgerId(), user.getId(), MemberRole.MEMBER));
+		}
 		invitation.markUsed(clock.instant());
 		return new AuthenticatedUser(user.getId(), user.getEmail(), user.getDisplayName(), MemberRole.MEMBER);
 	}

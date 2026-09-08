@@ -57,6 +57,7 @@ erDiagram
         uuid ledger_id FK
         uuid created_by_user_id FK
         varchar token_hash UK
+        varchar code_suffix
         timestamptz revoked_at
         bigint use_count
         timestamptz last_used_at
@@ -212,6 +213,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 | ledger_id | uuid | N | ledgers FK |
 | created_by_user_id | uuid | Y | users FK |
 | token_hash | varchar(64) | N | SHA-256 hex, unique |
+| code_suffix | varchar(4) | N | 목록 마스킹용 원문 끝 4자리 |
 | revoked_at | timestamptz | Y | null이면 활성 |
 | use_count | bigint | N | 기본값 0 |
 | last_used_at | timestamptz | Y | 최근 사용 시각 |
@@ -219,6 +221,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 
 - 초대 코드 원문은 생성 응답에서 한 번만 반환한다.
 - DB에는 SHA-256 해시만 저장한다.
+- 목록에서는 원문 대신 code_suffix를 사용한 마스킹 코드만 표시한다.
 - expires_at은 두지 않는다.
 - revoked_at이 설정되면 더 이상 가입에 사용할 수 없다.
 - 하나의 활성 코드를 여러 사용자가 사용할 수 있다.
@@ -522,6 +525,7 @@ V4__create_password_reset.sql
 V5__create_spring_session_tables.sql
 V6__insert_default_categories.sql
 V7__create_push_notification_tables.sql
+V8__add_invitation_code_suffix.sql
 ```
 
 마이그레이션은 적용 후 수정하지 않고 새 버전 파일로 변경을 이어간다.
