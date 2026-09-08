@@ -19,12 +19,13 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.web.MockCookie;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mealbudgetdiet.TestcontainersConfiguration;
 import com.mealbudgetdiet.shared.security.TokenHasher;
+
+import jakarta.servlet.http.Cookie;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -42,7 +43,7 @@ class AuthenticationFlowIntegrationTest {
 	@Autowired
 	private TokenHasher tokenHasher;
 
-	private static MockCookie adminSession;
+	private static Cookie adminSession;
 
 	@Test
 	@Order(1)
