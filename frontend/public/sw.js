@@ -1,4 +1,4 @@
-const CACHE_NAME = "meal-budget-diet-shell-v2";
+const CACHE_NAME = "meal-budget-diet-shell-v3";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
