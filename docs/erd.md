@@ -137,6 +137,8 @@ erDiagram
         timestamptz next_attempt_at
         timestamptz sent_at
         text last_error
+        timestamptz created_at
+        timestamptz updated_at
     }
 ```
 
@@ -352,6 +354,17 @@ AND user.status = ACTIVE
 - 식비 수정과 삭제에서는 생성하지 않는다.
 - 현재 월에 속한 식비 신규 등록에서만 생성한다.
 - 판정 당시 값을 snapshot으로 저장해 운영 시 알림 사유를 확인할 수 있게 한다.
+
+생성 조건:
+
+```text
+totalSpent * 100 >= monthlyBudget * 80
+AND
+(monthlyBudget - totalSpent) * daysInMonth
+    > monthlyBudget * remainingDays * 2
+```
+
+remainingDays는 Asia/Seoul 기준 오늘부터 말일까지이며 오늘을 포함한다.
 
 ### 2.11 push_deliveries
 
