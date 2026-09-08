@@ -1,6 +1,6 @@
 # MealBudgetDiet ERD 및 데이터 모델
 
-- 문서 버전: 1.0
+- 문서 버전: 1.1
 - 관련 문서: [requirements.md](requirements.md), [architecture.md](architecture.md)
 - DBMS: PostgreSQL 18
 
@@ -17,6 +17,11 @@ erDiagram
     CATEGORIES o|--o{ EXPENSES : classifies
     LEDGERS ||--o{ MONTHLY_BUDGETS : overrides
     USERS ||--o{ PASSWORD_RESET_TOKENS : requests
+    USERS ||--o{ PUSH_SUBSCRIPTIONS : registers
+    LEDGERS ||--o{ BUDGET_ALERTS : generates
+    EXPENSES ||--o| BUDGET_ALERTS : triggers
+    BUDGET_ALERTS ||--o{ PUSH_DELIVERIES : dispatches
+    PUSH_SUBSCRIPTIONS ||--o{ PUSH_DELIVERIES : receives
 
     LEDGERS {
         uuid id PK
@@ -98,6 +103,40 @@ erDiagram
         timestamptz expires_at
         timestamptz used_at
         timestamptz created_at
+    }
+
+    PUSH_SUBSCRIPTIONS {
+        uuid id PK
+        uuid user_id FK
+        text endpoint UK
+        text p256dh_key
+        text auth_key
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    BUDGET_ALERTS {
+        uuid id PK
+        uuid ledger_id FK
+        uuid triggered_by_expense_id FK
+        date alert_month
+        varchar alert_type
+        bigint monthly_budget
+        bigint total_spent
+        integer remaining_days
+        timestamptz created_at
+    }
+
+    PUSH_DELIVERIES {
+        uuid id PK
+        uuid budget_alert_id FK
+        uuid push_subscription_id FK
+        varchar status
+        integer attempt_count
+        timestamptz next_attempt_at
+        timestamptz sent_at
+        text last_error
     }
 ```
 
@@ -273,6 +312,68 @@ AND expires_at > current_timestamp
 AND user.status = ACTIVE
 ```
 
+### 2.9 push_subscriptions
+
+사용자가 푸시 알림을 허용한 브라우저 기기의 Web Push 구독을 저장한다.
+
+| 컬럼 | 타입 | Null | 규칙 |
+|---|---|:---:|---|
+| id | uuid | N | PK |
+| user_id | uuid | N | users FK |
+| endpoint | text | N | push service endpoint, unique |
+| p256dh_key | text | N | payload 암호화 공개키 |
+| auth_key | text | N | Web Push auth secret |
+| status | varchar(20) | N | ACTIVE, EXPIRED, DISABLED |
+| created_at | timestamptz | N | 등록 시각 |
+| updated_at | timestamptz | N | 최종 갱신 시각 |
+
+- 한 사용자가 여러 기기를 등록할 수 있다.
+- 사용자가 알림을 해제하면 DISABLED로 변경하거나 삭제한다.
+- push service가 404 또는 410을 반환하면 EXPIRED로 변경한다.
+- endpoint와 key는 민감 데이터로 취급하고 로그에 출력하지 않는다.
+
+### 2.10 budget_alerts
+
+월 예산 여유 조건을 처음 만족했음을 나타내는 논리적 알림 이벤트다.
+
+| 컬럼 | 타입 | Null | 규칙 |
+|---|---|:---:|---|
+| id | uuid | N | PK |
+| ledger_id | uuid | N | ledgers FK |
+| triggered_by_expense_id | uuid | Y | expenses FK, 식비 삭제 시 null |
+| alert_month | date | N | 해당 월의 1일 |
+| alert_type | varchar(40) | N | MONTHLY_BUDGET_SURPLUS |
+| monthly_budget | bigint | N | 판정 시 적용 예산 |
+| total_spent | bigint | N | 판정 직후 월 누적 식비 |
+| remaining_days | integer | N | 오늘 포함 남은 일수 |
+| created_at | timestamptz | N | 조건 충족 시각 |
+
+- `unique (ledger_id, alert_month, alert_type)`로 월 1회만 생성한다.
+- 식비 수정과 삭제에서는 생성하지 않는다.
+- 현재 월에 속한 식비 신규 등록에서만 생성한다.
+- 판정 당시 값을 snapshot으로 저장해 운영 시 알림 사유를 확인할 수 있게 한다.
+
+### 2.11 push_deliveries
+
+하나의 논리적 예산 알림을 기기별로 전달한 상태를 저장한다.
+
+| 컬럼 | 타입 | Null | 규칙 |
+|---|---|:---:|---|
+| id | uuid | N | PK |
+| budget_alert_id | uuid | N | budget_alerts FK |
+| push_subscription_id | uuid | N | push_subscriptions FK |
+| status | varchar(20) | N | PENDING, SENDING, SENT, FAILED |
+| attempt_count | integer | N | 기본값 0 |
+| next_attempt_at | timestamptz | Y | 다음 재시도 시각 |
+| sent_at | timestamptz | Y | 성공 시각 |
+| last_error | text | Y | 민감정보를 제거한 오류 |
+| created_at | timestamptz | N | 생성 시각 |
+| updated_at | timestamptz | N | 최종 갱신 시각 |
+
+- `unique (budget_alert_id, push_subscription_id)`
+- PENDING 전송을 별도 dispatcher가 조회해 발송한다.
+- 재시도 횟수는 제한하며 영구 실패 후 FAILED로 종료한다.
+
 ## 3. 외래 키 삭제 정책
 
 | 부모 | 자식 | 삭제 정책 |
@@ -285,6 +386,11 @@ AND user.status = ACTIVE
 | users | ledger_members | RESTRICT |
 | users | invitations.created_by_user_id | SET NULL |
 | users | password_reset_tokens | ON DELETE CASCADE |
+| users | push_subscriptions | ON DELETE CASCADE |
+| ledgers | budget_alerts | ON DELETE CASCADE |
+| expenses | budget_alerts.triggered_by_expense_id | ON DELETE SET NULL |
+| budget_alerts | push_deliveries | ON DELETE CASCADE |
+| push_subscriptions | push_deliveries | ON DELETE CASCADE |
 | categories | expenses | ON DELETE SET NULL |
 
 장부 종료 시 ledger 한 건을 삭제해 관련 식비, 분류, 예산, 초대, 참여 관계를 함께 제거한다. 사용자 계정 처리는 장부 종료 application service가 명시적으로 수행한다.
@@ -308,6 +414,9 @@ ledgers.status IN ('ACTIVE', 'TERMINATING')
 users.status IN ('ACTIVE', 'WITHDRAWN')
 ledger_members.role IN ('MEMBER', 'ADMIN')
 ledger_members.status IN ('ACTIVE', 'LEFT')
+push_subscriptions.status IN ('ACTIVE', 'EXPIRED', 'DISABLED')
+budget_alerts.alert_type IN ('MONTHLY_BUDGET_SURPLUS')
+push_deliveries.status IN ('PENDING', 'SENDING', 'SENT', 'FAILED')
 ```
 
 ## 5. 인덱스
@@ -345,6 +454,20 @@ CREATE UNIQUE INDEX uk_invitations_token_hash
 ```sql
 CREATE UNIQUE INDEX uk_monthly_budgets_ledger_month
     ON monthly_budgets (ledger_id, budget_month);
+```
+
+### 5.5 푸시 알림
+
+```sql
+CREATE UNIQUE INDEX uk_budget_alerts_month_type
+    ON budget_alerts (ledger_id, alert_month, alert_type);
+
+CREATE UNIQUE INDEX uk_push_deliveries_target
+    ON push_deliveries (budget_alert_id, push_subscription_id);
+
+CREATE INDEX idx_push_deliveries_pending
+    ON push_deliveries (status, next_attempt_at)
+    WHERE status IN ('PENDING', 'FAILED');
 ```
 
 ## 6. 목록 커서
@@ -385,6 +508,7 @@ V3__create_budget.sql
 V4__create_password_reset.sql
 V5__create_spring_session_tables.sql
 V6__insert_default_categories.sql
+V7__create_push_notification_tables.sql
 ```
 
 마이그레이션은 적용 후 수정하지 않고 새 버전 파일로 변경을 이어간다.
