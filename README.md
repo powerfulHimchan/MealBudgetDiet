@@ -6,7 +6,7 @@
 
 ## Project status
 
-요구사항과 시스템 설계를 마치고, Spring Boot·Next.js·PostgreSQL 기반의 실행 가능한 프로젝트 골격을 구성하고 있습니다.
+요구사항과 시스템 설계, 프로젝트 골격 및 반응형 UI를 완료했습니다. 현재 PostgreSQL 마이그레이션과 세션 기반 회원 인증 기능을 구현하고 있습니다.
 
 ## Tech stack
 

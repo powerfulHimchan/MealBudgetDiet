@@ -23,6 +23,7 @@ services:
       DB_USERNAME: ${POSTGRES_USER:-mealbudget}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-mealbudget}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      BOOTSTRAP_TOKEN: ${BOOTSTRAP_TOKEN:?BOOTSTRAP_TOKEN is required}
     ports:
       - "8080:8080"
     depends_on:

@@ -21,7 +21,10 @@ spring:
   session:
     timeout: 30d
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
+
+app:
+  bootstrap-token: ${BOOTSTRAP_TOKEN:}
 
 server:
   forward-headers-strategy: framework
