@@ -1,6 +1,6 @@
 # MealBudgetDiet REST API 설계
 
-- 문서 버전: 1.0
+- 문서 버전: 1.1
 - Base path: `/api/v1`
 - Content-Type: `application/json`
 - 오류 Content-Type: `application/problem+json`
@@ -133,6 +133,14 @@ CSRF 토큰이 없거나 올바르지 않으면 HTTP 403을 반환한다.
 | GET | `/dashboard` | MEMBER | 이번 달 대시보드 |
 | GET | `/statistics` | MEMBER | 선택 기간 통계 |
 | GET | `/expenses/export.csv` | MEMBER | 식비 CSV 다운로드 |
+
+### 2.5 PWA 푸시
+
+| Method | Path | 권한 | 설명 |
+|---|---|---|---|
+| GET | `/push/vapid-public-key` | MEMBER | Web Push 공개키 조회 |
+| PUT | `/push-subscriptions` | MEMBER | 현재 기기 구독 등록·갱신 |
+| DELETE | `/push-subscriptions/{subscriptionId}` | MEMBER | 현재 사용자 기기 구독 해제 |
 
 ## 3. Bootstrap과 인증 API
 
@@ -494,6 +502,8 @@ POST /api/v1/expenses
 }
 ```
 
+등록한 식비의 사용 날짜가 현재 월이면 응답 트랜잭션 안에서 월 예산 여유 알림 조건을 평가한다. 조건을 만족해도 푸시 발송은 커밋 이후 비동기로 수행하며 식비 등록 응답을 지연시키지 않는다.
+
 ### 6.2 식비 목록
 
 ```http
@@ -844,7 +854,121 @@ Content-Disposition: attachment; filename="meal-expenses-2026-09-01_2026-09-30.c
 - formula injection을 방지하기 위해 `=`, `+`, `-`, `@`로 시작하는 문자열을 안전하게 이스케이프한다.
 - CSV 데이터 가져오기는 지원하지 않는다.
 
-## 12. Rate limit 대상
+## 12. PWA 푸시 API
+
+### 12.1 VAPID 공개키 조회
+
+```http
+GET /api/v1/push/vapid-public-key
+```
+
+응답:
+
+```json
+{
+  "publicKey": "base64url-vapid-public-key"
+}
+```
+
+### 12.2 기기 구독 등록·갱신
+
+브라우저가 Notification 권한을 받은 뒤 service worker의 PushSubscription을 전달한다.
+
+```http
+PUT /api/v1/push-subscriptions
+```
+
+요청:
+
+```json
+{
+  "endpoint": "https://push-service.example/...",
+  "expirationTime": null,
+  "keys": {
+    "p256dh": "base64url-key",
+    "auth": "base64url-secret"
+  }
+}
+```
+
+성공: 신규이면 HTTP 201, 같은 endpoint 갱신이면 HTTP 200
+
+```json
+{
+  "id": "push-subscription-uuid",
+  "status": "ACTIVE",
+  "createdAt": "2026-09-08T15:00:00+09:00"
+}
+```
+
+- 현재 로그인 사용자 소유로 저장한다.
+- endpoint는 전체 시스템에서 unique하다.
+- endpoint와 key를 API 로그에 기록하지 않는다.
+
+### 12.3 기기 구독 해제
+
+```http
+DELETE /api/v1/push-subscriptions/{subscriptionId}
+```
+
+성공: HTTP 204
+
+현재 사용자 소유가 아닌 subscription은 존재 여부를 노출하지 않고 HTTP 404를 반환한다.
+
+### 12.4 월 예산 여유 알림 판정
+
+식비 신규 등록 직후 다음 두 조건을 모두 평가한다.
+
+```text
+monthlyUsageRate >= 80
+AND
+remainingBudget / remainingDays > (monthlyBudget / daysInMonth) * 2
+```
+
+정의:
+
+- monthlyBudget: 신규 식비가 속한 현재 월의 적용 예산
+- totalSpent: 신규 식비까지 포함한 현재 월 누적 식비
+- remainingBudget: monthlyBudget - totalSpent
+- remainingDays: Asia/Seoul 기준 오늘부터 말일까지, 오늘 포함
+- daysInMonth: 현재 월의 전체 일수
+- monthlyUsageRate: totalSpent / monthlyBudget × 100
+
+알림 생성 조건:
+
+- POST `/expenses` 성공 시에만 평가
+- 식비 spentOn이 현재 월에 속해야 함
+- PUT과 DELETE에서는 평가하지 않음
+- `MONTHLY_BUDGET_SURPLUS` 알림은 장부와 월 기준 한 번만 생성
+- 활성 상태이며 푸시를 허용한 모든 참여자 기기로 발송
+
+푸시 payload 예시:
+
+```json
+{
+  "notificationId": "budget-alert-uuid",
+  "type": "MONTHLY_BUDGET_SURPLUS",
+  "title": "이번 달 식비 예산에 여유가 있어요",
+  "body": "남은 기간 동안 하루 평균 65,000원을 사용할 수 있어요.",
+  "data": {
+    "url": "/",
+    "yearMonth": "2026-09"
+  }
+}
+```
+
+service worker는 notificationId가 이미 표시된 알림이면 다시 표시하지 않는다.
+
+### 12.5 전송 상태
+
+- 예산 알림 이벤트는 식비와 같은 DB 트랜잭션에서 한 번만 생성한다.
+- 기기별 delivery는 PENDING으로 생성한다.
+- 커밋 이후 dispatcher가 Web Push를 발송한다.
+- 일시적 실패는 backoff 후 제한된 횟수만 재시도한다.
+- push service가 endpoint 만료를 반환하면 subscription을 EXPIRED로 변경한다.
+- 푸시 권한이 없거나 전송이 실패해도 이메일로 대체 발송하지 않는다.
+
+## 13. Rate limit 대상
 
 초기에는 다음 공개 또는 민감 API에 IP와 계정 기준 제한을 적용한다.
 
@@ -856,7 +980,7 @@ Content-Disposition: attachment; filename="meal-expenses-2026-09-01_2026-09-30.c
 
 제한 초과 시 HTTP 429와 `Retry-After` 헤더를 반환한다.
 
-## 13. OpenAPI 관리
+## 14. OpenAPI 관리
 
 구현 단계에서 다음 원칙을 적용한다.
 
@@ -865,7 +989,7 @@ Content-Disposition: attachment; filename="meal-expenses-2026-09-01_2026-09-30.c
 - 운영 Swagger UI는 인증된 사용자에게만 제공하거나 비활성화한다.
 - README에는 데모 API 문서 링크를 제공한다.
 
-## 14. 구현 순서
+## 15. 구현 순서
 
 1. bootstrap, register, login, logout, me
 2. ledger, members, invitations
@@ -874,6 +998,7 @@ Content-Disposition: attachment; filename="meal-expenses-2026-09-01_2026-09-30.c
 5. default/monthly budgets
 6. dashboard
 7. statistics
-8. CSV export
-9. withdrawal과 장부 종료
-10. password reset와 email provider
+8. Web Push 구독과 월 예산 여유 알림
+9. CSV export
+10. withdrawal과 장부 종료
+11. password reset와 email provider
