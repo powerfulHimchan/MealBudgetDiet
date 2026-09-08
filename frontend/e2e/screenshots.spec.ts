@@ -32,6 +32,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
   for (const screen of screens) {
     await mobile.goto(screen.route);
     await expect(mobile.getByRole("heading", { name: screen.heading })).toBeVisible();
+    await mobile.evaluate(() => window.scrollTo(0, 0));
     await mobile.screenshot({
       path: path.join(screenshotDirectory, screen.file),
       fullPage: true,
