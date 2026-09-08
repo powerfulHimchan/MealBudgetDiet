@@ -56,4 +56,20 @@ public class Ledger {
 	public UUID getId() {
 		return id;
 	}
+
+	public String getName() {
+		return name;
+	}
+
+	public long getDefaultMonthlyBudget() {
+		return defaultMonthlyBudget;
+	}
+
+	public LedgerStatus getStatus() {
+		return status;
+	}
+
+	public int getVersion() {
+		return version;
+	}
 }

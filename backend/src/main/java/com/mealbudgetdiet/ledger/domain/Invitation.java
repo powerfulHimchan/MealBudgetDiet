@@ -26,6 +26,9 @@ public class Invitation {
 	@Column(name = "token_hash", nullable = false, length = 64, unique = true)
 	private String tokenHash;
 
+	@Column(name = "code_suffix", nullable = false, length = 4)
+	private String codeSuffix;
+
 	@Column(name = "revoked_at")
 	private Instant revokedAt;
 
@@ -42,11 +45,16 @@ public class Invitation {
 	protected Invitation() {
 	}
 
-	public Invitation(UUID ledgerId, UUID createdByUserId, String tokenHash) {
+	public Invitation(UUID ledgerId, UUID createdByUserId, String tokenHash, String codeSuffix) {
 		this.id = UUID.randomUUID();
 		this.ledgerId = ledgerId;
 		this.createdByUserId = createdByUserId;
 		this.tokenHash = tokenHash;
+		this.codeSuffix = codeSuffix;
+	}
+
+	public UUID getId() {
+		return id;
 	}
 
 	public UUID getLedgerId() {
@@ -55,6 +63,32 @@ public class Invitation {
 
 	public boolean isRevoked() {
 		return revokedAt != null;
+	}
+
+	public String getCodeSuffix() {
+		return codeSuffix;
+	}
+
+	public long getUseCount() {
+		return useCount;
+	}
+
+	public Instant getLastUsedAt() {
+		return lastUsedAt;
+	}
+
+	public Instant getCreatedAt() {
+		return createdAt;
+	}
+
+	public Instant getRevokedAt() {
+		return revokedAt;
+	}
+
+	public void revoke(Instant revokedAt) {
+		if (this.revokedAt == null) {
+			this.revokedAt = revokedAt;
+		}
 	}
 
 	public void markUsed(Instant usedAt) {

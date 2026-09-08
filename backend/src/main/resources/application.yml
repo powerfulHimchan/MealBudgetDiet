@@ -25,6 +25,7 @@ spring:
 
 app:
   bootstrap-token: ${BOOTSTRAP_TOKEN:}
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:3000}
 
 server:
   forward-headers-strategy: framework
