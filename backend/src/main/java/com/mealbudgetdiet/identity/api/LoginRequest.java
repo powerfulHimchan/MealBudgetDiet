@@ -14,4 +14,9 @@ public record LoginRequest(
 	@Size(max = 72, message = "비밀번호는 72자 이하여야 합니다.")
 	String password
 ) {
+	public LoginRequest {
+		if (email != null) {
+			email = email.trim();
+		}
+	}
 }

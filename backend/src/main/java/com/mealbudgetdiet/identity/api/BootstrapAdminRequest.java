@@ -26,4 +26,9 @@ public record BootstrapAdminRequest(
 	@Positive(message = "기본 월 예산은 0보다 커야 합니다.")
 	long defaultMonthlyBudget
 ) {
+	public BootstrapAdminRequest {
+		if (email != null) {
+			email = email.trim();
+		}
+	}
 }

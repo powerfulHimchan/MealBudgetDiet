@@ -22,4 +22,12 @@ public record RegisterRequest(
 	@Size(max = 50, message = "표시 이름은 50자 이하여야 합니다.")
 	String displayName
 ) {
+	public RegisterRequest {
+		if (inviteCode != null) {
+			inviteCode = inviteCode.trim();
+		}
+		if (email != null) {
+			email = email.trim();
+		}
+	}
 }
