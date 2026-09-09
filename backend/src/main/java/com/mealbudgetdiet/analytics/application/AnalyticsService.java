@@ -69,7 +69,7 @@ public class AnalyticsService {
 		BigDecimal usageRate = percentage(spent, budget.amount());
 		DashboardStatus status = usageRate.compareTo(BigDecimal.valueOf(100)) >= 0
 			? DashboardStatus.EXCEEDED
-			: usageRate.compareTo(BigDecimal.valueOf(80)) >= 0
+			: usageRate.compareTo(BigDecimal.valueOf(ledger.getPushUsageThreshold())) >= 0
 				? DashboardStatus.WARNING
 				: DashboardStatus.NORMAL;
 

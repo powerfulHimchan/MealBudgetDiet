@@ -106,7 +106,7 @@ export function PushThresholdSettings() {
         <div><p className="eyebrow">SHARED ALERT RULE</p><h2>Push 기준 사용률</h2></div>
         {ledger && <span className="source-chip"><ShieldCheck size={13} /> {isAdmin ? "관리자 설정" : "조회 전용"}</span>}
       </div>
-      <p className="setting-description">예산 사용률이 이 기준에 도달하고, 현재 소비 속도가 계속되면 예산을 초과할 것으로 예상될 때 알림을 보냅니다.</p>
+      <p className="setting-description">대시보드는 이 사용률부터 주의 상태로 표시합니다. 여기에 현재 소비 속도상 예산 초과까지 예상되면 Push 알림을 보냅니다.</p>
 
       {error && <div className="message-banner message-banner--error">{error}</div>}
       {notice && <button className="message-banner message-banner--notice" onClick={() => setNotice(null)} type="button">{notice}<span>닫기</span></button>}
@@ -134,7 +134,7 @@ export function PushThresholdSettings() {
             </span>
           </label>
           <div className="threshold-preview" aria-label={`현재 입력 기준 ${previewThreshold}%`}>
-            <span><strong>{previewThreshold}%</strong>부터 소비 속도를 함께 확인합니다.</span>
+            <span><strong>{previewThreshold}%</strong>부터 대시보드에 주의 상태를 표시합니다.</span>
             <span className="threshold-track"><i style={{ width: `${previewThreshold}%` }} /></span>
             <small>두 조건을 모두 만족해도 같은 예산 주기에는 한 번만 발송합니다.</small>
           </div>

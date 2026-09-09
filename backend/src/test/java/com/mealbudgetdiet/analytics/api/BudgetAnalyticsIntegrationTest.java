@@ -102,6 +102,23 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.recentExpenses.length()").value(2))
 			.andExpect(jsonPath("$.recentExpenses[0].merchant").value("동네마트"));
 
+		mockMvc.perform(put("/api/v1/ledger/settings/push-threshold")
+				.with(csrf())
+				.cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"usageThreshold\":50,\"version\":1}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.pushUsageThreshold").value(50))
+			.andExpect(jsonPath("$.version").value(2));
+
+		mockMvc.perform(get("/api/v1/dashboard")
+				.cookie(memberSession)
+				.param("yearMonth", "2026-09"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.usageRate").value(60.0))
+			.andExpect(jsonPath("$.pushUsageThreshold").value(50))
+			.andExpect(jsonPath("$.status").value("WARNING"));
+
 		mockMvc.perform(get("/api/v1/statistics")
 				.cookie(adminSession)
 				.param("from", "2026-09-01")
@@ -137,7 +154,7 @@ class BudgetAnalyticsIntegrationTest {
 				.with(csrf())
 				.cookie(memberSession)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"startDay\":25,\"version\":1}"))
+				.content("{\"startDay\":25,\"version\":2}"))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("ADMIN_REQUIRED"));
 
@@ -145,22 +162,22 @@ class BudgetAnalyticsIntegrationTest {
 				.with(csrf())
 				.cookie(adminSession)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"startDay\":32,\"version\":1}"))
+				.content("{\"startDay\":32,\"version\":2}"))
 			.andExpect(status().isBadRequest());
 
 		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
 				.with(csrf())
 				.cookie(adminSession)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"startDay\":25,\"version\":1}"))
+				.content("{\"startDay\":25,\"version\":2}"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.budgetCycleStartDay").value(25))
-			.andExpect(jsonPath("$.version").value(2));
+			.andExpect(jsonPath("$.version").value(3));
 
 		mockMvc.perform(get("/api/v1/ledger").cookie(memberSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.budgetCycleStartDay").value(25))
-			.andExpect(jsonPath("$.version").value(2));
+			.andExpect(jsonPath("$.version").value(3));
 
 		createExpense(adminSession, categoryId, 50000, "2026-10-08", "시장", "새 예산 주기");
 
