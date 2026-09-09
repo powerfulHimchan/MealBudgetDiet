@@ -37,7 +37,7 @@ const menuItems = [
     href: "/settings/members",
     icon: Users,
     label: "참여자 관리",
-    status: "다음 구현",
+    status: "사용 가능",
   },
   {
     description: "가족이나 동료를 공유 장부로 초대할 코드를 관리합니다.",
