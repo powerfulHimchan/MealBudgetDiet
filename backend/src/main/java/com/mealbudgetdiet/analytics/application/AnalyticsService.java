@@ -174,7 +174,7 @@ public class AnalyticsService {
 		String keyword
 	) {
 		validateRange(from, to);
-		UUID ledgerId = ledgerId(userId);
+		UUID ledgerId = ledger(userId).getId();
 		if (categoryId != null && categoryRepository.findByIdAndLedgerId(categoryId, ledgerId).isEmpty()) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "CATEGORY_INVALID", "현재 장부에서 사용할 수 없는 카테고리입니다.");
 		}
