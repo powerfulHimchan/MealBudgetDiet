@@ -50,7 +50,9 @@ test("capture implemented frontend screens", async ({ browser }) => {
     } else if (screen.route === "/settings/notifications") {
       await expect(mobile.getByRole("button", { name: "이 기기 알림 활성화" })).toBeVisible();
     } else if (screen.route === "/settings/categories") {
-      await expect(mobile.getByRole("heading", { name: "메뉴 구조를 준비했습니다" })).toBeVisible();
+      await expect(mobile.getByRole("heading", { name: "사용 중인 카테고리" })).toBeVisible();
+      await expect(mobile.getByRole("button", { name: "새 카테고리 추가" })).toBeVisible();
+      await expect(mobile.getByText("장보기", { exact: true })).toBeVisible();
     }
     await mobile.evaluate(() => window.scrollTo(0, 0));
     await mobile.screenshot({
@@ -63,8 +65,30 @@ test("capture implemented frontend screens", async ({ browser }) => {
   await mobile.close();
 });
 
+test("manage categories from settings", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/categories");
+
+  await page.getByRole("button", { name: "새 카테고리 추가" }).click();
+  await page.getByLabel("카테고리 이름").fill("회사 점심");
+  await page.getByLabel("정렬 순서").fill("6");
+  await page.getByRole("button", { name: "카테고리 추가", exact: true }).click();
+  await expect(page.getByText("회사 점심", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "회사 점심 수정" }).click();
+  await page.getByLabel("카테고리 이름").fill("점심");
+  await page.getByRole("button", { name: "변경사항 저장" }).click();
+  await expect(page.getByText("점심", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "점심 삭제" }).click();
+  const dialog = page.getByRole("dialog", { name: "점심 카테고리를 삭제할까요?" });
+  await expect(dialog.getByText(/기존 식비 내역은 삭제되지 않고/)).toBeVisible();
+  await dialog.getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(page.getByText("점심", { exact: true })).toHaveCount(0);
+});
+
 async function mockExpenseApis(page: import("@playwright/test").Page) {
-  const categories = [
+  let categories = [
     { id: "11111111-1111-1111-1111-111111111111", name: "장보기", sortOrder: 1, version: 0 },
     { id: "22222222-2222-2222-2222-222222222222", name: "외식", sortOrder: 2, version: 0 },
     { id: "33333333-3333-3333-3333-333333333333", name: "배달", sortOrder: 3, version: 0 },
@@ -80,7 +104,26 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
   await page.route("**/api/v1/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === "/api/v1/categories") {
-      await route.fulfill({ json: { items: categories } });
+      if (route.request().method() === "POST") {
+        const body = route.request().postDataJSON() as { name: string; sortOrder: number };
+        const created = { id: "66666666-6666-6666-6666-666666666666", ...body, version: 0 };
+        categories = [...categories, created].sort((left, right) => left.sortOrder - right.sortOrder);
+        await route.fulfill({ json: created, status: 201 });
+      } else {
+        await route.fulfill({ json: { items: categories } });
+      }
+    } else if (pathname.startsWith("/api/v1/categories/")) {
+      const categoryId = pathname.split("/").at(-1);
+      if (route.request().method() === "PUT") {
+        const body = route.request().postDataJSON() as { name: string; sortOrder: number; version: number };
+        const updated = { id: categoryId ?? "", name: body.name, sortOrder: body.sortOrder, version: body.version + 1 };
+        categories = categories.map((category) => category.id === categoryId ? updated : category)
+          .sort((left, right) => left.sortOrder - right.sortOrder);
+        await route.fulfill({ json: updated });
+      } else if (route.request().method() === "DELETE") {
+        categories = categories.filter((category) => category.id !== categoryId);
+        await route.fulfill({ status: 204 });
+      }
     } else if (pathname === "/api/v1/expenses") {
       await route.fulfill({ json: { items: expenses, nextCursor: null, hasNext: false } });
     } else if (pathname === "/api/v1/ledger") {
