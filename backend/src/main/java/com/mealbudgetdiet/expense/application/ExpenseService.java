@@ -21,6 +21,10 @@ import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
 public class ExpenseService {
+	private static final LocalDate EARLIEST_SUPPORTED_DATE = LocalDate.of(1, 1, 1);
+	private static final LocalDate LATEST_SUPPORTED_DATE = LocalDate.of(9999, 12, 31);
+	private static final Instant LATEST_SUPPORTED_INSTANT = Instant.parse("9999-12-31T23:59:59Z");
+	private static final UUID EMPTY_UUID = new UUID(0, 0);
 
 	private final LedgerAccessService ledgerAccessService;
 	private final ExpenseRepository expenseRepository;
@@ -82,14 +86,16 @@ public class ExpenseService {
 			: "%" + normalizedKeyword.toLowerCase(Locale.ROOT) + "%";
 		var found = expenseRepository.search(
 			ledgerId,
-			from,
-			to,
-			categoryId,
+			from == null ? EARLIEST_SUPPORTED_DATE : from,
+			to == null ? LATEST_SUPPORTED_DATE : to,
+			categoryId != null,
+			categoryId == null ? EMPTY_UUID : categoryId,
 			uncategorized,
 			keywordPattern,
-			cursor == null ? null : cursor.spentOn(),
-			cursor == null ? null : cursor.createdAt(),
-			cursor == null ? null : cursor.id(),
+			cursor != null,
+			cursor == null ? LATEST_SUPPORTED_DATE : cursor.spentOn(),
+			cursor == null ? LATEST_SUPPORTED_INSTANT : cursor.createdAt(),
+			cursor == null ? EMPTY_UUID : cursor.id(),
 			PageRequest.of(0, size + 1)
 		);
 		boolean hasNext = found.size() > size;

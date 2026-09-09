@@ -23,13 +23,13 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 	@Query("""
 		select expense from Expense expense
 		where expense.ledgerId = :ledgerId
-		  and (:fromDate is null or expense.spentOn >= :fromDate)
-		  and (:toDate is null or expense.spentOn <= :toDate)
-		  and (:categoryId is null or expense.category.id = :categoryId)
+		  and expense.spentOn >= :fromDate
+		  and expense.spentOn <= :toDate
+		  and (:filterCategory = false or expense.category.id = :categoryId)
 		  and (:uncategorized = false or expense.category is null)
 		  and (lower(coalesce(expense.merchant, '')) like :keywordPattern
 		       or lower(coalesce(expense.memo, '')) like :keywordPattern)
-		  and (:cursorSpentOn is null
+		  and (:cursorPresent = false
 		       or expense.spentOn < :cursorSpentOn
 		       or (expense.spentOn = :cursorSpentOn and expense.createdAt < :cursorCreatedAt)
 		       or (expense.spentOn = :cursorSpentOn and expense.createdAt = :cursorCreatedAt and expense.id < :cursorId))
@@ -39,9 +39,11 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 		@Param("ledgerId") UUID ledgerId,
 		@Param("fromDate") LocalDate fromDate,
 		@Param("toDate") LocalDate toDate,
+		@Param("filterCategory") boolean filterCategory,
 		@Param("categoryId") UUID categoryId,
 		@Param("uncategorized") boolean uncategorized,
 		@Param("keywordPattern") String keywordPattern,
+		@Param("cursorPresent") boolean cursorPresent,
 		@Param("cursorSpentOn") LocalDate cursorSpentOn,
 		@Param("cursorCreatedAt") Instant cursorCreatedAt,
 		@Param("cursorId") UUID cursorId,
