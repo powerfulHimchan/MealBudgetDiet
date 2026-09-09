@@ -1,11 +1,9 @@
 "use client";
 
 import { CircleDollarSign, LoaderCircle, ShieldCheck, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { AppNav } from "../app-nav";
 import { currentYearMonthInSeoul, mutation, request } from "../../lib/api";
-import { PushNotificationSettings } from "./push-notification-settings";
+import { SettingsPageFrame } from "./settings-page-frame";
 
 type Ledger = {
   id: string;
@@ -123,15 +121,13 @@ export function BudgetSettings() {
   const isAdmin = ledger?.currentUserRole === "ADMIN";
 
   return (
-    <main className="app-shell settings-shell">
-      <header className="topbar">
-        <Link className="brand" href="/"><span className="brand-mark">M</span><span>MealBudgetDiet</span></Link>
-        {ledger && <span className="page-badge"><ShieldCheck size={16} /> {isAdmin ? "관리자" : "멤버"}</span>}
-      </header>
-
-      <section className="page-hero">
-        <div><p className="eyebrow">BUDGET SETTINGS</p><h1>설정</h1><p>공유 장부에 적용할 기본 예산과 월별 예외 예산을 관리하세요.</p></div>
-      </section>
+    <SettingsPageFrame
+      badge={ledger && <span className="page-badge"><ShieldCheck size={16} /> {isAdmin ? "관리자" : "멤버"}</span>}
+      description="공유 장부에 적용할 기본 예산과 월별 예외 예산을 관리하세요."
+      eyebrow="BUDGET SETTINGS"
+      showBackLink
+      title="예산 관리"
+    >
 
       {error && <div className="message-banner message-banner--error">{error}</div>}
       {notice && <button className="message-banner message-banner--notice" onClick={() => setNotice(null)} type="button">{notice}<span>닫기</span></button>}
@@ -174,10 +170,8 @@ export function BudgetSettings() {
           <section className="budget-guide">
             <strong>현재 적용 금액</strong><span>{won.format(budget.amount)}원</span><p>{yearMonth}에는 {budget.source === "DEFAULT" ? "기본 월 예산" : "별도로 지정한 예산"}이 적용됩니다.</p>
           </section>
-          <PushNotificationSettings />
         </div>
       )}
-      <AppNav active="settings" />
-    </main>
+    </SettingsPageFrame>
   );
 }

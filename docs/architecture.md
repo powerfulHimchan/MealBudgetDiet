@@ -239,7 +239,9 @@ Path: /
 | `/` | 이번 달 대시보드 |
 | `/expenses` | 식비 목록, 검색, 수정·삭제 |
 | `/statistics` | 기간별 통계 |
+| `/settings` | 설정 메인과 하위 메뉴 진입 |
 | `/settings/budget` | 예산 관리 |
+| `/settings/notifications` | 기기별 Web Push 수신 설정 |
 | `/settings/categories` | 카테고리 관리 |
 | `/settings/members` | 참여자와 관리자 관리 |
 | `/settings/invitations` | 초대 코드 관리 |

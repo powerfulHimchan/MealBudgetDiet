@@ -28,20 +28,29 @@ test("capture implemented frontend screens", async ({ browser }) => {
     { route: "/expenses", file: "expenses-mobile.png", heading: "식비 내역" },
     { route: "/statistics", file: "statistics-mobile.png", heading: "기간별 통계" },
     { route: "/settings", file: "settings-mobile.png", heading: "설정" },
+    { route: "/settings/budget", file: "budget-settings-mobile.png", heading: "예산 관리" },
+    { route: "/settings/notifications", file: "notification-settings-mobile.png", heading: "푸시 알림" },
+    { route: "/settings/categories", file: "category-settings-mobile.png", heading: "카테고리 관리" },
     { route: "/offline", file: "offline-mobile.png", heading: "인터넷 연결이 필요해요" },
   ];
 
   for (const screen of screens) {
     await mobile.goto(screen.route);
-    await expect(mobile.getByRole("heading", { name: screen.heading })).toBeVisible();
+    await expect(mobile.getByRole("heading", { level: 1, name: screen.heading })).toBeVisible();
     if (screen.route === "/expenses") {
       await expect(mobile.getByText("동네마트", { exact: true })).toBeVisible();
     } else if (screen.route === "/statistics") {
       await expect(mobile.getByText("658,800원", { exact: true })).toBeVisible();
     } else if (screen.route === "/settings") {
+      await expect(mobile.getByRole("link", { name: /예산 관리/ })).toBeVisible();
+      await expect(mobile.getByRole("link", { name: /푸시 알림/ })).toBeVisible();
+      await expect(mobile.getByRole("link", { name: /계정 설정/ })).toBeVisible();
+    } else if (screen.route === "/settings/budget") {
       await expect(mobile.getByText("현재 적용 금액", { exact: true })).toBeVisible();
-      await expect(mobile.getByRole("heading", { name: "푸시 알림" })).toBeVisible();
+    } else if (screen.route === "/settings/notifications") {
       await expect(mobile.getByRole("button", { name: "이 기기 알림 활성화" })).toBeVisible();
+    } else if (screen.route === "/settings/categories") {
+      await expect(mobile.getByRole("heading", { name: "메뉴 구조를 준비했습니다" })).toBeVisible();
     }
     await mobile.evaluate(() => window.scrollTo(0, 0));
     await mobile.screenshot({
