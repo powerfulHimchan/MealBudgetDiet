@@ -165,7 +165,7 @@ export function StatisticsView() {
                     <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} minTickGap={22} />
                     <YAxis tickFormatter={(value: number) => compactWon.format(value)} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                     <Tooltip formatter={(value) => [`${won.format(Number(value))}원`, "지출"]} labelFormatter={(label) => String(label)} />
-                    <Area type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#spending-fill)" />
+                    <Area isAnimationActive={false} type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#spending-fill)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
