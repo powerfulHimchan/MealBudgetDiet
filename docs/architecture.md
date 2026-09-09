@@ -149,7 +149,7 @@ HttpOnly: true
 Secure: true (production)
 SameSite: Lax
 Path: /
-Max-Age: 브라우저가 지원하는 장기 보존 범위
+Max-Age: 2147483647초, 인증 요청마다 갱신
 ```
 
 ### 5.2 비밀번호
