@@ -6,7 +6,7 @@
 
 ## Project status
 
-요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 세션 기반 인증, 공용 장부 협업, 식비·카테고리 관리, 월 예산·통계, 조건부 PWA 푸시와 예산·알림·카테고리·참여자·초대 설정 화면을 완료했습니다. 다음 단계는 이미지 첨부와 프로필 사진, 예산 주기·Push 기준 설정, 영속 로그인 요구사항 구현입니다.
+요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 세션 기반 인증, 공용 장부 협업, 식비·카테고리 관리, 월 예산·통계, 조건부 PWA 푸시, 식비 이미지 첨부와 프로필 사진을 완료했습니다. 다음 단계는 예산 주기·Push 기준 설정과 영속 로그인 요구사항 구현입니다.
 
 ## Tech stack
 
@@ -26,6 +26,9 @@ docker compose up --build
 
 - Web: http://localhost:3000
 - Backend health: http://localhost:8080/api/v1/system/health
+- MinIO console: http://localhost:9001
+
+식비·프로필 이미지는 PostgreSQL과 분리된 비공개 MinIO 버킷에 저장됩니다. 로컬 계정과 버킷은 `.env`의 `MEDIA_*` 값으로 변경할 수 있습니다.
 
 개별 개발 서버는 `frontend/README.md`와 `backend/HELP.md`를 참고하세요.
 

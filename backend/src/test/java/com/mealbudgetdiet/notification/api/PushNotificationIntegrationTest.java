@@ -136,7 +136,8 @@ class PushNotificationIntegrationTest {
 					  "spentOn":"%s",
 					  "categoryId":"%s",
 					  "merchant":"테스트 마트",
-					  "memo":"푸시 조건 검증"
+					  "memo":"푸시 조건 검증",
+					  "imageIds":[]
 					}
 					""".formatted(amount, spentOn, categoryId)))
 			.andExpect(status().isCreated());

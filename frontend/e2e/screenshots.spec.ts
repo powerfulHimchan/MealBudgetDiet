@@ -33,6 +33,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
     { route: "/settings/categories", file: "category-settings-mobile.png", heading: "카테고리 관리" },
     { route: "/settings/members", file: "member-settings-mobile.png", heading: "참여자 관리" },
     { route: "/settings/invitations", file: "invitation-settings-mobile.png", heading: "초대 코드" },
+    { route: "/settings/account", file: "account-settings-mobile.png", heading: "계정 설정" },
     { route: "/offline", file: "offline-mobile.png", heading: "인터넷 연결이 필요해요" },
   ];
 
@@ -63,6 +64,9 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByRole("heading", { name: "발급한 초대 코드" })).toBeVisible();
       await expect(mobile.getByRole("button", { name: "새 초대 코드 발급" })).toBeVisible();
       await expect(mobile.getByText("MBD-****7K2P", { exact: true })).toBeVisible();
+    } else if (screen.route === "/settings/account") {
+      await expect(mobile.getByRole("heading", { name: "프로필 사진" })).toBeVisible();
+      await expect(mobile.getByText("himchan@example.com", { exact: true })).toBeVisible();
     }
     await mobile.evaluate(() => window.scrollTo(0, 0));
     await mobile.screenshot({
@@ -70,6 +74,21 @@ test("capture implemented frontend screens", async ({ browser }) => {
       fullPage: true,
       animations: "disabled",
     });
+    if (screen.route === "/expenses") {
+      await mobile.getByRole("button", { name: "식비 등록" }).click();
+      await mobile.getByLabel("이미지 추가").setInputFiles({
+        name: "receipt.png",
+        mimeType: "image/png",
+        buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+      });
+      await expect(mobile.getByRole("button", { name: "이미지 제거" })).toBeVisible();
+      await mobile.screenshot({
+        path: path.join(screenshotDirectory, "expense-image-upload-mobile.png"),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await mobile.getByRole("button", { name: "닫기" }).click();
+    }
     if (screen.route === "/settings/invitations") {
       await mobile.getByRole("button", { name: "새 초대 코드 발급" }).click();
       await expect(mobile.getByRole("heading", { name: "새 초대 코드가 발급됐어요" })).toBeVisible();
@@ -149,6 +168,19 @@ test("issue, copy, and revoke an invitation code", async ({ page, context }) => 
   await expect(activeInvitation.getByText("취소됨", { exact: true })).toBeVisible();
 });
 
+test("upload and delete a profile image", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/account");
+  await page.getByLabel("사진 등록").setInputFiles({
+    name: "profile.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+  });
+  await expect(page.getByText("프로필 사진을 등록했습니다.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "사진 삭제" }).click();
+  await expect(page.getByText("프로필 사진을 삭제했습니다.", { exact: true })).toBeVisible();
+});
+
 async function mockExpenseApis(page: import("@playwright/test").Page) {
   let categories = [
     { id: "11111111-1111-1111-1111-111111111111", name: "장보기", sortOrder: 1, version: 0 },
@@ -158,8 +190,8 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
     { id: "55555555-5555-5555-5555-555555555555", name: "기타", sortOrder: 5, version: 0 },
   ];
   let members = [
-    { id: "77777777-7777-7777-7777-777777777777", displayName: "힘찬", role: "ADMIN" as const, joinedAt: "2026-09-01T10:00:00+09:00" },
-    { id: "88888888-8888-8888-8888-888888888888", displayName: "가족", role: "MEMBER" as const, joinedAt: "2026-09-03T18:30:00+09:00" },
+    { id: "77777777-7777-7777-7777-777777777777", displayName: "힘찬", role: "ADMIN" as const, joinedAt: "2026-09-01T10:00:00+09:00", profileImageUrl: null as string | null },
+    { id: "88888888-8888-8888-8888-888888888888", displayName: "가족", role: "MEMBER" as const, joinedAt: "2026-09-03T18:30:00+09:00", profileImageUrl: null as string | null },
   ];
   let invitations: Array<{
     id: string;
@@ -173,9 +205,9 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
     { id: "13131313-1313-1313-1313-131313131313", maskedCode: "MBD-****9R4M", status: "REVOKED" as const, useCount: 1, createdAt: "2026-08-30T09:00:00+09:00", lastUsedAt: "2026-09-01T10:30:00+09:00" },
   ];
   const expenses = [
-    { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", amount: 18500, spentOn: "2026-09-08", category: categories[0], merchant: "동네마트", memo: "주말 장보기", version: 0, createdAt: "2026-09-08T14:00:00+09:00", updatedAt: "2026-09-08T14:00:00+09:00" },
-    { id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", amount: 32000, spentOn: "2026-09-07", category: categories[1], merchant: "을지로 식당", memo: "가족 저녁", version: 0, createdAt: "2026-09-07T19:00:00+09:00", updatedAt: "2026-09-07T19:00:00+09:00" },
-    { id: "cccccccc-cccc-cccc-cccc-cccccccccccc", amount: 9800, spentOn: "2026-09-06", category: categories[3], merchant: "커피하우스", memo: "커피와 간식", version: 0, createdAt: "2026-09-06T16:00:00+09:00", updatedAt: "2026-09-06T16:00:00+09:00" },
+    { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", amount: 18500, spentOn: "2026-09-08", category: categories[0], merchant: "동네마트", memo: "주말 장보기", images: [], version: 0, createdAt: "2026-09-08T14:00:00+09:00", updatedAt: "2026-09-08T14:00:00+09:00" },
+    { id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", amount: 32000, spentOn: "2026-09-07", category: categories[1], merchant: "을지로 식당", memo: "가족 저녁", images: [], version: 0, createdAt: "2026-09-07T19:00:00+09:00", updatedAt: "2026-09-07T19:00:00+09:00" },
+    { id: "cccccccc-cccc-cccc-cccc-cccccccccccc", amount: 9800, spentOn: "2026-09-06", category: categories[3], merchant: "커피하우스", memo: "커피와 간식", images: [], version: 0, createdAt: "2026-09-06T16:00:00+09:00", updatedAt: "2026-09-06T16:00:00+09:00" },
   ];
 
   await page.route("**/api/v1/**", async (route) => {
@@ -230,6 +262,19 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
       await route.fulfill({ json: updated });
     } else if (pathname === "/api/v1/expenses") {
       await route.fulfill({ json: { items: expenses, nextCursor: null, hasNext: false } });
+    } else if (pathname === "/api/v1/uploads/images") {
+      const purpose = new URL(route.request().url()).searchParams.get("purpose") ?? "EXPENSE";
+      await route.fulfill({ json: { id: "15151515-1515-1515-1515-151515151515", purpose, contentUrl: "/api/v1/images/15151515-1515-1515-1515-151515151515/content", mimeType: "image/webp", width: 1, height: 1, status: "TEMP" }, status: 201 });
+    } else if (pathname === "/api/v1/account/profile-image") {
+      if (route.request().method() === "PUT") {
+        members[0].profileImageUrl = "/api/v1/images/15151515-1515-1515-1515-151515151515/content";
+        await route.fulfill({ json: { profileImageUrl: members[0].profileImageUrl } });
+      } else {
+        members[0].profileImageUrl = null;
+        await route.fulfill({ status: 204 });
+      }
+    } else if (pathname.startsWith("/api/v1/images/")) {
+      await route.fulfill({ body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"), contentType: "image/png" });
     } else if (pathname === "/api/v1/ledger") {
       await route.fulfill({ json: { id: "99999999-9999-9999-9999-999999999999", name: "우리집 식비", defaultMonthlyBudget: 800000, memberCount: 2, currentUserRole: "ADMIN", version: 0 } });
     } else if (pathname === "/api/v1/dashboard") {
@@ -242,7 +287,7 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
     } else if (pathname === "/api/v1/auth/csrf") {
       await route.fulfill({ json: { headerName: "X-XSRF-TOKEN", token: "screenshot-token" } });
     } else if (pathname === "/api/v1/auth/me") {
-      await route.fulfill({ json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", role: "ADMIN" } });
+      await route.fulfill({ json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", role: "ADMIN", profileImageUrl: members[0].profileImageUrl } });
     } else {
       await route.fulfill({ status: 204 });
     }

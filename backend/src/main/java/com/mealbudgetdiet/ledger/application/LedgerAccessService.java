@@ -60,7 +60,10 @@ public class LedgerAccessService {
 
 		return members.stream().map(member -> {
 			var user = usersById.get(member.getId().getUserId());
-			return new MemberSnapshot(user.getId(), user.getDisplayName(), member.getRole(), member.getJoinedAt());
+			return new MemberSnapshot(
+				user.getId(), user.getDisplayName(), member.getRole(), member.getJoinedAt(),
+				user.getProfileImageId() == null ? null : "/api/v1/images/" + user.getProfileImageId() + "/content"
+			);
 		}).toList();
 	}
 

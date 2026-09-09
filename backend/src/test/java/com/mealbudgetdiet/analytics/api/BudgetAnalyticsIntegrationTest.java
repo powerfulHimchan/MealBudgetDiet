@@ -205,7 +205,8 @@ class BudgetAnalyticsIntegrationTest {
 			"spentOn", spentOn,
 			"categoryId", categoryId,
 			"merchant", merchant,
-			"memo", memo
+			"memo", memo,
+			"imageIds", java.util.List.of()
 		));
 		mockMvc.perform(post("/api/v1/expenses")
 				.with(csrf())

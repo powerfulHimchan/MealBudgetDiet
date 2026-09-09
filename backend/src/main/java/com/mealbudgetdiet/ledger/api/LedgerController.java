@@ -107,10 +107,11 @@ public class LedgerController {
 	private record MembersResponse(List<MemberResponse> items) {
 	}
 
-	private record MemberResponse(UUID id, String displayName, MemberRole role, OffsetDateTime joinedAt) {
+	private record MemberResponse(UUID id, String displayName, MemberRole role, OffsetDateTime joinedAt, String profileImageUrl) {
 		static MemberResponse from(MemberSnapshot snapshot) {
 			return new MemberResponse(
-				snapshot.id(), snapshot.displayName(), snapshot.role(), toServiceTime(snapshot.joinedAt()));
+				snapshot.id(), snapshot.displayName(), snapshot.role(), toServiceTime(snapshot.joinedAt()),
+				snapshot.profileImageUrl());
 		}
 	}
 

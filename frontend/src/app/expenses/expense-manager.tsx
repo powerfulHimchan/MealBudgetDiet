@@ -2,6 +2,9 @@
 
 import {
   BarChart3,
+  ArrowLeft,
+  ArrowRight,
+  Camera,
   ChevronDown,
   House,
   LoaderCircle,
@@ -16,8 +19,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { CurrentUserAvatar } from "../current-user-avatar";
 
 type Category = { id: string; name: string; sortOrder: number; version: number };
 type Expense = {
@@ -27,10 +32,14 @@ type Expense = {
   category: Pick<Category, "id" | "name"> | null;
   merchant: string | null;
   memo: string | null;
+  images?: ExpenseImage[];
   version: number;
   createdAt: string;
   updatedAt: string;
 };
+type ExpenseImage = { id: string; contentUrl: string; sortOrder: number };
+type DraftImage = ExpenseImage & { temporary: boolean };
+type UploadedImage = { id: string; contentUrl: string; status: "TEMP"; purpose: "EXPENSE" };
 type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean };
 type Filters = { from: string; to: string; categoryId: string; keyword: string };
 type ExpenseDraft = {
@@ -70,6 +79,17 @@ async function mutation<T>(url: string, method: string, body?: unknown): Promise
   });
 }
 
+async function uploadExpenseImage(file: File): Promise<UploadedImage> {
+  const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
+  const body = new FormData();
+  body.append("file", file);
+  return request<UploadedImage>("/api/v1/uploads/images?purpose=EXPENSE", {
+    method: "POST",
+    headers: { [csrf.headerName]: csrf.token },
+    body,
+  });
+}
+
 function expenseQuery(filters: Filters, cursor?: string) {
   const params = new URLSearchParams({ size: "20" });
   if (filters.from) params.set("from", filters.from);
@@ -90,10 +110,12 @@ export function ExpenseManager() {
   const [hasNext, setHasNext] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
   const [draft, setDraft] = useState<ExpenseDraft>({
     amount: "",
     spentOn: todayInSeoul(),
@@ -159,6 +181,7 @@ export function ExpenseManager() {
       merchant: "",
       memo: "",
     });
+    setDraftImages([]);
     setIsExpenseOpen(true);
   }
 
@@ -171,6 +194,7 @@ export function ExpenseManager() {
       merchant: expense.merchant ?? "",
       memo: expense.memo ?? "",
     });
+    setDraftImages((expense.images ?? []).map((image) => ({ ...image, temporary: false })));
     setIsExpenseOpen(true);
   }
 
@@ -185,6 +209,7 @@ export function ExpenseManager() {
         categoryId: draft.categoryId,
         merchant: draft.merchant,
         memo: draft.memo,
+        imageIds: draftImages.map((image) => image.id),
         ...(editingExpense ? { version: editingExpense.version } : {}),
       };
       if (editingExpense) {
@@ -194,6 +219,7 @@ export function ExpenseManager() {
         await mutation("/api/v1/expenses", "POST", body);
         setNotice("식비 내역을 등록했습니다.");
       }
+      setDraftImages([]);
       setIsExpenseOpen(false);
       await refreshExpenses();
     } catch (reason) {
@@ -201,6 +227,68 @@ export function ExpenseManager() {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function selectImages(files: FileList | null) {
+    if (!files?.length) return;
+    const selected = Array.from(files);
+    if (draftImages.length + selected.length > 3) {
+      setError("식비에는 이미지를 최대 3장까지 등록할 수 있습니다.");
+      return;
+    }
+    const invalid = selected.find((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type));
+    if (invalid) {
+      setError("JPEG, PNG 또는 WebP 이미지만 등록할 수 있습니다.");
+      return;
+    }
+    if (selected.some((file) => file.size > 5 * 1024 * 1024)) {
+      setError("이미지는 파일당 5MB 이하여야 합니다.");
+      return;
+    }
+    setIsUploading(true);
+    setError(null);
+    try {
+      const uploaded: DraftImage[] = [];
+      for (const file of selected) {
+        const image = await uploadExpenseImage(file);
+        uploaded.push({ ...image, sortOrder: draftImages.length + uploaded.length, temporary: true });
+      }
+      setDraftImages((current) => [...current, ...uploaded]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "이미지를 업로드하지 못했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function removeDraftImage(index: number) {
+    const target = draftImages[index];
+    setDraftImages((current) => current.filter((_, imageIndex) => imageIndex !== index));
+    if (target.temporary) {
+      try {
+        await mutation(`/api/v1/uploads/images/${target.id}`, "DELETE");
+      } catch {
+        // The server's scheduled cleanup removes abandoned temporary images.
+      }
+    }
+  }
+
+  function moveDraftImage(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= draftImages.length) return;
+    setDraftImages((current) => {
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  function closeExpenseModal() {
+    for (const image of draftImages.filter((item) => item.temporary)) {
+      void mutation(`/api/v1/uploads/images/${image.id}`, "DELETE").catch(() => undefined);
+    }
+    setDraftImages([]);
+    setIsExpenseOpen(false);
   }
 
   async function deleteExpense(expense: Expense) {
@@ -249,7 +337,7 @@ export function ExpenseManager() {
           <span className="brand-mark">M</span>
           <span>MealBudgetDiet</span>
         </Link>
-        <button className="avatar" type="button" aria-label="계정 설정">힘</button>
+        <CurrentUserAvatar />
       </header>
 
       <section className="expense-hero">
@@ -318,7 +406,11 @@ export function ExpenseManager() {
               <ul className="expense-records">
                 {expenses.map((expense) => (
                   <li key={expense.id}>
-                    <div className="expense-date-box"><strong>{expense.spentOn.slice(8)}</strong><span>{expense.spentOn.slice(5, 7)}월</span></div>
+                    {expense.images?.[0] ? (
+                      <Image alt="" className="expense-thumbnail" height={58} src={expense.images[0].contentUrl} unoptimized width={58} />
+                    ) : (
+                      <div className="expense-date-box"><strong>{expense.spentOn.slice(8)}</strong><span>{expense.spentOn.slice(5, 7)}월</span></div>
+                    )}
                     <div className="expense-record-copy">
                       <div><span className="category-tag">{expense.category?.name ?? "분류 없음"}</span><span className="expense-full-date">{expense.spentOn.replaceAll("-", ".")}</span></div>
                       <strong>{expense.merchant ?? "상호명 없음"}</strong>
@@ -359,9 +451,9 @@ export function ExpenseManager() {
       </nav>
 
       {isExpenseOpen && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsExpenseOpen(false); }}>
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeExpenseModal(); }}>
           <section className="expense-modal" role="dialog" aria-modal="true" aria-labelledby="expense-form-title">
-            <div className="modal-heading"><div><p className="eyebrow">EXPENSE</p><h2 id="expense-form-title">{editingExpense ? "식비 수정" : "식비 등록"}</h2></div><button type="button" aria-label="닫기" onClick={() => setIsExpenseOpen(false)}><X size={20} /></button></div>
+            <div className="modal-heading"><div><p className="eyebrow">EXPENSE</p><h2 id="expense-form-title">{editingExpense ? "식비 수정" : "식비 등록"}</h2></div><button type="button" aria-label="닫기" onClick={closeExpenseModal}><X size={20} /></button></div>
             <form onSubmit={saveExpense}>
               <label className="amount-field"><span>금액</span><span><input required min={1} inputMode="numeric" type="number" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} placeholder="0" /><b>원</b></span></label>
               <div className="form-row">
@@ -370,7 +462,32 @@ export function ExpenseManager() {
               </div>
               <label><span>상호명 <small>선택</small></span><input maxLength={100} value={draft.merchant} onChange={(event) => setDraft({ ...draft, merchant: event.target.value })} placeholder="예: 동네마트" /></label>
               <label><span>메모 <small>선택</small></span><textarea maxLength={1000} value={draft.memo} onChange={(event) => setDraft({ ...draft, memo: event.target.value })} placeholder="함께 기억할 내용을 적어두세요." /></label>
-              <div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setIsExpenseOpen(false)}>취소</button><button className="expense-add-button" type="submit" disabled={isSaving}>{isSaving && <LoaderCircle className="spin" size={17} />}{editingExpense ? "수정 저장" : "등록하기"}</button></div>
+              <fieldset className="expense-image-field">
+                <legend>이미지 <small>선택 · 최대 3장 · 장당 5MB</small></legend>
+                {draftImages.length > 0 && (
+                  <ul className="expense-image-previews">
+                    {draftImages.map((image, index) => (
+                      <li key={image.id}>
+                        <Image alt={`첨부 이미지 ${index + 1}`} fill sizes="112px" src={image.contentUrl} unoptimized />
+                        <span className="expense-image-order">{index + 1}</span>
+                        <div>
+                          <button aria-label="앞으로 이동" disabled={index === 0} onClick={() => moveDraftImage(index, -1)} type="button"><ArrowLeft size={15} /></button>
+                          <button aria-label="뒤로 이동" disabled={index === draftImages.length - 1} onClick={() => moveDraftImage(index, 1)} type="button"><ArrowRight size={15} /></button>
+                          <button aria-label="이미지 제거" onClick={() => void removeDraftImage(index)} type="button"><Trash2 size={15} /></button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {draftImages.length < 3 && (
+                  <label className="expense-image-picker">
+                    {isUploading ? <LoaderCircle className="spin" size={20} /> : <Camera size={20} />}
+                    <span>{isUploading ? "이미지 처리 중" : "이미지 추가"}</span>
+                    <input accept="image/jpeg,image/png,image/webp" disabled={isUploading} multiple onChange={(event) => { void selectImages(event.target.files); event.target.value = ""; }} type="file" />
+                  </label>
+                )}
+              </fieldset>
+              <div className="modal-actions"><button className="secondary-button" type="button" onClick={closeExpenseModal}>취소</button><button className="expense-add-button" type="submit" disabled={isSaving || isUploading}>{isSaving && <LoaderCircle className="spin" size={17} />}{editingExpense ? "수정 저장" : "등록하기"}</button></div>
             </form>
           </section>
         </div>

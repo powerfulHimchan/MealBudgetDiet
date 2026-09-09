@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import com.mealbudgetdiet.expense.infrastructure.CategoryRepository;
 import com.mealbudgetdiet.expense.infrastructure.ExpenseRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
 import com.mealbudgetdiet.notification.application.BudgetAlertService;
+import com.mealbudgetdiet.media.application.ImageService;
 import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
@@ -31,17 +33,20 @@ public class ExpenseService {
 	private final ExpenseRepository expenseRepository;
 	private final CategoryRepository categoryRepository;
 	private final BudgetAlertService budgetAlertService;
+	private final ImageService imageService;
 
 	public ExpenseService(
 		LedgerAccessService ledgerAccessService,
 		ExpenseRepository expenseRepository,
 		CategoryRepository categoryRepository,
-		BudgetAlertService budgetAlertService
+		BudgetAlertService budgetAlertService,
+		ImageService imageService
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.expenseRepository = expenseRepository;
 		this.categoryRepository = categoryRepository;
 		this.budgetAlertService = budgetAlertService;
+		this.imageService = imageService;
 	}
 
 	@Transactional
@@ -51,12 +56,14 @@ public class ExpenseService {
 		LocalDate spentOn,
 		UUID categoryId,
 		String merchant,
-		String memo
+		String memo,
+		List<UUID> imageIds
 	) {
 		UUID ledgerId = ledgerId(userId);
 		Category category = requireCategory(categoryId, ledgerId);
 		var expense = expenseRepository.saveAndFlush(
 			new Expense(ledgerId, category, amount, spentOn, merchant, memo));
+		imageService.attachExpenseImages(userId, ledgerId, expense.getId(), imageIds);
 		budgetAlertService.evaluateNewExpense(userId, expense);
 		return snapshot(expense);
 	}
@@ -104,7 +111,7 @@ public class ExpenseService {
 			PageRequest.of(0, size + 1)
 		);
 		boolean hasNext = found.size() > size;
-		var items = found.stream().limit(size).map(ExpenseService::snapshot).toList();
+		var items = found.stream().limit(size).map(this::snapshot).toList();
 		String nextCursor = hasNext ? encodeCursor(found.get(size - 1)) : null;
 		return new ExpensePage(items, nextCursor, hasNext);
 	}
@@ -123,12 +130,14 @@ public class ExpenseService {
 		UUID categoryId,
 		String merchant,
 		String memo,
+		List<UUID> imageIds,
 		int version
 	) {
 		UUID ledgerId = ledgerId(userId);
 		var expense = requireExpense(expenseId, ledgerId);
 		requireVersion(expense, version);
 		expense.update(requireCategory(categoryId, ledgerId), amount, spentOn, merchant, memo);
+		imageService.attachExpenseImages(userId, ledgerId, expense.getId(), imageIds);
 		expenseRepository.flush();
 		return snapshot(expense);
 	}
@@ -137,6 +146,7 @@ public class ExpenseService {
 	public void delete(UUID userId, UUID expenseId, int version) {
 		var expense = requireExpense(expenseId, ledgerId(userId));
 		requireVersion(expense, version);
+		imageService.deleteExpenseImages(expenseId);
 		expenseRepository.delete(expense);
 		expenseRepository.flush();
 	}
@@ -164,7 +174,7 @@ public class ExpenseService {
 		}
 	}
 
-	private static ExpenseSnapshot snapshot(Expense expense) {
+	private ExpenseSnapshot snapshot(Expense expense) {
 		return new ExpenseSnapshot(
 			expense.getId(),
 			expense.getAmount(),
@@ -172,6 +182,7 @@ public class ExpenseService {
 			expense.getCategory() == null ? null : CategoryService.snapshot(expense.getCategory()),
 			expense.getMerchant(),
 			expense.getMemo(),
+			imageService.expenseImages(expense.getId()),
 			expense.getVersion(),
 			expense.getCreatedAt(),
 			expense.getUpdatedAt()

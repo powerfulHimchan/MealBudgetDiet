@@ -18,6 +18,10 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   session:
     timeout: 30d
     jdbc:
@@ -33,6 +37,13 @@ app:
     dispatch-enabled: ${PUSH_DISPATCH_ENABLED:true}
     dispatch-interval-ms: ${PUSH_DISPATCH_INTERVAL_MS:30000}
     initial-delay-ms: ${PUSH_INITIAL_DELAY_MS:10000}
+  media:
+    bucket: ${MEDIA_BUCKET:meal-budget-diet}
+    endpoint: ${MEDIA_ENDPOINT:http://localhost:9000}
+    region: ${MEDIA_REGION:ap-northeast-2}
+    access-key: ${MEDIA_ACCESS_KEY:mealbudget}
+    secret-key: ${MEDIA_SECRET_KEY:mealbudget-secret}
+    temp-retention: ${MEDIA_TEMP_RETENTION:24h}
 
 server:
   forward-headers-strategy: framework

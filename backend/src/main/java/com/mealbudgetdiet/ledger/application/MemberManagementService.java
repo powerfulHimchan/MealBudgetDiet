@@ -16,6 +16,7 @@ import com.mealbudgetdiet.ledger.domain.MemberRole;
 import com.mealbudgetdiet.ledger.domain.MemberStatus;
 import com.mealbudgetdiet.ledger.infrastructure.LedgerMemberRepository;
 import com.mealbudgetdiet.ledger.infrastructure.LedgerRepository;
+import com.mealbudgetdiet.media.application.ImageService;
 import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
@@ -25,6 +26,7 @@ public class MemberManagementService {
 	private final LedgerRepository ledgerRepository;
 	private final LedgerMemberRepository memberRepository;
 	private final IdentityService identityService;
+	private final ImageService imageService;
 	private final Clock clock;
 
 	public MemberManagementService(
@@ -32,12 +34,14 @@ public class MemberManagementService {
 		LedgerRepository ledgerRepository,
 		LedgerMemberRepository memberRepository,
 		IdentityService identityService,
+		ImageService imageService,
 		Clock clock
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.ledgerRepository = ledgerRepository;
 		this.memberRepository = memberRepository;
 		this.identityService = identityService;
+		this.imageService = imageService;
 		this.clock = clock;
 	}
 
@@ -67,7 +71,9 @@ public class MemberManagementService {
 
 		target.changeRole(newRole);
 		var user = identityService.getUser(targetUserId);
-		return new MemberSnapshot(user.getId(), user.getDisplayName(), target.getRole(), target.getJoinedAt());
+		return new MemberSnapshot(
+			user.getId(), user.getDisplayName(), target.getRole(), target.getJoinedAt(),
+			user.getProfileImageId() == null ? null : ImageService.contentUrl(user.getProfileImageId()));
 	}
 
 	@Transactional
@@ -106,12 +112,14 @@ public class MemberManagementService {
 				.toList();
 			var emails = users.stream().map(User::getEmail).toList();
 
+			imageService.deleteLedgerObjectsAfterCommit(ledgerId);
 			ledgerRepository.delete(ledger);
 			ledgerRepository.flush();
 			identityService.deleteUsers(users);
 			return new WithdrawalResult(true, emails);
 		}
 
+		imageService.deleteProfileImage(userId);
 		membership.leave(clock.instant());
 		identityService.withdraw(user);
 		return new WithdrawalResult(false, java.util.List.of(user.getEmail()));
