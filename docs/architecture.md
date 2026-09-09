@@ -1,6 +1,6 @@
 # MealBudgetDiet 시스템 아키텍처
 
-- 문서 버전: 1.1
+- 문서 버전: 1.2
 - 기준 요구사항: [requirements.md](requirements.md)
 - 아키텍처 유형: 모듈형 모놀리스
 - 대상 플랫폼: 모바일 우선 PWA
@@ -20,11 +20,12 @@
 |---|---|---|
 | Language | Java 21 | 백엔드 애플리케이션 |
 | Backend | Spring Boot 4.1.x | REST API와 애플리케이션 실행 |
-| Security | Spring Security, Spring Session JDBC | 인증, 인가, 30일 세션 |
+| Security | Spring Security, Spring Session JDBC | 인증, 인가, 명시적 폐기형 영속 세션 |
 | Persistence | Spring Data JPA | 트랜잭션 기반 CRUD |
 | Analytics SQL | Spring JdbcClient | 집계와 통계 SQL 명시적 구현 |
 | Migration | Flyway | DB 스키마 버전 관리 |
 | Database | PostgreSQL 18 | 원본 데이터와 집계 조회 |
+| Image storage | S3 호환 비공개 Object Storage | 식비·프로필 이미지 원본 수신과 변환본 저장 |
 | Frontend | Next.js 16, React, TypeScript | 반응형 PWA |
 | UI | Tailwind CSS, shadcn/ui | 모바일 우선 UI |
 | Server state | TanStack Query | 조회 캐시와 변경 후 무효화 |
@@ -47,6 +48,7 @@ flowchart TD
     E --> F["Next.js Frontend"]
     E --> A["Spring Boot REST API"]
     A --> D["PostgreSQL"]
+    A --> O["Private Object Storage"]
     A --> M["Email Provider"]
     A --> P["Web Push Service"]
 ```
@@ -78,6 +80,7 @@ com.mealbudgetdiet
 ├── identity       # 사용자, 로그인, 세션, 비밀번호 재설정
 ├── ledger         # 공용 장부, 참여자, 관리자, 초대
 ├── expense        # 식비와 카테고리
+├── media          # 이미지 검증, 변환, 임시·영구 저장
 ├── budget         # 기본·월별 예산
 ├── analytics      # 대시보드, 통계, CSV
 ├── notification   # 푸시 구독, 예산 알림 판정과 발송
@@ -89,8 +92,11 @@ com.mealbudgetdiet
 ```mermaid
 flowchart TD
     I["identity"] --> S["shared"]
+    I --> M["media"]
     L["ledger"] --> I
     E["expense"] --> L
+    E --> M
+    M --> S
     B["budget"] --> L
     A["analytics"] --> E
     A --> B
@@ -127,9 +133,13 @@ JWT를 브라우저 저장소에 보관하지 않고 서버 세션 방식을 사
 - Spring Security로 이메일·비밀번호 인증
 - Spring Session JDBC로 세션을 PostgreSQL에 저장
 - 브라우저에는 임의 세션 ID만 Secure, HttpOnly 쿠키로 전달
-- 세션 유효기간은 마지막 활동 기준 30일
-- 로그아웃 시 서버 세션과 쿠키를 함께 무효화
+- 애플리케이션은 세션에 고정 만료나 미사용 만료 시간을 적용하지 않음
+- 브라우저가 허용하는 장기 지속 쿠키를 사용하고 인증 요청 시 쿠키 만료 시점을 갱신
+- 로그아웃 시 현재 서버 세션과 쿠키를 함께 무효화
+- 비밀번호 변경·재설정 또는 회원 탈퇴 시 해당 사용자의 모든 서버 세션을 무효화
 - 상태 변경 요청에는 CSRF 보호 적용
+
+브라우저 데이터 삭제, 시크릿 모드 종료, 브라우저의 쿠키 보존 상한으로 쿠키가 제거될 수는 있다. 이 경우 다시 로그인해야 하지만 애플리케이션 자체 시간 제한으로 세션을 종료하지는 않는다.
 
 세션 쿠키 예시:
 
@@ -139,6 +149,7 @@ HttpOnly: true
 Secure: true (production)
 SameSite: Lax
 Path: /
+Max-Age: 브라우저가 지원하는 장기 보존 범위
 ```
 
 ### 5.2 비밀번호
@@ -173,7 +184,10 @@ Path: /
 | 대시보드·통계·CSV | O | O |
 | 초대 코드 발급·조회·취소 | O | O |
 | 본인 탈퇴 | O | O |
+| 본인 프로필 사진 등록·교체·삭제 | O | O |
 | 기본·월별 예산 변경 | X | O |
+| 월 예산 시작일 변경 | X | O |
+| Push 기준 사용률 변경 | X | O |
 | 카테고리 추가·수정·삭제 | X | O |
 | 관리자 지정·해제 | X | O |
 
@@ -193,8 +207,9 @@ Path: /
 - 도메인 엔티티 ID는 UUID를 사용한다.
 - 식비 사용일은 PostgreSQL `date`로 저장한다.
 - 생성·수정 시각은 `timestamptz`로 저장한다.
-- 월 예산 기준 월은 해당 월의 1일을 나타내는 `date`로 저장한다.
-- 애플리케이션의 월 경계 계산은 Asia/Seoul 기준이다.
+- 월별 예산의 `budget_month`는 예산 주기가 시작되는 날짜가 속한 연·월의 1일을 저장한다.
+- 예산 주기는 장부의 시작일과 Asia/Seoul 날짜를 기준으로 계산한다.
+- 설정일이 없는 달에는 해당 월의 마지막 날을 주기 시작일로 사용한다.
 
 ### 7.2 금액
 
@@ -226,6 +241,16 @@ Path: /
 - 초기에는 원본 식비 테이블을 직접 집계한다.
 - 실제 측정 결과가 필요하기 전에는 캐시, 요약 테이블, materialized view를 추가하지 않는다.
 
+### 7.6 이미지 저장
+
+- 업로드 원본은 JPEG, PNG, WebP만 허용하고 파일당 최대 5MB로 제한한다.
+- 서버는 스트리밍 수신 중 크기를 제한하고 magic bytes와 실제 디코딩 성공 여부를 모두 검증한다.
+- EXIF 등 메타데이터를 제거하고 표시 크기로 리사이징한 WebP 변환본만 비공개 Object Storage에 저장한다.
+- DB에는 저장 키, 크기, 가로·세로, 상태, 업로더 같은 메타데이터만 저장한다.
+- 업로드 직후 이미지는 `TEMP` 상태이며 식비 또는 프로필에 연결되는 트랜잭션에서 `ACTIVE`로 전환한다.
+- 소유자가 취소한 임시 이미지와 보존 시간이 지난 `TEMP`, 더 이상 참조되지 않는 `ACTIVE` 이미지는 정리 작업으로 삭제한다.
+- 이미지 조회는 장부 참여자 또는 본인 권한을 확인한 애플리케이션 경유 요청으로만 제공한다.
+
 ## 8. 프론트엔드 구조
 
 ### 8.1 주요 라우트
@@ -236,16 +261,16 @@ Path: /
 | `/join?code=...` | 초대 코드 기반 회원가입 |
 | `/forgot-password` | 비밀번호 재설정 요청 |
 | `/reset-password` | 새 비밀번호 설정 |
-| `/` | 이번 달 대시보드 |
+| `/` | 현재 예산 주기 대시보드 |
 | `/expenses` | 식비 목록, 검색, 수정·삭제 |
 | `/statistics` | 기간별 통계 |
 | `/settings` | 설정 메인과 하위 메뉴 진입 |
-| `/settings/budget` | 예산 관리 |
-| `/settings/notifications` | 기기별 Web Push 수신 설정 |
+| `/settings/budget` | 예산과 월 예산 시작일 관리 |
+| `/settings/notifications` | 기기별 Web Push 수신과 장부 Push 기준 사용률 설정 |
 | `/settings/categories` | 카테고리 관리 |
 | `/settings/members` | 참여자와 관리자 관리 |
 | `/settings/invitations` | 초대 코드 관리 |
-| `/settings/account` | 비밀번호 변경, 로그아웃, 탈퇴 |
+| `/settings/account` | 프로필 사진, 비밀번호 변경, 로그아웃, 탈퇴 |
 | `/offline` | 연결 필요 안내 |
 
 ### 8.2 상태 관리
@@ -267,28 +292,28 @@ Path: /
 
 ### 8.4 월 예산 초과 위험 푸시
 
-식비 신규 등록 트랜잭션이 성공하면 현재 월 식비인 경우에만 예산 알림 조건을 평가한다.
+식비 신규 등록 트랜잭션이 성공하면 등록일이 현재 예산 주기에 속하는 경우에만 예산 알림 조건을 평가한다.
 
 ```text
-monthlyUsageRate >= 80
+budgetUsageRate >= pushUsageThreshold
 AND
-totalSpent / elapsedDays * daysInMonth > monthlyBudget
+totalSpent / elapsedDays * daysInCycle > cycleBudget
 ```
 
 정수 나눗셈과 반올림 오차를 피하기 위해 실제 비교는 교차 곱셈으로 수행한다.
 
 ```text
-totalSpent * 100 >= monthlyBudget * 80
+totalSpent * 100 >= cycleBudget * pushUsageThreshold
 AND
-totalSpent * daysInMonth > monthlyBudget * elapsedDays
+totalSpent * daysInCycle > cycleBudget * elapsedDays
 ```
 
 처리 흐름:
 
-1. 식비 저장과 동일한 트랜잭션에서 현재 월 합계와 적용 예산을 조회한다.
-2. 등록 시점의 Asia/Seoul 날짜를 기준으로 오늘 포함 경과일수와 예상 월말 지출을 계산한다.
-3. 두 조건을 모두 만족하면 월별 알림 이벤트 생성을 시도한다.
-4. `unique (ledger_id, alert_month, alert_type)` 제약조건으로 월 1회만 생성한다.
+1. 식비 저장과 동일한 트랜잭션에서 현재 예산 주기 합계, 적용 예산, 장부의 Push 기준 사용률을 조회한다.
+2. 등록 시점의 Asia/Seoul 날짜를 기준으로 주기 시작일부터 오늘까지의 경과일수와 예상 주기 종료 지출을 계산한다.
+3. 두 조건을 모두 만족하면 예산 주기별 알림 이벤트 생성을 시도한다.
+4. `unique (ledger_id, cycle_month, alert_type)` 제약조건으로 예산 주기당 1회만 생성한다.
 5. 트랜잭션 커밋 후 비동기 dispatcher가 활성 push subscription에 발송한다.
 6. 실패한 전송은 제한된 횟수만 재시도하고 만료 endpoint는 비활성화한다.
 
@@ -344,11 +369,12 @@ flowchart TD
 
 ```text
 postgres
+object-storage
 backend
 frontend
 ```
 
-개발 속도를 위해 backend와 frontend는 IDE에서 실행하고 PostgreSQL만 Docker로 실행하는 방식도 지원한다.
+로컬 Object Storage는 S3 API 호환 MinIO를 사용한다. 개발 속도를 위해 backend와 frontend는 IDE에서 실행하고 PostgreSQL과 MinIO만 Docker로 실행하는 방식도 지원한다.
 
 환경 변수 예시 파일에는 키 이름과 설명만 포함하고 실제 값은 저장하지 않는다.
 
@@ -356,13 +382,14 @@ frontend
 
 | 계층 | 도구 | 검증 대상 |
 |---|---|---|
-| Domain unit | JUnit 5 | 예산, 권한, 탈퇴, 상태 계산 |
+| Domain unit | JUnit 5 | 예산 주기, Push 기준, 권한, 탈퇴, 상태 계산 |
 | Application integration | Spring Boot Test, Testcontainers | 트랜잭션과 PostgreSQL 동작 |
 | Repository | Testcontainers PostgreSQL | 커서 조회, 집계 SQL, 제약조건 |
 | API | REST Assured | 인증, 권한, 요청 검증, 오류 규격 |
 | Front component | Vitest | 폼과 상태 표시 |
 | E2E | Playwright | 가입, 로그인, 식비 CRUD, 통계 |
-| Security | integration tests | CSRF, 세션, 권한 우회 차단 |
+| Security | integration tests | CSRF, 영속 세션 폐기, 이미지 접근, 권한 우회 차단 |
+| Media integration | Testcontainers, 이미지 fixture | 5MB 제한, 형식 검증, 메타데이터 제거, 임시 파일 정리 |
 
 H2는 PostgreSQL과 SQL·타입·제약조건이 다르므로 통합 테스트 DB로 사용하지 않는다.
 
@@ -398,14 +425,15 @@ Pull Request와 main push 시 다음 작업을 수행한다.
 |---|---|---|
 | 플랫폼 | PWA | 모바일 설치성과 포트폴리오 접근성 |
 | 서버 구조 | 모듈형 모놀리스 | 현재 규모에 적합하고 경계는 명확히 유지 |
-| 인증 | DB 기반 서버 세션 | 30일 로그인과 즉시 로그아웃 구현이 단순하고 안전 |
+| 인증 | DB 기반 서버 세션 | 명시적 세션 폐기와 서버 측 권한 제어를 일관되게 적용 |
 | 브라우저 통신 | same-origin `/api` | CORS와 쿠키 복잡도 감소 |
 | 원본 저장 | PostgreSQL | 트랜잭션과 기간·집계 쿼리에 적합 |
+| 이미지 저장 | 비공개 S3 호환 Object Storage | DB 비대화를 막고 접근 권한과 파일 수명주기를 분리 |
 | CRUD | JPA | 변경 중심 도메인 구현 |
 | 통계 | JdbcClient SQL | 집계 의도와 실행 계획을 명확히 관리 |
 | 목록 조회 | 커서 페이지 | ‘더 보기’와 데이터 추가 중 정렬 안정성 |
 | 동시 수정 | optimistic lock | 소규모 공유 편집에서 조용한 덮어쓰기 방지 |
-| 예산 푸시 | DB outbox + Web Push | 월 1회 조건 판정과 재시도 상태를 일관되게 관리 |
+| 예산 푸시 | DB outbox + Web Push | 예산 주기당 1회 조건 판정과 재시도 상태를 일관되게 관리 |
 | 데모 분리 | 별도 app + DB | 실제 개인정보 접근 경로 차단 |
 
 ## 16. 도입하지 않는 구성
