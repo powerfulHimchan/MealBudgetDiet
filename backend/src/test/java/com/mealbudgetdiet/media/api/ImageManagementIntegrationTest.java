@@ -37,7 +37,7 @@ import jakarta.servlet.http.Cookie;
 @AutoConfigureMockMvc
 @SpringBootTest
 @org.springframework.context.annotation.Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = "app.bootstrap-token=test-bootstrap-token")
+@TestPropertySource(properties = "app.bootstrap-token=image-bootstrap-token")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ImageManagementIntegrationTest {
@@ -50,7 +50,7 @@ class ImageManagementIntegrationTest {
 	void setUp() throws Exception {
 		var result = mockMvc.perform(post("/api/v1/bootstrap/admin")
 				.with(csrf())
-				.header("X-Bootstrap-Token", "test-bootstrap-token")
+				.header("X-Bootstrap-Token", "image-bootstrap-token")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
