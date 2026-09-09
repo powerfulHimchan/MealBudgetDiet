@@ -47,6 +47,7 @@ final class PersistentSessionCookieFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return SESSION_COOKIE_MANAGED_PATHS.contains(request.getServletPath());
+		String requestPath = request.getRequestURI().substring(request.getContextPath().length());
+		return SESSION_COOKIE_MANAGED_PATHS.contains(requestPath);
 	}
 }
