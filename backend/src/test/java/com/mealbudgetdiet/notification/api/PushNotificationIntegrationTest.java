@@ -81,16 +81,43 @@ class PushNotificationIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"startDay\":10,\"version\":0}"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.budgetCycleStartDay").value(10));
+			.andExpect(jsonPath("$.budgetCycleStartDay").value(10))
+			.andExpect(jsonPath("$.version").value(1));
+
+		mockMvc.perform(put("/api/v1/ledger/settings/push-threshold")
+				.with(csrf()).cookie(memberSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"usageThreshold\":90,\"version\":1}"))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("ADMIN_REQUIRED"));
+
+		mockMvc.perform(put("/api/v1/ledger/settings/push-threshold")
+				.with(csrf()).cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"usageThreshold\":101,\"version\":1}"))
+			.andExpect(status().isBadRequest());
+
+		mockMvc.perform(put("/api/v1/ledger/settings/push-threshold")
+				.with(csrf()).cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"usageThreshold\":90,\"version\":1}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.pushUsageThreshold").value(90))
+			.andExpect(jsonPath("$.version").value(2));
 
 		createExpense(adminSession, categoryId, 79_000, "2026-09-15");
 		assertThat(count("budget_alerts")).isZero();
 
 		createExpense(memberSession, categoryId, 6_000, "2026-09-15");
+		assertThat(count("budget_alerts")).isZero();
+
+		createExpense(memberSession, categoryId, 5_000, "2026-09-15");
 		assertThat(count("budget_alerts")).isOne();
 		assertThat(count("push_deliveries")).isEqualTo(2);
 		assertThat(jdbcTemplate.queryForObject(
-			"select total_spent from budget_alerts", Long.class)).isEqualTo(85_000);
+			"select total_spent from budget_alerts", Long.class)).isEqualTo(90_000);
+		assertThat(jdbcTemplate.queryForObject(
+			"select usage_threshold from budget_alerts", Integer.class)).isEqualTo(90);
 		assertThat(jdbcTemplate.queryForObject(
 			"select remaining_days from budget_alerts", Integer.class)).isEqualTo(25);
 		assertThat(jdbcTemplate.queryForObject(

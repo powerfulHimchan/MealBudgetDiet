@@ -53,6 +53,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByText("현재 적용 금액", { exact: true })).toBeVisible();
       await expect(mobile.getByRole("heading", { name: "예산 주기" })).toBeVisible();
     } else if (screen.route === "/settings/notifications") {
+      await expect(mobile.getByRole("heading", { name: "Push 기준 사용률" })).toBeVisible();
       await expect(mobile.getByRole("button", { name: "이 기기 알림 활성화" })).toBeVisible();
     } else if (screen.route === "/settings/categories") {
       await expect(mobile.getByRole("heading", { name: "사용 중인 카테고리" })).toBeVisible();
@@ -194,6 +195,17 @@ test("change the shared budget cycle start day", async ({ page }) => {
   await expect(page.getByLabel("예산 주기 시작일")).toHaveValue("25");
 });
 
+test("change the shared push usage threshold", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/notifications");
+
+  await page.getByLabel("Push 기준 사용률").fill("75");
+  await page.getByRole("button", { name: "Push 기준 저장" }).click();
+
+  await expect(page.getByRole("button", { name: /Push 기준 사용률을 75%로 변경했습니다/ })).toBeVisible();
+  await expect(page.getByLabel("Push 기준 사용률")).toHaveValue("75");
+});
+
 async function mockExpenseApis(page: import("@playwright/test").Page) {
   let categories = [
     { id: "11111111-1111-1111-1111-111111111111", name: "장보기", sortOrder: 1, version: 0 },
@@ -227,6 +239,7 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
     name: "우리집 식비",
     defaultMonthlyBudget: 800000,
     budgetCycleStartDay: 1,
+    pushUsageThreshold: 80,
     memberCount: 2,
     currentUserRole: "ADMIN" as const,
     version: 0,
@@ -301,6 +314,10 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
       const body = route.request().postDataJSON() as { startDay: number; version: number };
       ledger = { ...ledger, budgetCycleStartDay: body.startDay, version: body.version + 1 };
       await route.fulfill({ json: { budgetCycleStartDay: ledger.budgetCycleStartDay, version: ledger.version } });
+    } else if (pathname === "/api/v1/ledger/settings/push-threshold") {
+      const body = route.request().postDataJSON() as { usageThreshold: number; version: number };
+      ledger = { ...ledger, pushUsageThreshold: body.usageThreshold, version: body.version + 1 };
+      await route.fulfill({ json: { pushUsageThreshold: ledger.pushUsageThreshold, version: ledger.version } });
     } else if (pathname === "/api/v1/ledger") {
       await route.fulfill({ json: ledger });
     } else if (pathname === "/api/v1/dashboard") {

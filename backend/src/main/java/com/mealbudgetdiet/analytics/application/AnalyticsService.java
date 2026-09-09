@@ -92,7 +92,7 @@ public class AnalyticsService {
 
 		return new DashboardSnapshot(
 			cycle.yearMonth(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
-			budget.amount() - spent, usageRate, status, recent);
+			budget.amount() - spent, usageRate, ledger.getPushUsageThreshold(), status, recent);
 	}
 
 	@Transactional(readOnly = true)

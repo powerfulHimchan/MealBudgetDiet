@@ -1,12 +1,18 @@
 "use client";
 
-import { Bell, BellOff, LoaderCircle, Smartphone } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bell, BellOff, Gauge, LoaderCircle, ShieldCheck, Smartphone } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 import { mutation, request } from "../../lib/api";
 
 type PushState = "checking" | "unsupported" | "denied" | "idle" | "active";
 type ServerSubscription = { id: string; status: "ACTIVE" | "EXPIRED" | "DISABLED"; createdAt: string };
 type StoredSubscription = { endpoint: string; id: string };
+type Ledger = {
+  pushUsageThreshold: number;
+  currentUserRole: "ADMIN" | "MEMBER";
+  version: number;
+};
+type PushThresholdSettingsResponse = { pushUsageThreshold: number; version: number };
 
 const STORAGE_KEY = "meal-budget-diet-push-subscription";
 
@@ -40,6 +46,109 @@ function storedServerSubscription(subscription: PushSubscription) {
   } catch {
     return null;
   }
+}
+
+export function PushThresholdSettings() {
+  const [ledger, setLedger] = useState<Ledger | null>(null);
+  const [threshold, setThreshold] = useState("80");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    request<Ledger>("/api/v1/ledger")
+      .then((nextLedger) => {
+        if (!active) return;
+        setLedger(nextLedger);
+        setThreshold(String(nextLedger.pushUsageThreshold));
+      })
+      .catch((reason: Error) => active && setError(reason.message))
+      .finally(() => active && setIsLoading(false));
+    return () => { active = false; };
+  }, []);
+
+  async function saveThreshold(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!ledger) return;
+    const usageThreshold = Number(threshold);
+    if (!Number.isInteger(usageThreshold) || usageThreshold < 1 || usageThreshold > 100) {
+      setError("Push 기준 사용률은 1~100 사이의 정수로 입력해 주세요.");
+      return;
+    }
+    setIsSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const settings = await mutation<PushThresholdSettingsResponse>(
+        "/api/v1/ledger/settings/push-threshold",
+        "PUT",
+        { usageThreshold, version: ledger.version },
+      );
+      setLedger({ ...ledger, pushUsageThreshold: settings.pushUsageThreshold, version: settings.version });
+      setThreshold(String(settings.pushUsageThreshold));
+      setNotice(`Push 기준 사용률을 ${settings.pushUsageThreshold}%로 변경했습니다.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Push 기준을 저장하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const isAdmin = ledger?.currentUserRole === "ADMIN";
+  const previewThreshold = Math.min(100, Math.max(1, Number(threshold) || 1));
+
+  return (
+    <section className="setting-panel push-threshold-panel">
+      <div className="panel-heading">
+        <span className="panel-icon"><Gauge size={21} /></span>
+        <div><p className="eyebrow">SHARED ALERT RULE</p><h2>Push 기준 사용률</h2></div>
+        {ledger && <span className="source-chip"><ShieldCheck size={13} /> {isAdmin ? "관리자 설정" : "조회 전용"}</span>}
+      </div>
+      <p className="setting-description">예산 사용률이 이 기준에 도달하고, 현재 소비 속도가 계속되면 예산을 초과할 것으로 예상될 때 알림을 보냅니다.</p>
+
+      {error && <div className="message-banner message-banner--error">{error}</div>}
+      {notice && <button className="message-banner message-banner--notice" onClick={() => setNotice(null)} type="button">{notice}<span>닫기</span></button>}
+
+      {isLoading || !ledger ? (
+        <div className="push-support-note"><LoaderCircle className="spin" size={18} />Push 기준을 불러오고 있어요.</div>
+      ) : (
+        <form className="push-threshold-form" onSubmit={(event) => void saveThreshold(event)}>
+          <label>
+            <span>알림을 판단할 예산 사용률</span>
+            <span className="percentage-input">
+              <input
+                aria-label="Push 기준 사용률"
+                disabled={!isAdmin || isSaving}
+                inputMode="numeric"
+                max="100"
+                min="1"
+                onChange={(event) => setThreshold(event.target.value)}
+                required
+                step="1"
+                type="number"
+                value={threshold}
+              />
+              <b>%</b>
+            </span>
+          </label>
+          <div className="threshold-preview" aria-label={`현재 입력 기준 ${previewThreshold}%`}>
+            <span><strong>{previewThreshold}%</strong>부터 소비 속도를 함께 확인합니다.</span>
+            <span className="threshold-track"><i style={{ width: `${previewThreshold}%` }} /></span>
+            <small>두 조건을 모두 만족해도 같은 예산 주기에는 한 번만 발송합니다.</small>
+          </div>
+          {isAdmin ? (
+            <button className="dark-button" disabled={isSaving} type="submit">
+              {isSaving && <LoaderCircle className="spin" size={16} />}Push 기준 저장
+            </button>
+          ) : (
+            <p className="read-only-note">Push 기준은 장부 관리자만 변경할 수 있습니다.</p>
+          )}
+        </form>
+      )}
+    </section>
+  );
 }
 
 export function PushNotificationSettings() {
@@ -153,7 +262,7 @@ export function PushNotificationSettings() {
           {state === "active" ? "활성" : state === "checking" ? "확인 중" : "비활성"}
         </span>
       </div>
-      <p className="setting-description">예산 사용률이 80% 이상이고 현재 소비 속도가 이어질 때 월 예산 초과가 예상되면 월 1회 알려드립니다.</p>
+      <p className="setting-description">공유 장부에서 설정한 기준 사용률 이상이고 현재 소비 속도가 이어질 때 예산 초과가 예상되면 예산 주기당 1회 알려드립니다.</p>
 
       {state === "checking" && <div className="push-support-note"><LoaderCircle className="spin" size={18} />기기 지원 여부를 확인하고 있어요.</div>}
       {state === "unsupported" && <div className="push-support-note"><Smartphone size={18} />이 브라우저에서는 Web Push를 지원하지 않습니다.</div>}
