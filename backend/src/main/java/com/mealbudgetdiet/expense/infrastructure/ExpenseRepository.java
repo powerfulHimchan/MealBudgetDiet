@@ -27,9 +27,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 		  and (:toDate is null or expense.spentOn <= :toDate)
 		  and (:categoryId is null or expense.category.id = :categoryId)
 		  and (:uncategorized = false or expense.category is null)
-		  and (:keyword is null
-		       or lower(coalesce(expense.merchant, '')) like lower(concat('%', :keyword, '%'))
-		       or lower(coalesce(expense.memo, '')) like lower(concat('%', :keyword, '%')))
+		  and (lower(coalesce(expense.merchant, '')) like :keywordPattern
+		       or lower(coalesce(expense.memo, '')) like :keywordPattern)
 		  and (:cursorSpentOn is null
 		       or expense.spentOn < :cursorSpentOn
 		       or (expense.spentOn = :cursorSpentOn and expense.createdAt < :cursorCreatedAt)
@@ -42,7 +41,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 		@Param("toDate") LocalDate toDate,
 		@Param("categoryId") UUID categoryId,
 		@Param("uncategorized") boolean uncategorized,
-		@Param("keyword") String keyword,
+		@Param("keywordPattern") String keywordPattern,
 		@Param("cursorSpentOn") LocalDate cursorSpentOn,
 		@Param("cursorCreatedAt") Instant cursorCreatedAt,
 		@Param("cursorId") UUID cursorId,

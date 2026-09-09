@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
@@ -76,13 +77,16 @@ public class ExpenseService {
 		}
 		ExpenseCursor cursor = decodeCursor(cursorValue);
 		String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.strip();
+		String keywordPattern = normalizedKeyword == null
+			? "%"
+			: "%" + normalizedKeyword.toLowerCase(Locale.ROOT) + "%";
 		var found = expenseRepository.search(
 			ledgerId,
 			from,
 			to,
 			categoryId,
 			uncategorized,
-			normalizedKeyword,
+			keywordPattern,
 			cursor == null ? null : cursor.spentOn(),
 			cursor == null ? null : cursor.createdAt(),
 			cursor == null ? null : cursor.id(),
