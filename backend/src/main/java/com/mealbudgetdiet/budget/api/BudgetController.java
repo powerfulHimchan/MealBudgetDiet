@@ -82,12 +82,24 @@ public class BudgetController {
 	) {
 	}
 
-	private record BudgetResponse(String yearMonth, long amount, BudgetSource source, int version) {
+	private record BudgetResponse(
+		String yearMonth,
+		PeriodResponse period,
+		long amount,
+		BudgetSource source,
+		int version
+	) {
 		static BudgetResponse from(BudgetSnapshot snapshot) {
 			return new BudgetResponse(
 				snapshot.yearMonth() == null ? null : snapshot.yearMonth().toString(),
+				snapshot.period() == null
+					? null
+					: new PeriodResponse(snapshot.period().from(), snapshot.period().to()),
 				snapshot.amount(), snapshot.source(), snapshot.version());
 		}
+	}
+
+	private record PeriodResponse(java.time.LocalDate from, java.time.LocalDate to) {
 	}
 
 	private static YearMonth parseYearMonth(String value) {

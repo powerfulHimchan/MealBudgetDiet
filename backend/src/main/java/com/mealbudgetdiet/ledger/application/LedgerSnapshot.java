@@ -8,6 +8,7 @@ public record LedgerSnapshot(
 	UUID id,
 	String name,
 	long defaultMonthlyBudget,
+	int budgetCycleStartDay,
 	long memberCount,
 	MemberRole currentUserRole,
 	int version

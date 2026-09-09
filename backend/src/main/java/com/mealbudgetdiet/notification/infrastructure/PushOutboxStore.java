@@ -48,6 +48,7 @@ public class PushOutboxStore {
 			)
 			select claimed.id delivery_id, claimed.attempt_count, alert.id alert_id, alert.alert_type,
 			       alert.alert_month, alert.monthly_budget, alert.total_spent, alert.remaining_days,
+			       alert.cycle_days,
 			       subscription.id subscription_id, subscription.endpoint,
 			       subscription.p256dh_key, subscription.auth_key
 			from claimed
@@ -63,6 +64,7 @@ public class PushOutboxStore {
 				resultSet.getLong("monthly_budget"),
 				resultSet.getLong("total_spent"),
 				resultSet.getInt("remaining_days"),
+				resultSet.getInt("cycle_days"),
 				resultSet.getObject("subscription_id", UUID.class),
 				resultSet.getString("endpoint"),
 				resultSet.getString("p256dh_key"),

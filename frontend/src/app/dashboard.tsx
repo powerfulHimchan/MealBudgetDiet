@@ -9,6 +9,7 @@ import { CurrentUserAvatar } from "./current-user-avatar";
 
 type DashboardData = {
   yearMonth: string;
+  period: { from: string; to: string };
   budget: number;
   spent: number;
   remaining: number;
@@ -25,7 +26,6 @@ type DashboardData = {
 };
 
 const won = new Intl.NumberFormat("ko-KR");
-const monthLabel = new Intl.DateTimeFormat("ko-KR", { month: "long", timeZone: "Asia/Seoul" });
 const dateLabel = new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric", timeZone: "UTC" });
 const statusLabel = { NORMAL: "안정", WARNING: "주의", EXCEEDED: "초과" } as const;
 
@@ -62,12 +62,13 @@ export function Dashboard() {
           <section className="budget-card" aria-labelledby="budget-title">
             <div className="budget-card__topline">
               <div>
-                <p className="eyebrow">{monthLabel.format(new Date(`${data.yearMonth}-01T00:00:00Z`))} 예산</p>
+                <p className="eyebrow">{data.yearMonth} 예산 주기</p>
                 <h1 id="budget-title">
                   {data.remaining >= 0
                     ? `${won.format(data.remaining)}원 남았어요`
                     : `${won.format(Math.abs(data.remaining))}원 초과했어요`}
                 </h1>
+                <p className="budget-cycle-period">{data.period.from} ~ {data.period.to}</p>
               </div>
               <span className={`status-chip status-chip--${data.status.toLowerCase()}`}>{statusLabel[data.status]}</span>
             </div>
@@ -77,7 +78,7 @@ export function Dashboard() {
             </div>
 
             <div className="budget-stats">
-              <div><span>이번 달 사용</span><strong>{won.format(data.spent)}원</strong></div>
+              <div><span>이번 주기 사용</span><strong>{won.format(data.spent)}원</strong></div>
               <div><span>전체 예산</span><strong>{won.format(data.budget)}원</strong></div>
               <div className="usage-stat"><span>사용률</span><strong>{Number(data.usageRate).toFixed(1)}%</strong></div>
             </div>

@@ -133,6 +133,59 @@ class BudgetAnalyticsIntegrationTest {
 			.contains("사용일,금액,카테고리,상호명,메모")
 			.contains("\"'=HYPERLINK(\"\"https://bad\"\")\"");
 
+		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
+				.with(csrf())
+				.cookie(memberSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"startDay\":25,\"version\":1}"))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("ADMIN_REQUIRED"));
+
+		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
+				.with(csrf())
+				.cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"startDay\":32,\"version\":1}"))
+			.andExpect(status().isBadRequest());
+
+		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
+				.with(csrf())
+				.cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"startDay\":25,\"version\":1}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.budgetCycleStartDay").value(25))
+			.andExpect(jsonPath("$.version").value(2));
+
+		mockMvc.perform(get("/api/v1/ledger").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.budgetCycleStartDay").value(25))
+			.andExpect(jsonPath("$.version").value(2));
+
+		createExpense(adminSession, categoryId, 50000, "2026-10-08", "시장", "새 예산 주기");
+
+		mockMvc.perform(get("/api/v1/dashboard")
+				.cookie(memberSession)
+				.param("yearMonth", "2026-09"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.period.from").value("2026-09-25"))
+			.andExpect(jsonPath("$.period.to").value("2026-10-24"))
+			.andExpect(jsonPath("$.budget").value(300000))
+			.andExpect(jsonPath("$.spent").value(50000))
+			.andExpect(jsonPath("$.recentExpenses.length()").value(1));
+
+		mockMvc.perform(get("/api/v1/statistics")
+				.cookie(adminSession)
+				.param("yearMonth", "2026-09"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.period.from").value("2026-09-25"))
+			.andExpect(jsonPath("$.period.to").value("2026-10-24"))
+			.andExpect(jsonPath("$.totalAmount").value(50000))
+			.andExpect(jsonPath("$.budget.amount").value(300000))
+			.andExpect(jsonPath("$.comparison.from").value("2026-08-25"))
+			.andExpect(jsonPath("$.comparison.to").value("2026-09-24"))
+			.andExpect(jsonPath("$.comparison.totalAmount").value(180000));
+
 		mockMvc.perform(delete("/api/v1/budgets/2026-09")
 				.with(csrf())
 				.cookie(adminSession)
