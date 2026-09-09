@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
+import { budgetCycleStarting } from "../src/lib/budget-cycle";
 
 const screenshotDirectory = path.resolve(process.cwd(), "artifacts/screenshots");
 
@@ -50,6 +51,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByRole("link", { name: /계정 설정/ })).toBeVisible();
     } else if (screen.route === "/settings/budget") {
       await expect(mobile.getByText("현재 적용 금액", { exact: true })).toBeVisible();
+      await expect(mobile.getByRole("heading", { name: "예산 주기" })).toBeVisible();
     } else if (screen.route === "/settings/notifications") {
       await expect(mobile.getByRole("button", { name: "이 기기 알림 활성화" })).toBeVisible();
     } else if (screen.route === "/settings/categories") {
@@ -181,6 +183,17 @@ test("upload and delete a profile image", async ({ page }) => {
   await expect(page.getByText("프로필 사진을 삭제했습니다.", { exact: true })).toBeVisible();
 });
 
+test("change the shared budget cycle start day", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/budget");
+
+  await page.getByLabel("예산 주기 시작일").fill("25");
+  await page.getByRole("button", { name: "예산 주기 저장" }).click();
+
+  await expect(page.getByRole("button", { name: /예산 주기 시작일을 변경했습니다/ })).toBeVisible();
+  await expect(page.getByLabel("예산 주기 시작일")).toHaveValue("25");
+});
+
 async function mockExpenseApis(page: import("@playwright/test").Page) {
   let categories = [
     { id: "11111111-1111-1111-1111-111111111111", name: "장보기", sortOrder: 1, version: 0 },
@@ -209,6 +222,15 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
     { id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", amount: 32000, spentOn: "2026-09-07", category: categories[1], merchant: "을지로 식당", memo: "가족 저녁", images: [], version: 0, createdAt: "2026-09-07T19:00:00+09:00", updatedAt: "2026-09-07T19:00:00+09:00" },
     { id: "cccccccc-cccc-cccc-cccc-cccccccccccc", amount: 9800, spentOn: "2026-09-06", category: categories[3], merchant: "커피하우스", memo: "커피와 간식", images: [], version: 0, createdAt: "2026-09-06T16:00:00+09:00", updatedAt: "2026-09-06T16:00:00+09:00" },
   ];
+  let ledger = {
+    id: "99999999-9999-9999-9999-999999999999",
+    name: "우리집 식비",
+    defaultMonthlyBudget: 800000,
+    budgetCycleStartDay: 1,
+    memberCount: 2,
+    currentUserRole: "ADMIN" as const,
+    version: 0,
+  };
 
   await page.route("**/api/v1/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -275,15 +297,20 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
       }
     } else if (pathname.startsWith("/api/v1/images/")) {
       await route.fulfill({ body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"), contentType: "image/png" });
+    } else if (pathname === "/api/v1/ledger/settings/budget-cycle") {
+      const body = route.request().postDataJSON() as { startDay: number; version: number };
+      ledger = { ...ledger, budgetCycleStartDay: body.startDay, version: body.version + 1 };
+      await route.fulfill({ json: { budgetCycleStartDay: ledger.budgetCycleStartDay, version: ledger.version } });
     } else if (pathname === "/api/v1/ledger") {
-      await route.fulfill({ json: { id: "99999999-9999-9999-9999-999999999999", name: "우리집 식비", defaultMonthlyBudget: 800000, memberCount: 2, currentUserRole: "ADMIN", version: 0 } });
+      await route.fulfill({ json: ledger });
     } else if (pathname === "/api/v1/dashboard") {
-      await route.fulfill({ json: { yearMonth: "2026-09", budget: 800000, spent: 658800, remaining: 141200, usageRate: 82.4, status: "WARNING", recentExpenses: expenses.map((expense) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version })) } });
+      await route.fulfill({ json: { yearMonth: "2026-09", period: { from: "2026-09-01", to: "2026-09-30" }, budget: 800000, spent: 658800, remaining: 141200, usageRate: 82.4, status: "WARNING", recentExpenses: expenses.map((expense) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version })) } });
     } else if (pathname === "/api/v1/statistics") {
       await route.fulfill({ json: { period: { from: "2026-09-01", to: "2026-09-30" }, totalAmount: 658800, budget: { amount: 800000, usageRate: 82.4 }, comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 592000, changeAmount: 66800, changeRate: 11.3 }, daily: [{ date: "2026-09-02", amount: 44000 }, { date: "2026-09-05", amount: 78000 }, { date: "2026-09-08", amount: 60300 }, { date: "2026-09-12", amount: 125000 }, { date: "2026-09-18", amount: 89000 }, { date: "2026-09-24", amount: 142000 }, { date: "2026-09-29", amount: 120500 }], categories: [{ categoryId: categories[0].id, categoryName: "장보기", amount: 283000, ratio: 43 }, { categoryId: categories[1].id, categoryName: "외식", amount: 197600, ratio: 30 }, { categoryId: categories[2].id, categoryName: "배달", amount: 112000, ratio: 17 }, { categoryId: categories[3].id, categoryName: "카페/간식", amount: 66200, ratio: 10 }] } });
     } else if (pathname.startsWith("/api/v1/budgets/")) {
       const yearMonth = pathname.split("/").at(-1);
-      await route.fulfill({ json: { yearMonth, amount: 800000, source: "DEFAULT", version: 0 } });
+      const period = budgetCycleStarting(yearMonth!, ledger.budgetCycleStartDay);
+      await route.fulfill({ json: { yearMonth, period: { from: period.from, to: period.to }, amount: 800000, source: "DEFAULT", version: 0 } });
     } else if (pathname === "/api/v1/auth/csrf") {
       await route.fulfill({ json: { headerName: "X-XSRF-TOKEN", token: "screenshot-token" } });
     } else if (pathname === "/api/v1/auth/me") {

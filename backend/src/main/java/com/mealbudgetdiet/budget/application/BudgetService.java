@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mealbudgetdiet.budget.domain.BudgetCycle;
 import com.mealbudgetdiet.budget.domain.MonthlyBudget;
 import com.mealbudgetdiet.budget.infrastructure.MonthlyBudgetRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
@@ -41,7 +42,8 @@ public class BudgetService {
 	@Transactional(readOnly = true)
 	public BudgetSnapshot getAppliedBudget(UUID userId, YearMonth yearMonth) {
 		UUID ledgerId = ledgerId(userId);
-		return appliedBudget(ledgerAccessService.requireLedger(ledgerId), yearMonth);
+		var ledger = ledgerAccessService.requireLedger(ledgerId);
+		return appliedBudget(ledger, BudgetCycle.starting(yearMonth, ledger.getBudgetCycleStartDay()));
 	}
 
 	@Transactional
@@ -53,26 +55,29 @@ public class BudgetService {
 		}
 		ledger.changeDefaultMonthlyBudget(amount);
 		ledgerRepository.flush();
-		return new BudgetSnapshot(null, ledger.getDefaultMonthlyBudget(), BudgetSource.DEFAULT, ledger.getVersion());
+		return new BudgetSnapshot(
+			null, null, ledger.getDefaultMonthlyBudget(), BudgetSource.DEFAULT, ledger.getVersion());
 	}
 
 	@Transactional
 	public BudgetSnapshot updateMonthly(UUID userId, YearMonth yearMonth, long amount, int version) {
 		UUID ledgerId = requireAdmin(userId);
+		var ledger = ledgerAccessService.requireLedger(ledgerId);
+		var cycle = BudgetCycle.starting(yearMonth, ledger.getBudgetCycleStartDay());
 		var existing = monthlyBudgetRepository.findByLedgerIdAndBudgetMonth(ledgerId, yearMonth.atDay(1));
 		if (existing.isEmpty()) {
 			if (version != 0) {
 				throw versionConflict();
 			}
 			var created = monthlyBudgetRepository.saveAndFlush(new MonthlyBudget(ledgerId, yearMonth, amount));
-			return snapshot(created);
+			return snapshot(created, cycle);
 		}
 		if (existing.get().getVersion() != version) {
 			throw versionConflict();
 		}
 		existing.get().changeAmount(amount);
 		monthlyBudgetRepository.flush();
-		return snapshot(existing.get());
+		return snapshot(existing.get(), cycle);
 	}
 
 	@Transactional
@@ -91,33 +96,36 @@ public class BudgetService {
 	@Transactional(readOnly = true)
 	public long proratedBudget(UUID ledgerId, LocalDate from, LocalDate to) {
 		Ledger ledger = ledgerAccessService.requireLedger(ledgerId);
-		YearMonth firstMonth = YearMonth.from(from);
-		YearMonth lastMonth = YearMonth.from(to);
+		int startDay = ledger.getBudgetCycleStartDay();
+		BudgetCycle firstCycle = BudgetCycle.containing(from, startDay);
+		BudgetCycle lastCycle = BudgetCycle.containing(to, startDay);
 		var overrides = monthlyBudgetRepository.findAllByLedgerIdAndBudgetMonthBetween(
-			ledgerId, firstMonth.atDay(1), lastMonth.atDay(1)).stream()
+			ledgerId, firstCycle.yearMonth().atDay(1), lastCycle.yearMonth().atDay(1)).stream()
 			.collect(Collectors.toMap(
 				budget -> YearMonth.from(budget.getBudgetMonth()), Function.identity()));
 
 		BigDecimal total = BigDecimal.ZERO;
-		for (YearMonth month = firstMonth; !month.isAfter(lastMonth); month = month.plusMonths(1)) {
-			LocalDate segmentFrom = from.isAfter(month.atDay(1)) ? from : month.atDay(1);
-			LocalDate segmentTo = to.isBefore(month.atEndOfMonth()) ? to : month.atEndOfMonth();
+		for (YearMonth month = firstCycle.yearMonth();
+			!month.isAfter(lastCycle.yearMonth()); month = month.plusMonths(1)) {
+			BudgetCycle cycle = BudgetCycle.starting(month, startDay);
+			LocalDate segmentFrom = from.isAfter(cycle.from()) ? from : cycle.from();
+			LocalDate segmentTo = to.isBefore(cycle.to()) ? to : cycle.to();
 			long includedDays = ChronoUnit.DAYS.between(segmentFrom, segmentTo) + 1;
 			long amount = overrides.containsKey(month)
 				? overrides.get(month).getAmount()
 				: ledger.getDefaultMonthlyBudget();
 			total = total.add(BigDecimal.valueOf(amount)
 				.multiply(BigDecimal.valueOf(includedDays))
-				.divide(BigDecimal.valueOf(month.lengthOfMonth()), 8, RoundingMode.HALF_UP));
+				.divide(BigDecimal.valueOf(cycle.days()), 8, RoundingMode.HALF_UP));
 		}
 		return total.setScale(0, RoundingMode.HALF_UP).longValueExact();
 	}
 
-	private BudgetSnapshot appliedBudget(Ledger ledger, YearMonth yearMonth) {
-		return monthlyBudgetRepository.findByLedgerIdAndBudgetMonth(ledger.getId(), yearMonth.atDay(1))
-			.map(BudgetService::snapshot)
+	private BudgetSnapshot appliedBudget(Ledger ledger, BudgetCycle cycle) {
+		return monthlyBudgetRepository.findByLedgerIdAndBudgetMonth(ledger.getId(), cycle.yearMonth().atDay(1))
+			.map(budget -> snapshot(budget, cycle))
 			.orElseGet(() -> new BudgetSnapshot(
-				yearMonth, ledger.getDefaultMonthlyBudget(), BudgetSource.DEFAULT, ledger.getVersion()));
+				cycle.yearMonth(), cycle, ledger.getDefaultMonthlyBudget(), BudgetSource.DEFAULT, ledger.getVersion()));
 	}
 
 	private UUID ledgerId(UUID userId) {
@@ -132,9 +140,9 @@ public class BudgetService {
 		return membership.getId().getLedgerId();
 	}
 
-	private static BudgetSnapshot snapshot(MonthlyBudget budget) {
+	private static BudgetSnapshot snapshot(MonthlyBudget budget, BudgetCycle cycle) {
 		return new BudgetSnapshot(
-			YearMonth.from(budget.getBudgetMonth()), budget.getAmount(), BudgetSource.MONTHLY_OVERRIDE,
+			YearMonth.from(budget.getBudgetMonth()), cycle, budget.getAmount(), BudgetSource.MONTHLY_OVERRIDE,
 			budget.getVersion());
 	}
 

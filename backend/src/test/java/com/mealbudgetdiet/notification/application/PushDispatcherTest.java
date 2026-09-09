@@ -17,8 +17,8 @@ class PushDispatcherTest {
 
 		assertThat(payload)
 			.contains("\"type\":\"MONTHLY_BUDGET_OVERRUN_RISK\"")
-			.contains("이번 달 식비 예산 초과가 예상돼요")
-			.contains("이번 달 약 170,000원을 사용할 것으로 예상돼요");
+			.contains("이번 예산 주기 식비 예산 초과가 예상돼요")
+			.contains("이번 예산 주기에 약 170,000원을 사용할 것으로 예상돼요");
 	}
 
 	@Test
@@ -26,7 +26,7 @@ class PushDispatcherTest {
 		String payload = PushDispatcher.payload(task(BudgetAlertType.MONTHLY_BUDGET_OVERRUN_RISK, 100_000, 110_000, 1));
 
 		assertThat(payload)
-			.contains("이번 달 식비 예산을 초과했어요")
+			.contains("이번 예산 주기 식비 예산을 초과했어요")
 			.contains("예산보다 10,000원 많아요");
 	}
 
@@ -42,6 +42,6 @@ class PushDispatcherTest {
 	private PushDeliveryTask task(BudgetAlertType alertType, long budget, long spent, int remainingDays) {
 		return new PushDeliveryTask(
 			UUID.randomUUID(), 1, UUID.randomUUID(), alertType, LocalDate.of(2026, 9, 1),
-			budget, spent, remainingDays, UUID.randomUUID(), "https://example.com", "key", "auth");
+			budget, spent, remainingDays, 30, UUID.randomUUID(), "https://example.com", "key", "auth");
 	}
 }

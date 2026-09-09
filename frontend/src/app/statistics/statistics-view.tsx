@@ -6,6 +6,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AppNav } from "../app-nav";
 import { request, todayInSeoul } from "../../lib/api";
+import { addMonths, budgetCycleContaining, budgetCycleStarting } from "../../lib/budget-cycle";
 
 type StatisticsData = {
   period: { from: string; to: string };
@@ -22,39 +23,37 @@ type DateRange = { from: string; to: string };
 const won = new Intl.NumberFormat("ko-KR");
 const compactWon = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
 
-function dateText(date: Date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function presetRange(key: Exclude<RangeKey, "custom">): DateRange {
-  const [year, month] = todayInSeoul().split("-").map(Number);
+function presetRange(key: Exclude<RangeKey, "custom">, startDay: number): DateRange {
+  const today = todayInSeoul();
+  const currentCycle = budgetCycleContaining(today, startDay);
   if (key === "current") {
-    return { from: `${year}-${String(month).padStart(2, "0")}-01`, to: dateText(new Date(Date.UTC(year, month, 0))) };
+    return { from: currentCycle.from, to: currentCycle.to };
   }
   if (key === "previous") {
-    return { from: dateText(new Date(Date.UTC(year, month - 2, 1))), to: dateText(new Date(Date.UTC(year, month - 1, 0))) };
+    const cycle = budgetCycleStarting(addMonths(currentCycle.yearMonth, -1), startDay);
+    return { from: cycle.from, to: cycle.to };
   }
   if (key === "threeMonths") {
-    return { from: dateText(new Date(Date.UTC(year, month - 3, 1))), to: dateText(new Date(Date.UTC(year, month, 0))) };
+    const firstCycle = budgetCycleStarting(addMonths(currentCycle.yearMonth, -2), startDay);
+    return { from: firstCycle.from, to: currentCycle.to };
   }
+  const year = today.slice(0, 4);
   return { from: `${year}-01-01`, to: `${year}-12-31` };
 }
 
 const rangeButtons: Array<{ key: Exclude<RangeKey, "custom">; label: string }> = [
-  { key: "current", label: "이번 달" },
-  { key: "previous", label: "지난달" },
-  { key: "threeMonths", label: "최근 3개월" },
+  { key: "current", label: "현재 주기" },
+  { key: "previous", label: "직전 주기" },
+  { key: "threeMonths", label: "최근 3개 주기" },
   { key: "year", label: "올해" },
 ];
 
 export function StatisticsView() {
-  const initialRange = useMemo(() => presetRange("current"), []);
+  const initialRange = useMemo(() => presetRange("current", 1), []);
   const [range, setRange] = useState<DateRange>(initialRange);
   const [draft, setDraft] = useState<DateRange>(initialRange);
   const [selectedRange, setSelectedRange] = useState<RangeKey>("current");
+  const [budgetCycleStartDay, setBudgetCycleStartDay] = useState(1);
   const [data, setData] = useState<StatisticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +74,16 @@ export function StatisticsView() {
 
   useEffect(() => {
     let active = true;
-    const params = new URLSearchParams(initialRange);
-    request<StatisticsData>(`/api/v1/statistics?${params}`)
-      .then((statistics) => {
+    request<{ budgetCycleStartDay: number }>("/api/v1/ledger")
+      .then(async (ledger) => {
+        const nextRange = presetRange("current", ledger.budgetCycleStartDay);
+        const params = new URLSearchParams(nextRange);
+        const statistics = await request<StatisticsData>(`/api/v1/statistics?${params}`);
         if (!active) return;
+        setBudgetCycleStartDay(ledger.budgetCycleStartDay);
         setData(statistics);
-        setRange(initialRange);
+        setRange(nextRange);
+        setDraft(nextRange);
       })
       .catch((reason: Error) => active && setError(reason.message))
       .finally(() => active && setIsLoading(false));
@@ -88,7 +91,7 @@ export function StatisticsView() {
   }, [initialRange]);
 
   function selectPreset(key: Exclude<RangeKey, "custom">) {
-    const nextRange = presetRange(key);
+    const nextRange = presetRange(key, budgetCycleStartDay);
     setSelectedRange(key);
     setDraft(nextRange);
     void load(nextRange);

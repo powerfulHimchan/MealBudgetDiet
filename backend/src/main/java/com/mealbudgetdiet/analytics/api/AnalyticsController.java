@@ -48,10 +48,12 @@ public class AnalyticsController {
 	@GetMapping("/api/v1/statistics")
 	StatisticsSnapshot statistics(
 		@AuthenticationPrincipal MealBudgetPrincipal principal,
-		@RequestParam LocalDate from,
-		@RequestParam LocalDate to
+		@RequestParam(required = false) String yearMonth,
+		@RequestParam(required = false) LocalDate from,
+		@RequestParam(required = false) LocalDate to
 	) {
-		return analyticsService.statistics(principal.id(), from, to);
+		return analyticsService.statistics(
+			principal.id(), yearMonth == null ? null : parseYearMonth(yearMonth), from, to);
 	}
 
 	@GetMapping("/api/v1/expenses/export.csv")

@@ -50,17 +50,17 @@ public class PushDispatcher {
 		if (task.alertType() == BudgetAlertType.MONTHLY_BUDGET_SURPLUS) {
 			return surplusPayload(task);
 		}
-		int elapsedDays = task.alertMonth().lengthOfMonth() - task.remainingDays() + 1;
+		int elapsedDays = task.cycleDays() - task.remainingDays() + 1;
 		long projectedSpend = BigDecimal.valueOf(task.totalSpent())
-			.multiply(BigDecimal.valueOf(task.alertMonth().lengthOfMonth()))
+			.multiply(BigDecimal.valueOf(task.cycleDays()))
 			.divide(BigDecimal.valueOf(elapsedDays), 0, RoundingMode.HALF_UP)
 			.longValue();
 		String title = task.totalSpent() > task.monthlyBudget()
-			? "이번 달 식비 예산을 초과했어요"
-			: "이번 달 식비 예산 초과가 예상돼요";
+			? "이번 예산 주기 식비 예산을 초과했어요"
+			: "이번 예산 주기 식비 예산 초과가 예상돼요";
 		String body = task.totalSpent() > task.monthlyBudget()
 			? "현재 식비가 예산보다 %,d원 많아요.".formatted(task.totalSpent() - task.monthlyBudget())
-			: "현재 소비 속도라면 이번 달 약 %,d원을 사용할 것으로 예상돼요.".formatted(projectedSpend);
+			: "현재 소비 속도라면 이번 예산 주기에 약 %,d원을 사용할 것으로 예상돼요.".formatted(projectedSpend);
 		return """
 			{"notificationId":"%s","type":"%s","title":"%s","body":"%s","data":{"url":"/","yearMonth":"%s"}}
 			""".formatted(task.alertId(), task.alertType().name(), title, body,

@@ -269,6 +269,11 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .money-input input { padding-right: 40px; font-size: 1.1rem; font-weight: 850; text-align: right; }
 .money-input b { position: absolute; right: 12px; color: #53637a; }
 .budget-form .dark-button { justify-self: end; }
+.cycle-preview { display: grid; gap: 4px; padding: 13px 14px; border-left: 4px solid var(--brand); background: #eef5ff; }
+.cycle-preview span { color: #53637a; font-size: .72rem; font-weight: 800; }
+.cycle-preview strong { color: #14233a; font-size: .92rem; }
+.cycle-preview small { color: #64748b; font-size: .7rem; line-height: 1.5; }
+.budget-cycle-period { margin: 7px 0 0; color: #64748b; font-size: .76rem; font-weight: 700; }
 .budget-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .danger-button { color: #b42335; }
 .read-only-note { margin: 0; padding: 10px 12px; border-left: 3px solid #7c8ca4; background: #f2f5f9; color: #64748b; font-size: .78rem; }

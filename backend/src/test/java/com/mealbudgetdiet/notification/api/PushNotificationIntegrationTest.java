@@ -76,6 +76,13 @@ class PushNotificationIntegrationTest {
 		registerSubscription(
 			adminSession, "https://updates.push.services.mozilla.com/wpush/v2/admin-device", false);
 
+		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
+				.with(csrf()).cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"startDay\":10,\"version\":0}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.budgetCycleStartDay").value(10));
+
 		createExpense(adminSession, categoryId, 79_000, "2026-09-15");
 		assertThat(count("budget_alerts")).isZero();
 
@@ -85,7 +92,12 @@ class PushNotificationIntegrationTest {
 		assertThat(jdbcTemplate.queryForObject(
 			"select total_spent from budget_alerts", Long.class)).isEqualTo(85_000);
 		assertThat(jdbcTemplate.queryForObject(
-			"select remaining_days from budget_alerts", Integer.class)).isEqualTo(16);
+			"select remaining_days from budget_alerts", Integer.class)).isEqualTo(25);
+		assertThat(jdbcTemplate.queryForObject(
+			"select cycle_days from budget_alerts", Integer.class)).isEqualTo(30);
+		assertThat(jdbcTemplate.queryForObject(
+			"select alert_month from budget_alerts", java.time.LocalDate.class))
+			.isEqualTo(java.time.LocalDate.of(2026, 9, 1));
 		assertThat(jdbcTemplate.queryForObject(
 			"select alert_type from budget_alerts", String.class)).isEqualTo("MONTHLY_BUDGET_OVERRUN_RISK");
 

@@ -24,8 +24,10 @@ import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.CategoryAmoun
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.Comparison;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.DailyAmount;
 import com.mealbudgetdiet.budget.application.BudgetService;
+import com.mealbudgetdiet.budget.domain.BudgetCycle;
 import com.mealbudgetdiet.expense.infrastructure.CategoryRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
+import com.mealbudgetdiet.ledger.domain.Ledger;
 import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
@@ -55,13 +57,14 @@ public class AnalyticsService {
 
 	@Transactional(readOnly = true)
 	public DashboardSnapshot dashboard(UUID userId, YearMonth requestedMonth, int recentSize) {
-		YearMonth yearMonth = requestedMonth == null
-			? YearMonth.now(clock.withZone(SERVICE_ZONE))
-			: requestedMonth;
-		UUID ledgerId = ledgerId(userId);
-		var budget = budgetService.getAppliedBudget(userId, yearMonth);
-		LocalDate from = yearMonth.atDay(1);
-		LocalDate to = yearMonth.atEndOfMonth();
+		Ledger ledger = ledger(userId);
+		BudgetCycle cycle = requestedMonth == null
+			? BudgetCycle.containing(LocalDate.now(clock.withZone(SERVICE_ZONE)), ledger.getBudgetCycleStartDay())
+			: BudgetCycle.starting(requestedMonth, ledger.getBudgetCycleStartDay());
+		UUID ledgerId = ledger.getId();
+		var budget = budgetService.getAppliedBudget(userId, cycle.yearMonth());
+		LocalDate from = cycle.from();
+		LocalDate to = cycle.to();
 		long spent = totalAmount(ledgerId, from, to);
 		BigDecimal usageRate = percentage(spent, budget.amount());
 		DashboardStatus status = usageRate.compareTo(BigDecimal.valueOf(100)) >= 0
@@ -88,16 +91,38 @@ public class AnalyticsService {
 			), ledgerId, from, to, recentSize);
 
 		return new DashboardSnapshot(
-			yearMonth, budget.amount(), spent, budget.amount() - spent, usageRate, status, recent);
+			cycle.yearMonth(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
+			budget.amount() - spent, usageRate, status, recent);
 	}
 
 	@Transactional(readOnly = true)
-	public StatisticsSnapshot statistics(UUID userId, LocalDate from, LocalDate to) {
-		validateRange(from, to);
-		UUID ledgerId = ledgerId(userId);
+	public StatisticsSnapshot statistics(
+		UUID userId,
+		YearMonth requestedCycle,
+		LocalDate requestedFrom,
+		LocalDate requestedTo
+	) {
+		Ledger ledger = ledger(userId);
+		LocalDate from;
+		LocalDate to;
+		if (requestedCycle != null) {
+			if (requestedFrom != null || requestedTo != null) {
+				throw new ApiException(
+					HttpStatus.BAD_REQUEST, "STATISTICS_PERIOD_CONFLICT",
+					"예산 주기와 직접 지정 기간은 함께 조회할 수 없습니다.");
+			}
+			BudgetCycle cycle = BudgetCycle.starting(requestedCycle, ledger.getBudgetCycleStartDay());
+			from = cycle.from();
+			to = cycle.to();
+		} else {
+			validateRange(requestedFrom, requestedTo);
+			from = requestedFrom;
+			to = requestedTo;
+		}
+		UUID ledgerId = ledger.getId();
 		long total = totalAmount(ledgerId, from, to);
 		long budget = budgetService.proratedBudget(ledgerId, from, to);
-		var comparisonPeriod = comparisonPeriod(from, to);
+		var comparisonPeriod = comparisonPeriod(ledger, from, to);
 		long previousTotal = totalAmount(ledgerId, comparisonPeriod.from(), comparisonPeriod.to());
 		BigDecimal changeRate = previousTotal == 0
 			? null
@@ -149,7 +174,7 @@ public class AnalyticsService {
 		String keyword
 	) {
 		validateRange(from, to);
-		UUID ledgerId = ledgerId(userId);
+		UUID ledgerId = ledger(userId).getId();
 		if (categoryId != null && categoryRepository.findByIdAndLedgerId(categoryId, ledgerId).isEmpty()) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "CATEGORY_INVALID", "현재 장부에서 사용할 수 없는 카테고리입니다.");
 		}
@@ -202,8 +227,9 @@ public class AnalyticsService {
 		return total == null ? 0 : total;
 	}
 
-	private UUID ledgerId(UUID userId) {
-		return ledgerAccessService.requireActiveMembership(userId).getId().getLedgerId();
+	private Ledger ledger(UUID userId) {
+		UUID ledgerId = ledgerAccessService.requireActiveMembership(userId).getId().getLedgerId();
+		return ledgerAccessService.requireLedger(ledgerId);
 	}
 
 	private void validateRange(LocalDate from, LocalDate to) {
@@ -215,7 +241,18 @@ public class AnalyticsService {
 		}
 	}
 
-	private StatisticsSnapshot.Period comparisonPeriod(LocalDate from, LocalDate to) {
+	private StatisticsSnapshot.Period comparisonPeriod(Ledger ledger, LocalDate from, LocalDate to) {
+		int startDay = ledger.getBudgetCycleStartDay();
+		BudgetCycle firstCycle = BudgetCycle.containing(from, startDay);
+		BudgetCycle lastCycle = BudgetCycle.containing(to, startDay);
+		long cycleCount = ChronoUnit.MONTHS.between(firstCycle.yearMonth(), lastCycle.yearMonth()) + 1;
+		boolean wholeBudgetCycles = from.equals(firstCycle.from()) && to.equals(lastCycle.to());
+		if (wholeBudgetCycles && (cycleCount == 1 || cycleCount == 3)) {
+			BudgetCycle previousStart = BudgetCycle.starting(
+				firstCycle.yearMonth().minusMonths(cycleCount), startDay);
+			BudgetCycle previousEnd = BudgetCycle.starting(firstCycle.yearMonth().minusMonths(1), startDay);
+			return new StatisticsSnapshot.Period(previousStart.from(), previousEnd.to());
+		}
 		YearMonth fromMonth = YearMonth.from(from);
 		YearMonth toMonth = YearMonth.from(to);
 		boolean wholeCalendarMonths = from.equals(fromMonth.atDay(1)) && to.equals(toMonth.atEndOfMonth());

@@ -12,7 +12,7 @@ import { SettingsPageFrame } from "./settings-page-frame";
 
 const menuItems = [
   {
-    description: "기본 월 예산과 특정 월에만 적용할 예외 예산을 관리합니다.",
+    description: "예산 주기 시작일과 기본·주기별 예산을 관리합니다.",
     href: "/settings/budget",
     icon: WalletCards,
     label: "예산 관리",

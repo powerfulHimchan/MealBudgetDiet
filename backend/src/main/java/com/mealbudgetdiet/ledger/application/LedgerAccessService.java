@@ -44,6 +44,7 @@ public class LedgerAccessService {
 			ledger.getId(),
 			ledger.getName(),
 			ledger.getDefaultMonthlyBudget(),
+			ledger.getBudgetCycleStartDay(),
 			memberCount,
 			membership.getRole(),
 			ledger.getVersion()

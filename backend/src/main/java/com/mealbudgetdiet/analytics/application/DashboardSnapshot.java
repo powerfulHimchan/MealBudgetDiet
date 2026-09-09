@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record DashboardSnapshot(
 	YearMonth yearMonth,
+	Period period,
 	long budget,
 	long spent,
 	long remaining,
@@ -15,6 +16,9 @@ public record DashboardSnapshot(
 	DashboardStatus status,
 	List<RecentExpense> recentExpenses
 ) {
+	public record Period(LocalDate from, LocalDate to) {
+	}
+
 	public record RecentExpense(
 		UUID id,
 		long amount,

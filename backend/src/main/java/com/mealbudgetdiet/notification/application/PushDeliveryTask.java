@@ -14,6 +14,7 @@ public record PushDeliveryTask(
 	long monthlyBudget,
 	long totalSpent,
 	int remainingDays,
+	int cycleDays,
 	UUID subscriptionId,
 	String endpoint,
 	String p256dhKey,

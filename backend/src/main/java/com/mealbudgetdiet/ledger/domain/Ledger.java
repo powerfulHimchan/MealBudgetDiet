@@ -27,6 +27,9 @@ public class Ledger {
 	@Column(name = "default_monthly_budget", nullable = false)
 	private long defaultMonthlyBudget;
 
+	@Column(name = "budget_cycle_start_day", nullable = false)
+	private int budgetCycleStartDay;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private LedgerStatus status;
@@ -50,6 +53,7 @@ public class Ledger {
 		this.id = UUID.randomUUID();
 		this.name = name;
 		this.defaultMonthlyBudget = defaultMonthlyBudget;
+		this.budgetCycleStartDay = 1;
 		this.status = LedgerStatus.ACTIVE;
 	}
 
@@ -65,6 +69,10 @@ public class Ledger {
 		return defaultMonthlyBudget;
 	}
 
+	public int getBudgetCycleStartDay() {
+		return budgetCycleStartDay;
+	}
+
 	public LedgerStatus getStatus() {
 		return status;
 	}
@@ -75,5 +83,9 @@ public class Ledger {
 
 	public void changeDefaultMonthlyBudget(long defaultMonthlyBudget) {
 		this.defaultMonthlyBudget = defaultMonthlyBudget;
+	}
+
+	public void changeBudgetCycleStartDay(int budgetCycleStartDay) {
+		this.budgetCycleStartDay = budgetCycleStartDay;
 	}
 }
