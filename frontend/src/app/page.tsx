@@ -50,10 +50,10 @@ export default function Home() {
             <div className="usage-stat"><span>사용률</span><strong>82%</strong></div>
           </div>
 
-          <button className="primary-action" type="button">
+          <Link className="primary-action" href="/expenses?new=1">
             <Plus size={20} strokeWidth={2.5} />
             식비 등록
-          </button>
+          </Link>
         </section>
 
         <section className="recent-card" aria-labelledby="recent-title">
