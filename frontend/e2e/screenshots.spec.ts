@@ -31,6 +31,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
     { route: "/settings/budget", file: "budget-settings-mobile.png", heading: "예산 관리" },
     { route: "/settings/notifications", file: "notification-settings-mobile.png", heading: "푸시 알림" },
     { route: "/settings/categories", file: "category-settings-mobile.png", heading: "카테고리 관리" },
+    { route: "/settings/members", file: "member-settings-mobile.png", heading: "참여자 관리" },
     { route: "/offline", file: "offline-mobile.png", heading: "인터넷 연결이 필요해요" },
   ];
 
@@ -53,6 +54,10 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByRole("heading", { name: "사용 중인 카테고리" })).toBeVisible();
       await expect(mobile.getByRole("button", { name: "새 카테고리 추가" })).toBeVisible();
       await expect(mobile.getByText("장보기", { exact: true })).toBeVisible();
+    } else if (screen.route === "/settings/members") {
+      await expect(mobile.getByRole("heading", { name: "우리집 식비 참여자" })).toBeVisible();
+      await expect(mobile.getByText("힘찬", { exact: true })).toBeVisible();
+      await expect(mobile.getByText("가족", { exact: true })).toBeVisible();
     }
     await mobile.evaluate(() => window.scrollTo(0, 0));
     await mobile.screenshot({
@@ -87,6 +92,26 @@ test("manage categories from settings", async ({ page }) => {
   await expect(page.getByText("점심", { exact: true })).toHaveCount(0);
 });
 
+test("manage administrator role from settings", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/members");
+
+  const familyRow = page.getByRole("listitem").filter({ hasText: "가족" });
+  await familyRow.getByRole("button", { name: "관리자로 지정" }).click();
+  let dialog = page.getByRole("dialog", { name: "가족 님을 관리자로 지정할까요?" });
+  await expect(dialog.getByText(/예산과 카테고리를 변경하고/)).toBeVisible();
+  await dialog.getByRole("button", { name: "권한 변경" }).click();
+  await expect(familyRow.getByText("관리자", { exact: true })).toBeVisible();
+
+  await familyRow.getByRole("button", { name: "일반 참여자로 변경" }).click();
+  dialog = page.getByRole("dialog", { name: "가족 님을 일반 참여자로 변경할까요?" });
+  await dialog.getByRole("button", { name: "권한 변경" }).click();
+  await expect(familyRow.getByText("일반 참여자", { exact: true })).toBeVisible();
+
+  const currentUserRow = page.getByRole("listitem").filter({ hasText: "힘찬" });
+  await expect(currentUserRow.getByRole("button", { name: "일반 참여자로 변경" })).toBeDisabled();
+});
+
 async function mockExpenseApis(page: import("@playwright/test").Page) {
   let categories = [
     { id: "11111111-1111-1111-1111-111111111111", name: "장보기", sortOrder: 1, version: 0 },
@@ -94,6 +119,10 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
     { id: "33333333-3333-3333-3333-333333333333", name: "배달", sortOrder: 3, version: 0 },
     { id: "44444444-4444-4444-4444-444444444444", name: "카페/간식", sortOrder: 4, version: 0 },
     { id: "55555555-5555-5555-5555-555555555555", name: "기타", sortOrder: 5, version: 0 },
+  ];
+  let members = [
+    { id: "77777777-7777-7777-7777-777777777777", displayName: "힘찬", role: "ADMIN" as const, joinedAt: "2026-09-01T10:00:00+09:00" },
+    { id: "88888888-8888-8888-8888-888888888888", displayName: "가족", role: "MEMBER" as const, joinedAt: "2026-09-03T18:30:00+09:00" },
   ];
   const expenses = [
     { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", amount: 18500, spentOn: "2026-09-08", category: categories[0], merchant: "동네마트", memo: "주말 장보기", version: 0, createdAt: "2026-09-08T14:00:00+09:00", updatedAt: "2026-09-08T14:00:00+09:00" },
@@ -124,6 +153,15 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
         categories = categories.filter((category) => category.id !== categoryId);
         await route.fulfill({ status: 204 });
       }
+    } else if (pathname === "/api/v1/members") {
+      await route.fulfill({ json: { items: members } });
+    } else if (pathname.startsWith("/api/v1/members/") && pathname.endsWith("/role")) {
+      const memberId = pathname.split("/").at(-2);
+      const body = route.request().postDataJSON() as { role: "ADMIN" | "MEMBER" };
+      const current = members.find((member) => member.id === memberId);
+      const updated = { ...current!, role: body.role };
+      members = members.map((member) => member.id === memberId ? updated : member);
+      await route.fulfill({ json: updated });
     } else if (pathname === "/api/v1/expenses") {
       await route.fulfill({ json: { items: expenses, nextCursor: null, hasNext: false } });
     } else if (pathname === "/api/v1/ledger") {
@@ -137,6 +175,8 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
       await route.fulfill({ json: { yearMonth, amount: 800000, source: "DEFAULT", version: 0 } });
     } else if (pathname === "/api/v1/auth/csrf") {
       await route.fulfill({ json: { headerName: "X-XSRF-TOKEN", token: "screenshot-token" } });
+    } else if (pathname === "/api/v1/auth/me") {
+      await route.fulfill({ json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", role: "ADMIN" } });
     } else {
       await route.fulfill({ status: 204 });
     }
