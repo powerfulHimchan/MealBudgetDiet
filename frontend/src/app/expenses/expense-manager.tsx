@@ -94,9 +94,6 @@ export function ExpenseManager() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [role, setRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
-  const [categoryDraft, setCategoryDraft] = useState({ name: "", sortOrder: "" });
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [draft, setDraft] = useState<ExpenseDraft>({
     amount: "",
     spentOn: todayInSeoul(),
@@ -110,15 +107,13 @@ export function ExpenseManager() {
     Promise.all([
       request<{ items: Category[] }>("/api/v1/categories"),
       request<ExpensePage>(expenseQuery(initialFilters)),
-      request<{ currentUserRole: "ADMIN" | "MEMBER" }>("/api/v1/ledger"),
     ])
-      .then(([categoryData, expenseData, ledger]) => {
+      .then(([categoryData, expenseData]) => {
         if (!active) return;
         setCategories(categoryData.items);
         setExpenses(expenseData.items);
         setNextCursor(expenseData.nextCursor);
         setHasNext(expenseData.hasNext);
-        setRole(ledger.currentUserRole);
         if (new URLSearchParams(window.location.search).get("new") === "1") {
           setDraft({
             amount: "",
@@ -153,11 +148,6 @@ export function ExpenseManager() {
     } finally {
       setIsLoading(false);
     }
-  }
-
-  async function refreshCategories() {
-    const data = await request<{ items: Category[] }>("/api/v1/categories");
-    setCategories(data.items);
   }
 
   function openCreate() {
@@ -237,44 +227,6 @@ export function ExpenseManager() {
       setError(reason instanceof Error ? reason.message : "다음 식비를 불러오지 못했습니다.");
     } finally {
       setIsLoading(false);
-    }
-  }
-
-  async function submitCategory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSaving(true);
-    setError(null);
-    try {
-      const body = { name: categoryDraft.name, sortOrder: Number(categoryDraft.sortOrder) };
-      if (editingCategory) {
-        await mutation(`/api/v1/categories/${editingCategory.id}`, "PUT", {
-          ...body,
-          version: editingCategory.version,
-        });
-        setNotice("카테고리를 수정했습니다.");
-      } else {
-        await mutation("/api/v1/categories", "POST", body);
-        setNotice("카테고리를 추가했습니다.");
-      }
-      setCategoryDraft({ name: "", sortOrder: "" });
-      setEditingCategory(null);
-      await refreshCategories();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "카테고리를 저장하지 못했습니다.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function deleteCategory(category: Category) {
-    if (!window.confirm(`${category.name} 카테고리를 삭제할까요? 기존 식비는 분류 없음으로 남습니다.`)) return;
-    setError(null);
-    try {
-      await mutation(`/api/v1/categories/${category.id}?version=${category.version}`, "DELETE");
-      setNotice("카테고리를 삭제했습니다.");
-      await Promise.all([refreshCategories(), refreshExpenses()]);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "카테고리를 삭제하지 못했습니다.");
     }
   }
 
@@ -386,29 +338,16 @@ export function ExpenseManager() {
         </div>
 
         <aside className="category-panel" aria-labelledby="category-title">
-          <div className="category-heading"><span><Tags size={19} /></span><div><p className="eyebrow">CATEGORY</p><h2 id="category-title">카테고리</h2></div></div>
+          <div className="category-heading"><span><Tags size={19} /></span><div><p className="eyebrow">CATEGORY</p><h2 id="category-title">카테고리</h2></div><Link className="category-manage-link" href="/settings/categories">설정에서 관리</Link></div>
           <ul>
             {categories.map((category) => (
               <li key={category.id}>
                 <span className="category-order">{String(category.sortOrder).padStart(2, "0")}</span>
                 <strong>{category.name}</strong>
-                {role === "ADMIN" && <span className="category-actions">
-                  <button type="button" aria-label={`${category.name} 수정`} onClick={() => { setEditingCategory(category); setCategoryDraft({ name: category.name, sortOrder: String(category.sortOrder) }); }}><Pencil size={15} /></button>
-                  <button type="button" aria-label={`${category.name} 삭제`} onClick={() => void deleteCategory(category)}><Trash2 size={15} /></button>
-                </span>}
               </li>
             ))}
           </ul>
-          {role === "ADMIN" ? (
-            <form className="category-form" onSubmit={submitCategory}>
-              <strong>{editingCategory ? "카테고리 수정" : "새 카테고리"}</strong>
-              <div><input required maxLength={50} placeholder="이름" value={categoryDraft.name} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} /><input required min={1} type="number" placeholder="순서" value={categoryDraft.sortOrder} onChange={(event) => setCategoryDraft({ ...categoryDraft, sortOrder: event.target.value })} /></div>
-              <div className="category-form-actions">
-                {editingCategory && <button className="secondary-button" type="button" onClick={() => { setEditingCategory(null); setCategoryDraft({ name: "", sortOrder: "" }); }}>취소</button>}
-                <button className="dark-button" type="submit" disabled={isSaving}>{editingCategory ? "저장" : "추가"}</button>
-              </div>
-            </form>
-          ) : <p className="category-help">카테고리 변경은 관리자만 할 수 있습니다.</p>}
+          <p className="category-help">추가·수정·삭제는 설정의 카테고리 관리에서 할 수 있습니다.</p>
         </aside>
       </div>
 

@@ -30,7 +30,7 @@ const menuItems = [
     href: "/settings/categories",
     icon: Tags,
     label: "카테고리 관리",
-    status: "다음 구현",
+    status: "사용 가능",
   },
   {
     description: "공유 장부의 참여자와 관리자 권한을 확인하고 관리합니다.",
