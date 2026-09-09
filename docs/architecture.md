@@ -263,14 +263,14 @@ Path: /
 - 사용자가 명시적으로 허용한 기기만 Web Push 구독을 등록한다.
 - 알림 권한을 거부해도 식비 관리 기능은 정상적으로 사용할 수 있다.
 
-### 8.4 월 예산 여유 푸시
+### 8.4 월 예산 초과 위험 푸시
 
 식비 신규 등록 트랜잭션이 성공하면 현재 월 식비인 경우에만 예산 알림 조건을 평가한다.
 
 ```text
 monthlyUsageRate >= 80
 AND
-remainingBudget / remainingDays > (monthlyBudget / daysInMonth) * 2
+totalSpent / elapsedDays * daysInMonth > monthlyBudget
 ```
 
 정수 나눗셈과 반올림 오차를 피하기 위해 실제 비교는 교차 곱셈으로 수행한다.
@@ -278,19 +278,21 @@ remainingBudget / remainingDays > (monthlyBudget / daysInMonth) * 2
 ```text
 totalSpent * 100 >= monthlyBudget * 80
 AND
-remainingBudget * daysInMonth > monthlyBudget * remainingDays * 2
+totalSpent * daysInMonth > monthlyBudget * elapsedDays
 ```
 
 처리 흐름:
 
 1. 식비 저장과 동일한 트랜잭션에서 현재 월 합계와 적용 예산을 조회한다.
-2. 등록 시점의 Asia/Seoul 날짜를 기준으로 오늘 포함 남은 일수를 계산한다.
+2. 등록 시점의 Asia/Seoul 날짜를 기준으로 오늘 포함 경과일수와 예상 월말 지출을 계산한다.
 3. 두 조건을 모두 만족하면 월별 알림 이벤트 생성을 시도한다.
 4. `unique (ledger_id, alert_month, alert_type)` 제약조건으로 월 1회만 생성한다.
 5. 트랜잭션 커밋 후 비동기 dispatcher가 활성 push subscription에 발송한다.
 6. 실패한 전송은 제한된 횟수만 재시도하고 만료 endpoint는 비활성화한다.
 
 외부 메시지 브로커는 사용하지 않는다. PostgreSQL에 알림 이벤트와 기기별 전송 상태를 저장하는 작은 transactional outbox 방식으로 유실과 중복을 제어한다. 푸시 payload에는 고유 notification ID를 포함하고 서비스 워커는 같은 ID의 중복 표시를 방지한다.
+
+Web Push 암호화와 VAPID 서명은 `webpush-java` 어댑터 안으로 격리한다. HTTP 전송은 Java 21 기본 `HttpClient`를 재사용하며 연결·요청 timeout과 redirect 금지를 적용한다. Maven Central의 5.1.2 배포본에서 발생하는 VAPID `Crypto-Key` Base64 padding 문제는 어댑터에서만 보정하고 회귀 테스트로 보호한다. 새 공식 배포본으로 올릴 때는 해당 보정의 필요 여부, AES128GCM 헤더, Chrome·Firefox 실제 기기 전송을 확인한 뒤 제거한다.
 
 ## 9. API 설계 원칙
 

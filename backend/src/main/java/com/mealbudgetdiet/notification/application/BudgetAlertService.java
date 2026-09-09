@@ -5,7 +5,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,13 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.budget.application.BudgetService;
 import com.mealbudgetdiet.expense.domain.Expense;
+import com.mealbudgetdiet.notification.domain.BudgetAlertType;
 import com.mealbudgetdiet.notification.infrastructure.PushSubscriptionRepository;
 
 @Service
 public class BudgetAlertService {
 
 	private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
-	private static final String ALERT_TYPE = "MONTHLY_BUDGET_SURPLUS";
+	private static final BudgetAlertType ALERT_TYPE = BudgetAlertType.MONTHLY_BUDGET_OVERRUN_RISK;
 
 	private final BudgetService budgetService;
 	private final PushSubscriptionRepository subscriptionRepository;
@@ -49,10 +49,11 @@ public class BudgetAlertService {
 
 		long monthlyBudget = budgetService.getAppliedBudget(userId, currentMonth).amount();
 		long totalSpent = totalSpent(expense.getLedgerId(), currentMonth);
-		int remainingDays = (int) ChronoUnit.DAYS.between(today, currentMonth.atEndOfMonth()) + 1;
-		long remainingBudget = monthlyBudget - totalSpent;
+		int daysInMonth = currentMonth.lengthOfMonth();
+		int elapsedDays = today.getDayOfMonth();
+		int remainingDays = daysInMonth - elapsedDays + 1;
 
-		if (!matchesAlertCondition(monthlyBudget, totalSpent, remainingBudget, remainingDays, currentMonth.lengthOfMonth())) {
+		if (!matchesAlertCondition(monthlyBudget, totalSpent, elapsedDays, daysInMonth)) {
 			return;
 		}
 
@@ -63,7 +64,7 @@ public class BudgetAlertService {
 			  monthly_budget, total_spent, remaining_days
 			) values (?, ?, ?, ?, ?, ?, ?, ?)
 			on conflict (ledger_id, alert_month, alert_type) do nothing
-			""", alertId, expense.getLedgerId(), expense.getId(), currentMonth.atDay(1), ALERT_TYPE,
+			""", alertId, expense.getLedgerId(), expense.getId(), currentMonth.atDay(1), ALERT_TYPE.name(),
 			monthlyBudget, totalSpent, remainingDays);
 		if (inserted == 0) {
 			return;
@@ -82,19 +83,19 @@ public class BudgetAlertService {
 	static boolean matchesAlertCondition(
 		long monthlyBudget,
 		long totalSpent,
-		long remainingBudget,
-		int remainingDays,
+		int elapsedDays,
 		int daysInMonth
 	) {
-		if (monthlyBudget <= 0 || remainingDays <= 0 || remainingBudget <= 0) {
+		if (monthlyBudget <= 0 || totalSpent < 0 || elapsedDays <= 0 || elapsedDays > daysInMonth) {
 			return false;
 		}
 		BigInteger budget = BigInteger.valueOf(monthlyBudget);
-		boolean usageAtLeastEighty = BigInteger.valueOf(totalSpent).multiply(BigInteger.valueOf(100))
+		BigInteger spent = BigInteger.valueOf(totalSpent);
+		boolean usageAtLeastEighty = spent.multiply(BigInteger.valueOf(100))
 			.compareTo(budget.multiply(BigInteger.valueOf(80))) >= 0;
-		boolean dailyAllowanceOverDouble = BigInteger.valueOf(remainingBudget).multiply(BigInteger.valueOf(daysInMonth))
-			.compareTo(budget.multiply(BigInteger.valueOf(remainingDays)).multiply(BigInteger.TWO)) > 0;
-		return usageAtLeastEighty && dailyAllowanceOverDouble;
+		boolean projectedSpendOverBudget = spent.multiply(BigInteger.valueOf(daysInMonth))
+			.compareTo(budget.multiply(BigInteger.valueOf(elapsedDays))) > 0;
+		return usageAtLeastEighty && projectedSpendOverBudget;
 	}
 
 	private long totalSpent(UUID ledgerId, YearMonth yearMonth) {

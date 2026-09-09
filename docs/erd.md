@@ -339,7 +339,7 @@ AND user.status = ACTIVE
 
 ### 2.10 budget_alerts
 
-월 예산 여유 조건을 처음 만족했음을 나타내는 논리적 알림 이벤트다.
+월 예산 초과 위험 조건을 처음 만족했음을 나타내는 논리적 알림 이벤트다.
 
 | 컬럼 | 타입 | Null | 규칙 |
 |---|---|:---:|---|
@@ -347,7 +347,7 @@ AND user.status = ACTIVE
 | ledger_id | uuid | N | ledgers FK |
 | triggered_by_expense_id | uuid | Y | expenses FK, 식비 삭제 시 null |
 | alert_month | date | N | 해당 월의 1일 |
-| alert_type | varchar(40) | N | MONTHLY_BUDGET_SURPLUS |
+| alert_type | varchar(40) | N | MONTHLY_BUDGET_OVERRUN_RISK, 과거 MONTHLY_BUDGET_SURPLUS |
 | monthly_budget | bigint | N | 판정 시 적용 예산 |
 | total_spent | bigint | N | 판정 직후 월 누적 식비 |
 | remaining_days | integer | N | 오늘 포함 남은 일수 |
@@ -363,11 +363,10 @@ AND user.status = ACTIVE
 ```text
 totalSpent * 100 >= monthlyBudget * 80
 AND
-(monthlyBudget - totalSpent) * daysInMonth
-    > monthlyBudget * remainingDays * 2
+totalSpent * daysInMonth > monthlyBudget * elapsedDays
 ```
 
-remainingDays는 Asia/Seoul 기준 오늘부터 말일까지이며 오늘을 포함한다.
+elapsedDays는 Asia/Seoul 기준 해당 월 1일부터 오늘까지이며 오늘을 포함한다. `remaining_days`에는 알림 문구와 운영 추적을 위해 판정 시점의 오늘 포함 남은 일수도 함께 저장한다.
 
 ### 2.11 push_deliveries
 
@@ -431,7 +430,7 @@ users.status IN ('ACTIVE', 'WITHDRAWN')
 ledger_members.role IN ('MEMBER', 'ADMIN')
 ledger_members.status IN ('ACTIVE', 'LEFT')
 push_subscriptions.status IN ('ACTIVE', 'EXPIRED', 'DISABLED')
-budget_alerts.alert_type IN ('MONTHLY_BUDGET_SURPLUS')
+budget_alerts.alert_type IN ('MONTHLY_BUDGET_SURPLUS', 'MONTHLY_BUDGET_OVERRUN_RISK')
 push_deliveries.status IN ('PENDING', 'SENDING', 'SENT', 'FAILED')
 ```
 
@@ -526,6 +525,7 @@ V5__create_spring_session_tables.sql
 V6__insert_default_categories.sql
 V7__create_push_notification_tables.sql
 V8__add_invitation_code_suffix.sql
+V9__add_budget_overrun_risk_alert_type.sql
 ```
 
 마이그레이션은 적용 후 수정하지 않고 새 버전 파일로 변경을 이어간다.

@@ -502,7 +502,7 @@ POST /api/v1/expenses
 }
 ```
 
-등록한 식비의 사용 날짜가 현재 월이면 응답 트랜잭션 안에서 월 예산 여유 알림 조건을 평가한다. 조건을 만족해도 푸시 발송은 커밋 이후 비동기로 수행하며 식비 등록 응답을 지연시키지 않는다.
+등록한 식비의 사용 날짜가 현재 월이면 응답 트랜잭션 안에서 월 예산 초과 위험 알림 조건을 평가한다. 조건을 만족해도 푸시 발송은 커밋 이후 비동기로 수행하며 식비 등록 응답을 지연시키지 않는다.
 
 ### 6.2 식비 목록
 
@@ -918,22 +918,21 @@ DELETE /api/v1/push-subscriptions/{subscriptionId}
 
 현재 사용자 소유가 아닌 subscription은 존재 여부를 노출하지 않고 HTTP 404를 반환한다.
 
-### 12.4 월 예산 여유 알림 판정
+### 12.4 월 예산 초과 위험 알림 판정
 
 식비 신규 등록 직후 다음 두 조건을 모두 평가한다.
 
 ```text
 monthlyUsageRate >= 80
 AND
-remainingBudget / remainingDays > (monthlyBudget / daysInMonth) * 2
+totalSpent / elapsedDays * daysInMonth > monthlyBudget
 ```
 
 정의:
 
 - monthlyBudget: 신규 식비가 속한 현재 월의 적용 예산
 - totalSpent: 신규 식비까지 포함한 현재 월 누적 식비
-- remainingBudget: monthlyBudget - totalSpent
-- remainingDays: Asia/Seoul 기준 오늘부터 말일까지, 오늘 포함
+- elapsedDays: Asia/Seoul 기준 해당 월 1일부터 오늘까지, 오늘 포함
 - daysInMonth: 현재 월의 전체 일수
 - monthlyUsageRate: totalSpent / monthlyBudget × 100
 
@@ -942,7 +941,7 @@ remainingBudget / remainingDays > (monthlyBudget / daysInMonth) * 2
 - POST `/expenses` 성공 시에만 평가
 - 식비 spentOn이 현재 월에 속해야 함
 - PUT과 DELETE에서는 평가하지 않음
-- `MONTHLY_BUDGET_SURPLUS` 알림은 장부와 월 기준 한 번만 생성
+- `MONTHLY_BUDGET_OVERRUN_RISK` 알림은 장부와 월 기준 한 번만 생성
 - 활성 상태이며 푸시를 허용한 모든 참여자 기기로 발송
 
 푸시 payload 예시:
@@ -950,9 +949,9 @@ remainingBudget / remainingDays > (monthlyBudget / daysInMonth) * 2
 ```json
 {
   "notificationId": "budget-alert-uuid",
-  "type": "MONTHLY_BUDGET_SURPLUS",
-  "title": "이번 달 식비 예산에 여유가 있어요",
-  "body": "남은 기간 동안 하루 평균 65,000원을 사용할 수 있어요.",
+  "type": "MONTHLY_BUDGET_OVERRUN_RISK",
+  "title": "이번 달 식비 예산 초과가 예상돼요",
+  "body": "현재 소비 속도라면 이번 달 약 1,200,000원을 사용할 것으로 예상돼요.",
   "data": {
     "url": "/",
     "yearMonth": "2026-09"
@@ -1001,7 +1000,7 @@ service worker는 notificationId가 이미 표시된 알림이면 다시 표시�
 5. default/monthly budgets
 6. dashboard
 7. statistics
-8. Web Push 구독과 월 예산 여유 알림
+8. Web Push 구독과 월 예산 초과 위험 알림
 9. CSV export
 10. withdrawal과 장부 종료
 11. password reset와 email provider

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.notification.application.PushDeliveryTask;
+import com.mealbudgetdiet.notification.domain.BudgetAlertType;
 
 @Repository
 public class PushOutboxStore {
@@ -45,7 +46,7 @@ public class PushOutboxStore {
 			  returning delivery.id, delivery.budget_alert_id, delivery.push_subscription_id,
 			            delivery.attempt_count
 			)
-			select claimed.id delivery_id, claimed.attempt_count, alert.id alert_id,
+			select claimed.id delivery_id, claimed.attempt_count, alert.id alert_id, alert.alert_type,
 			       alert.alert_month, alert.monthly_budget, alert.total_spent, alert.remaining_days,
 			       subscription.id subscription_id, subscription.endpoint,
 			       subscription.p256dh_key, subscription.auth_key
@@ -57,6 +58,7 @@ public class PushOutboxStore {
 				resultSet.getObject("delivery_id", UUID.class),
 				resultSet.getInt("attempt_count"),
 				resultSet.getObject("alert_id", UUID.class),
+				BudgetAlertType.valueOf(resultSet.getString("alert_type")),
 				resultSet.getObject("alert_month", java.time.LocalDate.class),
 				resultSet.getLong("monthly_budget"),
 				resultSet.getLong("total_spent"),
@@ -77,14 +79,14 @@ public class PushOutboxStore {
 			""", deliveryId);
 	}
 
-	public void markFailed(PushDeliveryTask task, boolean expired, String rawError) {
+	public void markFailed(PushDeliveryTask task, boolean expired, boolean retryable, String rawError) {
 		String error = rawError == null ? "알 수 없는 Web Push 오류" : rawError.substring(0, Math.min(1000, rawError.length()));
 		if (expired) {
 			jdbcTemplate.update(
 				"update push_subscriptions set status = 'EXPIRED', updated_at = current_timestamp where id = ?",
 				task.subscriptionId());
 		}
-		Integer retryMinutes = !expired && task.attemptCount() < MAX_ATTEMPTS
+		Integer retryMinutes = retryable && !expired && task.attemptCount() < MAX_ATTEMPTS
 			? 1 << (task.attemptCount() - 1)
 			: null;
 		jdbcTemplate.update("""
