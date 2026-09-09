@@ -200,7 +200,7 @@ class BudgetAnalyticsIntegrationTest {
 		String merchant,
 		String memo
 	) throws Exception {
-		String body = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(java.util.Map.of(
+		String body = new tools.jackson.databind.ObjectMapper().writeValueAsString(java.util.Map.of(
 			"amount", amount,
 			"spentOn", spentOn,
 			"categoryId", categoryId,
