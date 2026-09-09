@@ -153,7 +153,7 @@ export function PushNotificationSettings() {
           {state === "active" ? "활성" : state === "checking" ? "확인 중" : "비활성"}
         </span>
       </div>
-	  <p className="setting-description">예산 사용률이 80% 이상이고 현재 소비 속도가 이어질 때 월 예산 초과가 예상되면 월 1회 알려드립니다.</p>
+      <p className="setting-description">예산 사용률이 80% 이상이고 현재 소비 속도가 이어질 때 월 예산 초과가 예상되면 월 1회 알려드립니다.</p>
 
       {state === "checking" && <div className="push-support-note"><LoaderCircle className="spin" size={18} />기기 지원 여부를 확인하고 있어요.</div>}
       {state === "unsupported" && <div className="push-support-note"><Smartphone size={18} />이 브라우저에서는 Web Push를 지원하지 않습니다.</div>}
