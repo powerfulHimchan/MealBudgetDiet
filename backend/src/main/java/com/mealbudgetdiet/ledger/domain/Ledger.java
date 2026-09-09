@@ -72,4 +72,8 @@ public class Ledger {
 	public int getVersion() {
 		return version;
 	}
+
+	public void changeDefaultMonthlyBudget(long defaultMonthlyBudget) {
+		this.defaultMonthlyBudget = defaultMonthlyBudget;
+	}
 }
