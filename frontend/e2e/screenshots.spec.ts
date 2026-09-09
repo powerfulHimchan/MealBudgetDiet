@@ -40,6 +40,8 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByText("658,800원", { exact: true })).toBeVisible();
     } else if (screen.route === "/settings") {
       await expect(mobile.getByText("현재 적용 금액", { exact: true })).toBeVisible();
+      await expect(mobile.getByRole("heading", { name: "푸시 알림" })).toBeVisible();
+      await expect(mobile.getByRole("button", { name: "이 기기 알림 활성화" })).toBeVisible();
     }
     await mobile.evaluate(() => window.scrollTo(0, 0));
     await mobile.screenshot({

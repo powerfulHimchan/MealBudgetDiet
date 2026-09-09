@@ -17,6 +17,7 @@ import com.mealbudgetdiet.expense.domain.Expense;
 import com.mealbudgetdiet.expense.infrastructure.CategoryRepository;
 import com.mealbudgetdiet.expense.infrastructure.ExpenseRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
+import com.mealbudgetdiet.notification.application.BudgetAlertService;
 import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
@@ -29,15 +30,18 @@ public class ExpenseService {
 	private final LedgerAccessService ledgerAccessService;
 	private final ExpenseRepository expenseRepository;
 	private final CategoryRepository categoryRepository;
+	private final BudgetAlertService budgetAlertService;
 
 	public ExpenseService(
 		LedgerAccessService ledgerAccessService,
 		ExpenseRepository expenseRepository,
-		CategoryRepository categoryRepository
+		CategoryRepository categoryRepository,
+		BudgetAlertService budgetAlertService
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.expenseRepository = expenseRepository;
 		this.categoryRepository = categoryRepository;
+		this.budgetAlertService = budgetAlertService;
 	}
 
 	@Transactional
@@ -53,6 +57,7 @@ public class ExpenseService {
 		Category category = requireCategory(categoryId, ledgerId);
 		var expense = expenseRepository.saveAndFlush(
 			new Expense(ledgerId, category, amount, spentOn, merchant, memo));
+		budgetAlertService.evaluateNewExpense(userId, expense);
 		return snapshot(expense);
 	}
 

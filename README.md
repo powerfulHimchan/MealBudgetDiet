@@ -6,7 +6,7 @@
 
 ## Project status
 
-요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 세션 기반 인증, 공용 장부 협업, 식비·카테고리 관리 및 월 예산·통계 기능을 완료했습니다. 다음 단계는 PWA 푸시 알림 기능입니다.
+요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 세션 기반 인증, 공용 장부 협업, 식비·카테고리 관리, 월 예산·통계 및 조건부 PWA 푸시 알림 기능을 완료했습니다. 다음 단계는 포트폴리오 데모 환경과 운영 배포입니다.
 
 ## Tech stack
 
@@ -28,6 +28,22 @@ docker compose up --build
 - Backend health: http://localhost:8080/api/v1/system/health
 
 개별 개발 서버는 `frontend/README.md`와 `backend/HELP.md`를 참고하세요.
+
+### Web Push 설정
+
+Web Push를 사용하려면 VAPID 키 쌍을 생성하고 `.env`에 공개키, 비공개키와 연락처를 설정합니다. 비공개키는 저장소에 커밋하지 않습니다.
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+```dotenv
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:admin@example.com
+```
+
+키가 설정되지 않은 환경에서는 식비 관리 기능은 그대로 동작하고 푸시 전송만 비활성화됩니다.
 
 ## Documentation
 
