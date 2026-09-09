@@ -6,11 +6,11 @@
 
 ## Project status
 
-요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 세션 기반 인증 및 공용 장부 협업 기능을 완료했습니다. 다음 단계는 식비와 카테고리 관리 기능입니다.
+요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 세션 기반 인증, 공용 장부 협업 및 식비·카테고리 관리 기능을 완료했습니다. 다음 단계는 월 예산과 통계 기능입니다.
 
 ## Tech stack
 
-- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS, PWA
+- Frontend: Next.js 16, React 19, TypeScript, Tailwing CSS, PWA
 - Backend: Java 21, Spring Boot 4, Spring Security, Spring Data JPA, Flyway
 - Data: PostgreSQL 18, Spring Session JDBC
 - Test & delivery: JUnit 5, Testcontainers, Docker Compose, GitHub Actions
