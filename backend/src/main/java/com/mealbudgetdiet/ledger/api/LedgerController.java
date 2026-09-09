@@ -83,6 +83,16 @@ public class LedgerController {
 		return new LedgerSettingsResponse(snapshot.budgetCycleStartDay(), snapshot.version());
 	}
 
+	@PutMapping("/ledger/settings/push-threshold")
+	PushThresholdSettingsResponse updatePushThreshold(
+		@AuthenticationPrincipal MealBudgetPrincipal principal,
+		@Valid @RequestBody PushThresholdRequest request
+	) {
+		var snapshot = ledgerSettingsService.updatePushThreshold(
+			principal.id(), request.usageThreshold(), request.version());
+		return new PushThresholdSettingsResponse(snapshot.pushUsageThreshold(), snapshot.version());
+	}
+
 	@PatchMapping("/members/{memberId}/role")
 	MemberResponse changeRole(
 		@AuthenticationPrincipal MealBudgetPrincipal principal,
@@ -112,13 +122,15 @@ public class LedgerController {
 		String name,
 		long defaultMonthlyBudget,
 		int budgetCycleStartDay,
+		int pushUsageThreshold,
 		long memberCount,
 		MemberRole currentUserRole,
 		int version
 	) {
 		static LedgerResponse from(LedgerSnapshot snapshot) {
 			return new LedgerResponse(
-				snapshot.id(), snapshot.name(), snapshot.defaultMonthlyBudget(), snapshot.budgetCycleStartDay(), snapshot.memberCount(),
+				snapshot.id(), snapshot.name(), snapshot.defaultMonthlyBudget(), snapshot.budgetCycleStartDay(),
+				snapshot.pushUsageThreshold(), snapshot.memberCount(),
 				snapshot.currentUserRole(), snapshot.version());
 		}
 	}
@@ -149,6 +161,20 @@ public class LedgerController {
 	}
 
 	private record LedgerSettingsResponse(int budgetCycleStartDay, int version) {
+	}
+
+	public record PushThresholdRequest(
+		@NotNull(message = "Push 기준 사용률을 입력해 주세요.")
+		@Min(value = 1, message = "Push 기준 사용률은 1% 이상이어야 합니다.")
+		@Max(value = 100, message = "Push 기준 사용률은 100% 이하여야 합니다.")
+		Integer usageThreshold,
+		@NotNull(message = "버전 정보가 필요합니다.")
+		@PositiveOrZero(message = "버전 정보가 올바르지 않습니다.")
+		Integer version
+	) {
+	}
+
+	private record PushThresholdSettingsResponse(int pushUsageThreshold, int version) {
 	}
 
 	public record WithdrawalRequest(

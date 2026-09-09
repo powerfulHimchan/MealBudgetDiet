@@ -9,6 +9,7 @@ public record LedgerSnapshot(
 	String name,
 	long defaultMonthlyBudget,
 	int budgetCycleStartDay,
+	int pushUsageThreshold,
 	long memberCount,
 	MemberRole currentUserRole,
 	int version

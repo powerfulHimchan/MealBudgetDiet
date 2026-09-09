@@ -59,7 +59,8 @@ public class BudgetAlertService {
 		int elapsedDays = Math.toIntExact(ChronoUnit.DAYS.between(cycle.from(), today) + 1);
 		int remainingDays = Math.toIntExact(ChronoUnit.DAYS.between(today, cycle.to()) + 1);
 
-		if (!matchesAlertCondition(monthlyBudget, totalSpent, elapsedDays, cycleDays)) {
+		int usageThreshold = ledger.getPushUsageThreshold();
+		if (!matchesAlertCondition(monthlyBudget, totalSpent, usageThreshold, elapsedDays, cycleDays)) {
 			return;
 		}
 
@@ -67,11 +68,11 @@ public class BudgetAlertService {
 		int inserted = jdbcTemplate.update("""
 			insert into budget_alerts (
 			  id, ledger_id, triggered_by_expense_id, alert_month, alert_type,
-			  monthly_budget, total_spent, remaining_days, cycle_days
-			) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			  monthly_budget, total_spent, remaining_days, cycle_days, usage_threshold
+			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			on conflict (ledger_id, alert_month, alert_type) do nothing
 			""", alertId, expense.getLedgerId(), expense.getId(), cycle.yearMonth().atDay(1), ALERT_TYPE.name(),
-			monthlyBudget, totalSpent, remainingDays, cycleDays);
+			monthlyBudget, totalSpent, remainingDays, cycleDays, usageThreshold);
 		if (inserted == 0) {
 			return;
 		}
@@ -89,19 +90,21 @@ public class BudgetAlertService {
 	static boolean matchesAlertCondition(
 		long monthlyBudget,
 		long totalSpent,
+		int usageThreshold,
 		int elapsedDays,
 		int cycleDays
 	) {
-		if (monthlyBudget <= 0 || totalSpent < 0 || elapsedDays <= 0 || elapsedDays > cycleDays) {
+		if (monthlyBudget <= 0 || totalSpent < 0 || usageThreshold < 1 || usageThreshold > 100
+			|| elapsedDays <= 0 || elapsedDays > cycleDays) {
 			return false;
 		}
 		BigInteger budget = BigInteger.valueOf(monthlyBudget);
 		BigInteger spent = BigInteger.valueOf(totalSpent);
-		boolean usageAtLeastEighty = spent.multiply(BigInteger.valueOf(100))
-			.compareTo(budget.multiply(BigInteger.valueOf(80))) >= 0;
+		boolean usageAtLeastThreshold = spent.multiply(BigInteger.valueOf(100))
+			.compareTo(budget.multiply(BigInteger.valueOf(usageThreshold))) >= 0;
 		boolean projectedSpendOverBudget = spent.multiply(BigInteger.valueOf(cycleDays))
 			.compareTo(budget.multiply(BigInteger.valueOf(elapsedDays))) > 0;
-		return usageAtLeastEighty && projectedSpendOverBudget;
+		return usageAtLeastThreshold && projectedSpendOverBudget;
 	}
 
 	private long totalSpent(UUID ledgerId, BudgetCycle cycle) {

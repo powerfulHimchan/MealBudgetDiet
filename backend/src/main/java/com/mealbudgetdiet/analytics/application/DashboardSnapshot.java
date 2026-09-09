@@ -13,6 +13,7 @@ public record DashboardSnapshot(
 	long spent,
 	long remaining,
 	BigDecimal usageRate,
+	int pushUsageThreshold,
 	DashboardStatus status,
 	List<RecentExpense> recentExpenses
 ) {

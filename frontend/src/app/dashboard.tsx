@@ -14,6 +14,7 @@ type DashboardData = {
   spent: number;
   remaining: number;
   usageRate: number;
+  pushUsageThreshold: number;
   status: "NORMAL" | "WARNING" | "EXCEEDED";
   recentExpenses: Array<{
     id: string;

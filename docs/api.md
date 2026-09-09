@@ -531,7 +531,7 @@ PUT /api/v1/ledger/settings/push-threshold
 }
 ```
 
-변경된 기준은 이후 새 식비 등록의 Push 판정부터 적용한다. 대시보드의 `NORMAL`, `WARNING`, `EXCEEDED` 표시 기준은 변경하지 않는다.
+변경된 기준은 새로 조회하는 대시보드의 `NORMAL`, `WARNING` 구분과 이후 새 식비 등록의 Push 판정에 함께 적용한다. `EXCEEDED`는 설정과 관계없이 100% 이상이다.
 
 ## 5. 초대 API
 
@@ -980,13 +980,13 @@ GET /api/v1/dashboard?yearMonth=2026-09&recentSize=5
 
 status:
 
-- `NORMAL`: 80% 미만
-- `WARNING`: 80% 이상 100% 미만
+- `NORMAL`: `pushUsageThreshold` 미만
+- `WARNING`: `pushUsageThreshold` 이상 100% 미만
 - `EXCEEDED`: 100% 이상
 
 remaining은 초과 시 음수가 될 수 있다.
 
-`status`의 80% 기준은 대시보드 시각 상태용 고정값이다. `pushUsageThreshold`는 초과 위험 Push 판정에만 사용한다.
+대시보드의 주의 상태와 Push 판정은 같은 `pushUsageThreshold`를 사용한다. Push 발송에는 이 기준 외에도 예상 주기 종료 지출이 예산을 초과한다는 조건이 추가로 필요하다. `pushUsageThreshold`가 100이면 대시보드는 `WARNING` 없이 `NORMAL`에서 `EXCEEDED`로 전환된다.
 
 ## 11. 통계 API
 

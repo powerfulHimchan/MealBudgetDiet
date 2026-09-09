@@ -30,6 +30,9 @@ public class Ledger {
 	@Column(name = "budget_cycle_start_day", nullable = false)
 	private int budgetCycleStartDay;
 
+	@Column(name = "push_usage_threshold", nullable = false)
+	private int pushUsageThreshold;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private LedgerStatus status;
@@ -54,6 +57,7 @@ public class Ledger {
 		this.name = name;
 		this.defaultMonthlyBudget = defaultMonthlyBudget;
 		this.budgetCycleStartDay = 1;
+		this.pushUsageThreshold = 80;
 		this.status = LedgerStatus.ACTIVE;
 	}
 
@@ -73,6 +77,10 @@ public class Ledger {
 		return budgetCycleStartDay;
 	}
 
+	public int getPushUsageThreshold() {
+		return pushUsageThreshold;
+	}
+
 	public LedgerStatus getStatus() {
 		return status;
 	}
@@ -87,5 +95,9 @@ public class Ledger {
 
 	public void changeBudgetCycleStartDay(int budgetCycleStartDay) {
 		this.budgetCycleStartDay = budgetCycleStartDay;
+	}
+
+	public void changePushUsageThreshold(int pushUsageThreshold) {
+		this.pushUsageThreshold = pushUsageThreshold;
 	}
 }
