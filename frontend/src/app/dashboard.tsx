@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppNav } from "./app-nav";
 import { request } from "../lib/api";
+import { CurrentUserAvatar } from "./current-user-avatar";
 
 type DashboardData = {
   yearMonth: string;
@@ -48,7 +49,7 @@ export function Dashboard() {
         <Link className="brand" href="/" aria-label="MealBudgetDiet 홈">
           <span className="brand-mark">M</span><span>MealBudgetDiet</span>
         </Link>
-        <Link className="avatar" href="/settings" aria-label="설정">힘</Link>
+        <CurrentUserAvatar />
       </header>
 
       {error && <div className="message-banner message-banner--error">{error}</div>}

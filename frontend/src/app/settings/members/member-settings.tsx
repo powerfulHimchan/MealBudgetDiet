@@ -11,11 +11,12 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { mutation, request } from "../../../lib/api";
 import { SettingsPageFrame } from "../settings-page-frame";
 
 type MemberRole = "ADMIN" | "MEMBER";
-type Member = { id: string; displayName: string; role: MemberRole; joinedAt: string };
+type Member = { id: string; displayName: string; role: MemberRole; joinedAt: string; profileImageUrl: string | null };
 type Ledger = { currentUserRole: MemberRole; memberCount: number; name: string };
 type CurrentUser = { id: string; displayName: string };
 type RoleChange = { member: Member; nextRole: MemberRole };
@@ -127,7 +128,9 @@ export function MemberSettings() {
               const nextRole = member.role === "ADMIN" ? "MEMBER" : "ADMIN";
               return (
                 <li key={member.id}>
-                  <span className="member-avatar"><UserRound size={21} /></span>
+                  <span className="member-avatar">
+                    {member.profileImageUrl ? <Image alt="" fill sizes="42px" src={member.profileImageUrl} unoptimized /> : <UserRound size={21} />}
+                  </span>
                   <span className="member-settings-name">
                     <span><strong>{member.displayName}</strong>{isMe && <small>나</small>}</span>
                     <span>{joinedDate.format(new Date(member.joinedAt))} 참여</span>

@@ -29,6 +29,9 @@ public class User {
 	@Column(name = "display_name", nullable = false, length = 50)
 	private String displayName;
 
+	@Column(name = "profile_image_id")
+	private UUID profileImageId;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private UserStatus status;
@@ -72,9 +75,18 @@ public class User {
 		return status;
 	}
 
+	public UUID getProfileImageId() {
+		return profileImageId;
+	}
+
+	public void changeProfileImage(UUID profileImageId) {
+		this.profileImageId = profileImageId;
+	}
+
 	public void withdraw() {
 		this.status = UserStatus.WITHDRAWN;
 		this.passwordHash = null;
+		this.profileImageId = null;
 	}
 
 	public void reactivate(String passwordHash, String displayName) {

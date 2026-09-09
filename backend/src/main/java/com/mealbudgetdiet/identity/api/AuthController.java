@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mealbudgetdiet.identity.application.SessionAuthenticationService;
+import com.mealbudgetdiet.identity.application.IdentityService;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.ledger.application.OnboardingService;
 
@@ -26,13 +27,16 @@ public class AuthController {
 
 	private final OnboardingService onboardingService;
 	private final SessionAuthenticationService sessionAuthenticationService;
+	private final IdentityService identityService;
 
 	public AuthController(
 		OnboardingService onboardingService,
-		SessionAuthenticationService sessionAuthenticationService
+		SessionAuthenticationService sessionAuthenticationService,
+		IdentityService identityService
 	) {
 		this.onboardingService = onboardingService;
 		this.sessionAuthenticationService = sessionAuthenticationService;
+		this.identityService = identityService;
 	}
 
 	@GetMapping("/csrf")
@@ -54,7 +58,7 @@ public class AuthController {
 		);
 		var principal = sessionAuthenticationService.login(
 			requestBody.email(), requestBody.password(), request, response);
-		return ResponseEntity.status(HttpStatus.CREATED).body(AuthUserResponse.from(principal));
+		return ResponseEntity.status(HttpStatus.CREATED).body(response(principal));
 	}
 
 	@PostMapping("/login")
@@ -63,7 +67,7 @@ public class AuthController {
 		HttpServletRequest request,
 		HttpServletResponse response
 	) {
-		return AuthUserResponse.from(sessionAuthenticationService.login(
+		return response(sessionAuthenticationService.login(
 			requestBody.email(), requestBody.password(), request, response));
 	}
 
@@ -79,7 +83,11 @@ public class AuthController {
 
 	@GetMapping("/me")
 	AuthUserResponse me(@AuthenticationPrincipal MealBudgetPrincipal principal) {
-		return AuthUserResponse.from(principal);
+		return response(principal);
+	}
+
+	private AuthUserResponse response(MealBudgetPrincipal principal) {
+		return AuthUserResponse.from(principal, identityService.getUser(principal.id()).getProfileImageId());
 	}
 
 	private record CsrfResponse(String headerName, String parameterName, String token) {

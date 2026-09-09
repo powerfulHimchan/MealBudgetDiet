@@ -8,6 +8,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -45,6 +46,16 @@ public class ApiExceptionHandler {
 			HttpStatus.CONFLICT,
 			"VERSION_CONFLICT",
 			"다른 사용자가 먼저 변경했습니다. 최신 내용을 확인해 주세요.",
+			request
+		);
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ProblemDetail handleUploadLimit(MaxUploadSizeExceededException exception, HttpServletRequest request) {
+		return problem(
+			HttpStatus.PAYLOAD_TOO_LARGE,
+			"IMAGE_TOO_LARGE",
+			"이미지는 파일당 5MB 이하여야 합니다.",
 			request
 		);
 	}

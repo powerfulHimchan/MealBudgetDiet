@@ -51,7 +51,7 @@ const menuItems = [
     href: "/settings/account",
     icon: UserRoundCog,
     label: "계정 설정",
-    status: "다음 구현",
+    status: "사용 가능",
   },
 ] as const;
 

@@ -232,7 +232,8 @@ class ExpenseManagementIntegrationTest {
 			  "spentOn":"%s",
 			  "categoryId":"%s",
 			  "merchant":"%s",
-			  "memo":"%s"%s
+			  "memo":"%s",
+			  "imageIds":[]%s
 			}
 			""".formatted(
 			amount,

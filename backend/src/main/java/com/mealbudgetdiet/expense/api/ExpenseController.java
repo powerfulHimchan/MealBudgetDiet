@@ -26,6 +26,7 @@ import com.mealbudgetdiet.expense.application.ExpensePage;
 import com.mealbudgetdiet.expense.application.ExpenseService;
 import com.mealbudgetdiet.expense.application.ExpenseSnapshot;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
+import com.mealbudgetdiet.media.application.ExpenseImageSnapshot;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -69,7 +70,8 @@ public class ExpenseController {
 		@Valid @RequestBody CreateExpenseRequest request
 	) {
 		var created = expenseService.create(
-			principal.id(), request.amount(), request.spentOn(), request.categoryId(), request.merchant(), request.memo());
+			principal.id(), request.amount(), request.spentOn(), request.categoryId(), request.merchant(), request.memo(),
+			request.imageIds());
 		return ResponseEntity.status(HttpStatus.CREATED).body(ExpenseResponse.from(created));
 	}
 
@@ -95,6 +97,7 @@ public class ExpenseController {
 			request.categoryId(),
 			request.merchant(),
 			request.memo(),
+			request.imageIds(),
 			request.version()
 		));
 	}
@@ -120,7 +123,10 @@ public class ExpenseController {
 		@Size(max = 100, message = "상호명은 100자 이하여야 합니다.")
 		String merchant,
 		@Size(max = 1000, message = "메모는 1000자 이하여야 합니다.")
-		String memo
+		String memo,
+		@NotNull(message = "이미지 목록이 필요합니다.")
+		@Size(max = 3, message = "이미지는 최대 3장까지 등록할 수 있습니다.")
+		List<UUID> imageIds
 	) {
 	}
 
@@ -136,6 +142,9 @@ public class ExpenseController {
 		String merchant,
 		@Size(max = 1000, message = "메모는 1000자 이하여야 합니다.")
 		String memo,
+		@NotNull(message = "이미지 목록이 필요합니다.")
+		@Size(max = 3, message = "이미지는 최대 3장까지 등록할 수 있습니다.")
+		List<UUID> imageIds,
 		@NotNull(message = "버전 정보가 필요합니다.")
 		@PositiveOrZero(message = "버전 정보가 올바르지 않습니다.")
 		Integer version
@@ -156,6 +165,7 @@ public class ExpenseController {
 		CategoryResponse category,
 		String merchant,
 		String memo,
+		List<ImageResponse> images,
 		int version,
 		OffsetDateTime createdAt,
 		OffsetDateTime updatedAt
@@ -163,8 +173,14 @@ public class ExpenseController {
 		static ExpenseResponse from(ExpenseSnapshot snapshot) {
 			return new ExpenseResponse(
 				snapshot.id(), snapshot.amount(), snapshot.spentOn(), CategoryResponse.from(snapshot.category()),
-				snapshot.merchant(), snapshot.memo(), snapshot.version(),
+				snapshot.merchant(), snapshot.memo(), snapshot.images().stream().map(ImageResponse::from).toList(), snapshot.version(),
 				toServiceTime(snapshot.createdAt()), toServiceTime(snapshot.updatedAt()));
+		}
+	}
+
+	private record ImageResponse(UUID id, String contentUrl, int sortOrder) {
+		static ImageResponse from(ExpenseImageSnapshot snapshot) {
+			return new ImageResponse(snapshot.id(), snapshot.contentUrl(), snapshot.sortOrder());
 		}
 	}
 

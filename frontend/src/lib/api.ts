@@ -20,6 +20,15 @@ export async function mutation<T>(url: string, method: string, body?: unknown): 
   });
 }
 
+export async function multipartMutation<T>(url: string, formData: FormData): Promise<T> {
+  const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
+  return request<T>(url, {
+    method: "POST",
+    headers: { [csrf.headerName]: csrf.token },
+    body: formData,
+  });
+}
+
 export function todayInSeoul() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
 }

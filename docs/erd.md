@@ -634,7 +634,8 @@ V6__insert_default_categories.sql
 V7__create_push_notification_tables.sql
 V8__add_invitation_code_suffix.sql
 V9__add_budget_overrun_risk_alert_type.sql
-V10__add_media_budget_cycle_and_session_settings.sql
+V10__create_media_storage.sql
+V11__add_budget_cycle_and_session_settings.sql
 ```
 
 마이그레이션은 적용 후 수정하지 않고 새 버전 파일로 변경을 이어간다.
