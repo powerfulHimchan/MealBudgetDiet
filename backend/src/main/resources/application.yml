@@ -26,6 +26,13 @@ spring:
 app:
   bootstrap-token: ${BOOTSTRAP_TOKEN:}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:3000}
+  push:
+    vapid-public-key: ${VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${VAPID_PRIVATE_KEY:}
+    vapid-subject: ${VAPID_SUBJECT:}
+    dispatch-enabled: ${PUSH_DISPATCH_ENABLED:true}
+    dispatch-interval-ms: ${PUSH_DISPATCH_INTERVAL_MS:30000}
+    initial-delay-ms: ${PUSH_INITIAL_DELAY_MS:10000}
 
 server:
   forward-headers-strategy: framework

@@ -870,6 +870,8 @@ GET /api/v1/push/vapid-public-key
 }
 ```
 
+VAPID 키가 서버에 설정되지 않은 환경에서는 `PUSH_NOT_CONFIGURED`와 HTTP 503을 반환한다.
+
 ### 12.2 기기 구독 등록·갱신
 
 브라우저가 Notification 권한을 받은 뒤 service worker의 PushSubscription을 전달한다.
@@ -903,6 +905,7 @@ PUT /api/v1/push-subscriptions
 
 - 현재 로그인 사용자 소유로 저장한다.
 - endpoint는 전체 시스템에서 unique하다.
+- 알려진 브라우저 Web Push 서비스의 HTTPS endpoint만 허용한다.
 - endpoint와 key를 API 로그에 기록하지 않는다.
 
 ### 12.3 기기 구독 해제

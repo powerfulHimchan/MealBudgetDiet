@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppNav } from "../app-nav";
 import { currentYearMonthInSeoul, mutation, request } from "../../lib/api";
+import { PushNotificationSettings } from "./push-notification-settings";
 
 type Ledger = {
   id: string;
@@ -173,6 +174,7 @@ export function BudgetSettings() {
           <section className="budget-guide">
             <strong>현재 적용 금액</strong><span>{won.format(budget.amount)}원</span><p>{yearMonth}에는 {budget.source === "DEFAULT" ? "기본 월 예산" : "별도로 지정한 예산"}이 적용됩니다.</p>
           </section>
+          <PushNotificationSettings />
         </div>
       )}
       <AppNav active="settings" />

@@ -1,4 +1,4 @@
-const CACHE_NAME = "meal-budget-diet-shell-v3";
+const CACHE_NAME = "meal-budget-diet-shell-v4";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -27,16 +27,33 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  event.waitUntil(self.registration.showNotification(payload.title ?? "MealBudgetDiet", {
-    body: payload.body ?? "새로운 알림이 도착했습니다.",
-    icon: "/icon.svg",
-    badge: "/icon.svg",
-    tag: payload.notificationId,
-    data: payload.data ?? { url: "/" },
-  }));
+  event.waitUntil((async () => {
+    const tag = payload.notificationId ?? payload.type ?? "meal-budget-diet";
+    const cache = await caches.open(CACHE_NAME);
+    const marker = new Request(`/__push_notifications__/${encodeURIComponent(tag)}`);
+    if (await cache.match(marker)) return;
+    const existing = await self.registration.getNotifications({ tag });
+    if (existing.length > 0) return;
+    await self.registration.showNotification(payload.title ?? "MealBudgetDiet", {
+      body: payload.body ?? "새로운 알림이 도착했습니다.",
+      icon: "/icon.svg",
+      badge: "/icon.svg",
+      tag,
+      data: payload.data ?? { url: "/" },
+    });
+    await cache.put(marker, new Response("shown", { headers: { "Content-Type": "text/plain" } }));
+  })());
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow(event.notification.data?.url ?? "/"));
+  const targetUrl = event.notification.data?.url ?? "/";
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("navigate" in client) await client.navigate(targetUrl);
+      if ("focus" in client) return client.focus();
+    }
+    return self.clients.openWindow(targetUrl);
+  })());
 });
