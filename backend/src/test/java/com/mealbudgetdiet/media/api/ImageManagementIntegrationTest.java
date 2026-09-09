@@ -17,8 +17,9 @@ import java.io.ByteArrayOutputStream;
 
 import javax.imageio.ImageIO;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -38,13 +39,14 @@ import jakarta.servlet.http.Cookie;
 @org.springframework.context.annotation.Import(TestcontainersConfiguration.class)
 @TestPropertySource(properties = "app.bootstrap-token=test-bootstrap-token")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ImageManagementIntegrationTest {
 
 	@Autowired MockMvc mockMvc;
 	private Cookie session;
 	private String categoryId;
 
-	@BeforeEach
+	@BeforeAll
 	void setUp() throws Exception {
 		var result = mockMvc.perform(post("/api/v1/bootstrap/admin")
 				.with(csrf())
