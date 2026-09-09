@@ -1,6 +1,6 @@
 # MealBudgetDiet ERD 및 데이터 모델
 
-- 문서 버전: 1.1
+- 문서 버전: 1.2
 - 관련 문서: [requirements.md](requirements.md), [architecture.md](architecture.md)
 - DBMS: PostgreSQL 18
 
@@ -15,6 +15,11 @@ erDiagram
     LEDGERS ||--o{ CATEGORIES : defines
     LEDGERS ||--o{ EXPENSES : contains
     CATEGORIES o|--o{ EXPENSES : classifies
+    LEDGERS ||--o{ IMAGES : owns
+    USERS o|--o{ IMAGES : uploads
+    IMAGES o|--o| USERS : profiles
+    EXPENSES ||--o{ EXPENSE_IMAGES : attaches
+    IMAGES ||--o| EXPENSE_IMAGES : links
     LEDGERS ||--o{ MONTHLY_BUDGETS : overrides
     USERS ||--o{ PASSWORD_RESET_TOKENS : requests
     USERS ||--o{ PUSH_SUBSCRIPTIONS : registers
@@ -27,6 +32,8 @@ erDiagram
         uuid id PK
         varchar name
         bigint default_monthly_budget
+        integer budget_cycle_start_day
+        integer push_usage_threshold
         varchar status
         integer version
         timestamptz created_at
@@ -38,6 +45,7 @@ erDiagram
         varchar email UK
         varchar password_hash
         varchar display_name
+        uuid profile_image_id FK
         varchar status
         timestamptz created_at
         timestamptz updated_at
@@ -87,6 +95,27 @@ erDiagram
         timestamptz updated_at
     }
 
+    IMAGES {
+        uuid id PK
+        uuid ledger_id FK
+        uuid uploaded_by_user_id FK
+        varchar purpose
+        varchar storage_key UK
+        varchar mime_type
+        bigint size_bytes
+        integer width
+        integer height
+        varchar status
+        timestamptz created_at
+        timestamptz activated_at
+    }
+
+    EXPENSE_IMAGES {
+        uuid expense_id PK,FK
+        uuid image_id PK,FK
+        integer sort_order
+    }
+
     MONTHLY_BUDGETS {
         uuid id PK
         uuid ledger_id FK
@@ -121,10 +150,13 @@ erDiagram
         uuid id PK
         uuid ledger_id FK
         uuid triggered_by_expense_id FK
-        date alert_month
+        date cycle_month
         varchar alert_type
-        bigint monthly_budget
+        bigint cycle_budget
         bigint total_spent
+        integer usage_threshold
+        integer elapsed_days
+        integer cycle_days
         integer remaining_days
         timestamptz created_at
     }
@@ -143,7 +175,7 @@ erDiagram
     }
 ```
 
-Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도메인 ERD에서 제외한다.
+Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도메인 ERD에서 제외한다. 애플리케이션 시간 제한은 두지 않으며 로그아웃, 비밀번호 변경·재설정, 탈퇴 시 대상 세션을 명시적으로 삭제한다.
 
 ## 2. 테이블 정의
 
@@ -156,6 +188,8 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 | id | uuid | N | PK |
 | name | varchar(100) | N | 장부 표시 이름 |
 | default_monthly_budget | bigint | N | 0보다 큰 원화 정수 |
+| budget_cycle_start_day | integer | N | 기본값 1, 1~31 |
+| push_usage_threshold | integer | N | 기본값 80, 1~100 정수 백분율 |
 | status | varchar(20) | N | ACTIVE, TERMINATING |
 | version | integer | N | optimistic lock |
 | created_at | timestamptz | N | 생성 시각 |
@@ -165,7 +199,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 
 ### 2.2 users
 
-로그인 계정과 화면 표시 이름을 저장한다.
+로그인 계정, 화면 표시 이름과 현재 프로필 이미지를 저장한다.
 
 | 컬럼 | 타입 | Null | 규칙 |
 |---|---|:---:|---|
@@ -173,6 +207,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 | email | varchar(320) | N | 소문자 정규화 후 unique |
 | password_hash | varchar(255) | Y | 탈퇴 시 제거 가능 |
 | display_name | varchar(50) | N | 탈퇴 후에도 유지 |
+| profile_image_id | uuid | Y | images FK, 본인 활성 PROFILE 이미지 |
 | status | varchar(20) | N | ACTIVE, WITHDRAWN |
 | created_at | timestamptz | N | 생성 시각 |
 | updated_at | timestamptz | N | 최종 수정 시각 |
@@ -180,6 +215,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 - 이메일 비교 전 trim과 소문자 정규화를 수행한다.
 - WITHDRAWN 사용자는 로그인할 수 없다.
 - 탈퇴 시 기존 세션과 비밀번호 재설정 토큰을 폐기한다.
+- 프로필 이미지를 교체·삭제하거나 탈퇴하면 참조를 제거하고 미참조 이미지와 Object Storage 객체를 삭제한다.
 - 표시 이름은 요구사항에 따라 유지한다.
 - 재가입 정책은 구현 단계에서 동일 이메일 계정 재활성 방식으로 처리한다.
 
@@ -277,26 +313,61 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 - 삭제는 물리 삭제하며 복구 및 변경 이력을 제공하지 않는다.
 - merchant와 memo의 공백 문자열은 null로 정규화한다.
 
-### 2.7 monthly_budgets
+### 2.7 images와 expense_images
 
-기본 월 예산과 다른 특정 월의 예산만 저장한다.
+업로드 이미지의 저장 메타데이터와 식비별 표시 순서를 저장한다. 바이너리는 DB가 아니라 비공개 Object Storage에 둔다.
+
+`images`:
+
+| 컬럼 | 타입 | Null | 규칙 |
+|---|---|:---:|---|
+| id | uuid | N | PK |
+| ledger_id | uuid | N | ledgers FK, 접근 권한 경계 |
+| uploaded_by_user_id | uuid | Y | users FK, 탈퇴 시 null |
+| purpose | varchar(20) | N | EXPENSE, PROFILE |
+| storage_key | varchar(500) | N | 추측 불가능한 내부 키, unique |
+| mime_type | varchar(50) | N | 변환본은 image/webp |
+| size_bytes | bigint | N | 0보다 크고 5MB 이하인 업로드 원본을 처리한 결과 |
+| width | integer | N | 0보다 큰 변환본 너비 |
+| height | integer | N | 0보다 큰 변환본 높이 |
+| status | varchar(20) | N | TEMP, ACTIVE |
+| created_at | timestamptz | N | 업로드 완료 시각 |
+| activated_at | timestamptz | Y | 리소스 연결 시각 |
+
+`expense_images`:
+
+| 컬럼 | 타입 | Null | 규칙 |
+|---|---|:---:|---|
+| expense_id | uuid | N | expenses FK, 복합 PK |
+| image_id | uuid | N | images FK, 복합 PK이며 전체 unique |
+| sort_order | integer | N | 0~2, 식비 안에서 unique |
+
+- 한 식비에는 최대 3개의 `EXPENSE` 이미지만 연결한다.
+- 사용자는 본인이 올린 `TEMP` 이미지만 식비 또는 프로필에 연결할 수 있다.
+- 연결 시 장부와 purpose가 대상 리소스와 일치해야 하며 `ACTIVE`로 전환한다.
+- `PROFILE` 이미지는 한 사용자에게만 연결하고, `EXPENSE` 이미지는 한 식비에만 연결한다.
+- 보존 시간이 지난 `TEMP`와 더 이상 참조되지 않는 `ACTIVE` 행 및 객체는 정리 작업으로 삭제한다.
+
+### 2.8 monthly_budgets
+
+기본 월 예산과 다른 특정 예산 주기의 예산만 저장한다.
 
 | 컬럼 | 타입 | Null | 규칙 |
 |---|---|:---:|---|
 | id | uuid | N | PK |
 | ledger_id | uuid | N | ledgers FK |
-| budget_month | date | N | 해당 월의 1일 |
+| budget_month | date | N | 예산 주기 시작일이 속한 연·월의 1일 |
 | amount | bigint | N | 0보다 큰 원화 정수 |
 | version | integer | N | optimistic lock |
 | created_at | timestamptz | N | 생성 시각 |
 | updated_at | timestamptz | N | 최종 수정 시각 |
 
 - `unique (ledger_id, budget_month)`
-- 특정 월 행이 없으면 ledgers.default_monthly_budget을 사용한다.
+- 해당 예산 주기의 시작 연·월 행이 없으면 ledgers.default_monthly_budget을 사용한다.
 - 예산은 다음 달로 이월하지 않는다.
-- override를 삭제하면 해당 월은 다시 기본 예산을 사용한다.
+- override를 삭제하면 해당 예산 주기는 다시 기본 예산을 사용한다.
 
-### 2.8 password_reset_tokens
+### 2.9 password_reset_tokens
 
 일회용 비밀번호 재설정 토큰을 저장한다.
 
@@ -317,7 +388,7 @@ AND expires_at > current_timestamp
 AND user.status = ACTIVE
 ```
 
-### 2.9 push_subscriptions
+### 2.10 push_subscriptions
 
 사용자가 푸시 알림을 허용한 브라우저 기기의 Web Push 구독을 저장한다.
 
@@ -337,38 +408,41 @@ AND user.status = ACTIVE
 - push service가 404 또는 410을 반환하면 EXPIRED로 변경한다.
 - endpoint와 key는 민감 데이터로 취급하고 로그에 출력하지 않는다.
 
-### 2.10 budget_alerts
+### 2.11 budget_alerts
 
-월 예산 초과 위험 조건을 처음 만족했음을 나타내는 논리적 알림 이벤트다.
+예산 주기 초과 위험 조건을 처음 만족했음을 나타내는 논리적 알림 이벤트다.
 
 | 컬럼 | 타입 | Null | 규칙 |
 |---|---|:---:|---|
 | id | uuid | N | PK |
 | ledger_id | uuid | N | ledgers FK |
 | triggered_by_expense_id | uuid | Y | expenses FK, 식비 삭제 시 null |
-| alert_month | date | N | 해당 월의 1일 |
+| cycle_month | date | N | 예산 주기 시작일이 속한 연·월의 1일 |
 | alert_type | varchar(40) | N | MONTHLY_BUDGET_OVERRUN_RISK, 과거 MONTHLY_BUDGET_SURPLUS |
-| monthly_budget | bigint | N | 판정 시 적용 예산 |
-| total_spent | bigint | N | 판정 직후 월 누적 식비 |
+| cycle_budget | bigint | N | 판정 시 적용 예산 |
+| total_spent | bigint | N | 판정 직후 주기 누적 식비 |
+| usage_threshold | integer | N | 판정 시 장부 Push 기준 사용률 |
+| elapsed_days | integer | N | 오늘 포함 경과일수 |
+| cycle_days | integer | N | 해당 예산 주기의 전체 일수 |
 | remaining_days | integer | N | 오늘 포함 남은 일수 |
 | created_at | timestamptz | N | 조건 충족 시각 |
 
-- `unique (ledger_id, alert_month, alert_type)`로 월 1회만 생성한다.
+- `unique (ledger_id, cycle_month, alert_type)`로 예산 주기당 1회만 생성한다.
 - 식비 수정과 삭제에서는 생성하지 않는다.
-- 현재 월에 속한 식비 신규 등록에서만 생성한다.
+- 현재 예산 주기에 속한 식비 신규 등록에서만 생성한다.
 - 판정 당시 값을 snapshot으로 저장해 운영 시 알림 사유를 확인할 수 있게 한다.
 
 생성 조건:
 
 ```text
-totalSpent * 100 >= monthlyBudget * 80
+totalSpent * 100 >= cycleBudget * usageThreshold
 AND
-totalSpent * daysInMonth > monthlyBudget * elapsedDays
+totalSpent * cycleDays > cycleBudget * elapsedDays
 ```
 
-elapsedDays는 Asia/Seoul 기준 해당 월 1일부터 오늘까지이며 오늘을 포함한다. `remaining_days`에는 알림 문구와 운영 추적을 위해 판정 시점의 오늘 포함 남은 일수도 함께 저장한다.
+예산 주기 경계와 elapsedDays는 장부의 시작일과 Asia/Seoul 날짜를 기준으로 계산한다. 판정 시점의 기준값과 일수를 snapshot으로 함께 저장해 설정 변경 이후에도 발송 사유를 재현할 수 있게 한다.
 
-### 2.11 push_deliveries
+### 2.12 push_deliveries
 
 하나의 논리적 예산 알림을 기기별로 전달한 상태를 저장한다.
 
@@ -397,11 +471,16 @@ elapsedDays는 Asia/Seoul 기준 해당 월 1일부터 오늘까지이며 오늘
 | ledgers | invitations | ON DELETE CASCADE |
 | ledgers | categories | ON DELETE CASCADE |
 | ledgers | expenses | ON DELETE CASCADE |
+| ledgers | images | ON DELETE CASCADE |
 | ledgers | monthly_budgets | ON DELETE CASCADE |
 | users | ledger_members | RESTRICT |
 | users | invitations.created_by_user_id | SET NULL |
 | users | password_reset_tokens | ON DELETE CASCADE |
 | users | push_subscriptions | ON DELETE CASCADE |
+| users | images.uploaded_by_user_id | ON DELETE SET NULL |
+| images | users.profile_image_id | ON DELETE SET NULL |
+| expenses | expense_images | ON DELETE CASCADE |
+| images | expense_images | ON DELETE CASCADE |
 | ledgers | budget_alerts | ON DELETE CASCADE |
 | expenses | budget_alerts.triggered_by_expense_id | ON DELETE SET NULL |
 | budget_alerts | push_deliveries | ON DELETE CASCADE |
@@ -414,7 +493,13 @@ elapsedDays는 Asia/Seoul 기준 해당 월 1일부터 오늘까지이며 오늘
 
 ```text
 ledgers.default_monthly_budget > 0
+ledgers.budget_cycle_start_day BETWEEN 1 AND 31
+ledgers.push_usage_threshold BETWEEN 1 AND 100
 expenses.amount > 0
+images.size_bytes > 0
+images.width > 0
+images.height > 0
+expense_images.sort_order BETWEEN 0 AND 2
 monthly_budgets.amount > 0
 monthly_budgets.budget_month = date_trunc('month', budget_month)::date
 categories.name <> ''
@@ -430,6 +515,8 @@ users.status IN ('ACTIVE', 'WITHDRAWN')
 ledger_members.role IN ('MEMBER', 'ADMIN')
 ledger_members.status IN ('ACTIVE', 'LEFT')
 push_subscriptions.status IN ('ACTIVE', 'EXPIRED', 'DISABLED')
+images.purpose IN ('EXPENSE', 'PROFILE')
+images.status IN ('TEMP', 'ACTIVE')
 budget_alerts.alert_type IN ('MONTHLY_BUDGET_SURPLUS', 'MONTHLY_BUDGET_OVERRUN_RISK')
 push_deliveries.status IN ('PENDING', 'SENDING', 'SENT', 'FAILED')
 ```
@@ -475,7 +562,7 @@ CREATE UNIQUE INDEX uk_monthly_budgets_ledger_month
 
 ```sql
 CREATE UNIQUE INDEX uk_budget_alerts_month_type
-    ON budget_alerts (ledger_id, alert_month, alert_type);
+    ON budget_alerts (ledger_id, cycle_month, alert_type);
 
 CREATE UNIQUE INDEX uk_push_deliveries_target
     ON push_deliveries (budget_alert_id, push_subscription_id);
@@ -483,6 +570,27 @@ CREATE UNIQUE INDEX uk_push_deliveries_target
 CREATE INDEX idx_push_deliveries_pending
     ON push_deliveries (status, next_attempt_at)
     WHERE status IN ('PENDING', 'FAILED');
+```
+
+### 5.6 이미지
+
+```sql
+CREATE UNIQUE INDEX uk_images_storage_key
+    ON images (storage_key);
+
+CREATE UNIQUE INDEX uk_users_profile_image
+    ON users (profile_image_id)
+    WHERE profile_image_id IS NOT NULL;
+
+CREATE UNIQUE INDEX uk_expense_images_image
+    ON expense_images (image_id);
+
+CREATE UNIQUE INDEX uk_expense_images_order
+    ON expense_images (expense_id, sort_order);
+
+CREATE INDEX idx_images_temp_created
+    ON images (created_at)
+    WHERE status = 'TEMP';
 ```
 
 ## 6. 목록 커서
@@ -509,7 +617,7 @@ LIMIT :sizePlusOne
 - 식비 원본인 expenses를 기준으로 계산한다.
 - 금액 합계는 bigint 범위 안에서 정수 연산한다.
 - category_id가 null이면 ‘분류 없음’으로 그룹화한다.
-- 월 예산은 monthly_budgets 행이 있으면 해당 값을, 없으면 ledgers.default_monthly_budget을 사용한다.
+- 장부의 시작일로 예산 주기를 계산하고, 주기 시작 연·월의 monthly_budgets 행이 있으면 해당 값을 사용하며 없으면 ledgers.default_monthly_budget을 사용한다.
 - 예산 사용률은 응답 시 소수점 두 자리까지 계산하고 DB에는 저장하지 않는다.
 - 0건인 기간의 총 식비는 null이 아니라 0을 반환한다.
 - 날짜 경계는 Asia/Seoul을 기준으로 결정한 뒤 date 조건으로 조회한다.
@@ -526,6 +634,7 @@ V6__insert_default_categories.sql
 V7__create_push_notification_tables.sql
 V8__add_invitation_code_suffix.sql
 V9__add_budget_overrun_risk_alert_type.sql
+V10__add_media_budget_cycle_and_session_settings.sql
 ```
 
 마이그레이션은 적용 후 수정하지 않고 새 버전 파일로 변경을 이어간다.
