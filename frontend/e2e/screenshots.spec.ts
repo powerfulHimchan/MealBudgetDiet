@@ -32,6 +32,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
     { route: "/settings/notifications", file: "notification-settings-mobile.png", heading: "푸시 알림" },
     { route: "/settings/categories", file: "category-settings-mobile.png", heading: "카테고리 관리" },
     { route: "/settings/members", file: "member-settings-mobile.png", heading: "참여자 관리" },
+    { route: "/settings/invitations", file: "invitation-settings-mobile.png", heading: "초대 코드" },
     { route: "/offline", file: "offline-mobile.png", heading: "인터넷 연결이 필요해요" },
   ];
 
@@ -58,6 +59,10 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByRole("heading", { name: "우리집 식비 참여자" })).toBeVisible();
       await expect(mobile.getByText("힘찬", { exact: true })).toBeVisible();
       await expect(mobile.getByText("가족", { exact: true })).toBeVisible();
+    } else if (screen.route === "/settings/invitations") {
+      await expect(mobile.getByRole("heading", { name: "발급한 초대 코드" })).toBeVisible();
+      await expect(mobile.getByRole("button", { name: "새 초대 코드 발급" })).toBeVisible();
+      await expect(mobile.getByText("MBD-****7K2P", { exact: true })).toBeVisible();
     }
     await mobile.evaluate(() => window.scrollTo(0, 0));
     await mobile.screenshot({
@@ -65,6 +70,15 @@ test("capture implemented frontend screens", async ({ browser }) => {
       fullPage: true,
       animations: "disabled",
     });
+    if (screen.route === "/settings/invitations") {
+      await mobile.getByRole("button", { name: "새 초대 코드 발급" }).click();
+      await expect(mobile.getByRole("heading", { name: "새 초대 코드가 발급됐어요" })).toBeVisible();
+      await mobile.screenshot({
+        path: path.join(screenshotDirectory, "invitation-issued-mobile.png"),
+        fullPage: true,
+        animations: "disabled",
+      });
+    }
   }
 
   await mobile.close();
@@ -112,6 +126,29 @@ test("manage administrator role from settings", async ({ page }) => {
   await expect(currentUserRow.getByRole("button", { name: "일반 참여자로 변경" })).toBeDisabled();
 });
 
+test("issue, copy, and revoke an invitation code", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mockExpenseApis(page);
+  await page.goto("/settings/invitations");
+
+  await page.getByRole("button", { name: "새 초대 코드 발급" }).click();
+  await expect(page.getByRole("heading", { name: "새 초대 코드가 발급됐어요" })).toBeVisible();
+  await expect(page.getByText("MBD-ABCD1234-EFGH5678-IJKL9012", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "초대 코드 복사" }).click();
+  await expect(page.getByText("초대 코드를 복사했습니다.", { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("MBD-ABCD1234-EFGH5678-IJKL9012");
+  await page.getByRole("button", { name: "복사를 마쳤어요" }).click();
+  await expect(page.getByRole("heading", { name: "새 초대 코드가 발급됐어요" })).toHaveCount(0);
+
+  const activeInvitation = page.getByRole("listitem").filter({ hasText: "MBD-****7K2P" });
+  await activeInvitation.getByRole("button", { name: "MBD-****7K2P 초대 코드 취소" }).click();
+  const dialog = page.getByRole("dialog", { name: "MBD-****7K2P 코드를 취소할까요?" });
+  await expect(dialog.getByText(/이미 참여한 사용자는 영향을 받지 않으며/)).toBeVisible();
+  await dialog.getByRole("button", { name: "코드 취소" }).click();
+  await expect(activeInvitation.getByText("취소됨", { exact: true })).toBeVisible();
+});
+
 async function mockExpenseApis(page: import("@playwright/test").Page) {
   let categories = [
     { id: "11111111-1111-1111-1111-111111111111", name: "장보기", sortOrder: 1, version: 0 },
@@ -124,6 +161,17 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
     { id: "77777777-7777-7777-7777-777777777777", displayName: "힘찬", role: "ADMIN" as const, joinedAt: "2026-09-01T10:00:00+09:00" },
     { id: "88888888-8888-8888-8888-888888888888", displayName: "가족", role: "MEMBER" as const, joinedAt: "2026-09-03T18:30:00+09:00" },
   ];
+  let invitations: Array<{
+    id: string;
+    maskedCode: string;
+    status: "ACTIVE" | "REVOKED";
+    useCount: number;
+    createdAt: string;
+    lastUsedAt: string | null;
+  }> = [
+    { id: "12121212-1212-1212-1212-121212121212", maskedCode: "MBD-****7K2P", status: "ACTIVE" as const, useCount: 2, createdAt: "2026-09-08T11:00:00+09:00", lastUsedAt: "2026-09-08T12:00:00+09:00" },
+    { id: "13131313-1313-1313-1313-131313131313", maskedCode: "MBD-****9R4M", status: "REVOKED" as const, useCount: 1, createdAt: "2026-08-30T09:00:00+09:00", lastUsedAt: "2026-09-01T10:30:00+09:00" },
+  ];
   const expenses = [
     { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", amount: 18500, spentOn: "2026-09-08", category: categories[0], merchant: "동네마트", memo: "주말 장보기", version: 0, createdAt: "2026-09-08T14:00:00+09:00", updatedAt: "2026-09-08T14:00:00+09:00" },
     { id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", amount: 32000, spentOn: "2026-09-07", category: categories[1], merchant: "을지로 식당", memo: "가족 저녁", version: 0, createdAt: "2026-09-07T19:00:00+09:00", updatedAt: "2026-09-07T19:00:00+09:00" },
@@ -132,7 +180,25 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
 
   await page.route("**/api/v1/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
-    if (pathname === "/api/v1/categories") {
+    if (pathname === "/api/v1/invitations") {
+      if (route.request().method() === "POST") {
+        const created = {
+          id: "14141414-1414-1414-1414-141414141414",
+          code: "MBD-ABCD1234-EFGH5678-IJKL9012",
+          joinUrl: "http://127.0.0.1:3000/join?code=MBD-ABCD1234-EFGH5678-IJKL9012",
+          createdAt: "2026-09-09T14:00:00+09:00",
+        };
+        invitations = [{ id: created.id, maskedCode: "MBD-****9012", status: "ACTIVE", useCount: 0, createdAt: created.createdAt, lastUsedAt: null }, ...invitations];
+        await route.fulfill({ json: created, status: 201 });
+      } else {
+        const status = new URL(route.request().url()).searchParams.get("status") ?? "ACTIVE";
+        await route.fulfill({ json: { items: status === "ALL" ? invitations : invitations.filter((invitation) => invitation.status === status) } });
+      }
+    } else if (pathname.startsWith("/api/v1/invitations/")) {
+      const invitationId = pathname.split("/").at(-1);
+      invitations = invitations.map((invitation) => invitation.id === invitationId ? { ...invitation, status: "REVOKED" as const } : invitation);
+      await route.fulfill({ status: 204 });
+    } else if (pathname === "/api/v1/categories") {
       if (route.request().method() === "POST") {
         const body = route.request().postDataJSON() as { name: string; sortOrder: number };
         const created = { id: "66666666-6666-6666-6666-666666666666", ...body, version: 0 };

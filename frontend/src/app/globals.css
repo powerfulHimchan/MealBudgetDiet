@@ -207,6 +207,54 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .member-role-dialog h2 { line-height: 1.35; }
 .member-role-dialog > p:not(.eyebrow) { margin: 12px 0 22px; color: var(--muted); font-size: .82rem; line-height: 1.65; }
 .member-role-dialog > div { display: flex; justify-content: flex-end; gap: 8px; }
+.invitation-issued-panel { margin-top: 18px; padding: 22px; border: 1px solid #6d98d8; border-left: 5px solid var(--brand); background: #eef5ff; box-shadow: 0 10px 24px rgb(29 78 216 / 8%); }
+.invitation-issued-heading { display: flex; align-items: center; gap: 11px; }
+.invitation-issued-heading > span { display: grid; width: 42px; height: 42px; place-items: center; background: var(--ink); color: var(--brand); }
+.invitation-issued-heading .eyebrow { margin-bottom: 3px; color: #315c9d; }
+.invitation-issued-warning { margin: 16px 0; padding: 11px 13px; border-left: 3px solid #315c9d; background: rgb(255 255 255 / 72%); color: #455b79; font-size: .78rem; line-height: 1.55; }
+.invitation-copy-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 10px; }
+.invitation-copy-grid > div { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; padding: 14px; border: 1px solid #afc7e8; background: white; }
+.invitation-copy-grid span { grid-column: 1 / -1; color: var(--muted); font-size: .68rem; font-weight: 800; }
+.invitation-copy-grid strong { overflow: hidden; align-self: center; color: #17345e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.invitation-copy-grid button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 9px; border: 1px solid #769ed9; border-radius: 2px; background: #f5f9ff; color: #1d4ed8; cursor: pointer; font-size: .7rem; font-weight: 850; }
+.invitation-copy-grid button:hover { background: #e5efff; }
+.invitation-issued-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.invitation-settings-panel { margin-top: 18px; overflow: hidden; border: 1px solid #cbd8e8; background: white; box-shadow: 0 10px 24px rgb(15 23 42 / 5%); }
+.invitation-settings-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-bottom: 1px solid var(--line); }
+.invitation-settings-toolbar .eyebrow { margin-bottom: 4px; }
+.invitation-settings-toolbar p:last-child { margin: 8px 0 0; color: var(--muted); font-size: .78rem; }
+.invitation-summary { display: flex; flex-wrap: wrap; gap: 7px; padding: 18px 22px 12px; }
+.invitation-summary > span { display: inline-flex; min-height: 37px; align-items: center; gap: 5px; padding: 0 10px; border: 1px solid #c3d2e5; background: #f5f8fc; color: #53637a; font-size: .72rem; }
+.invitation-summary strong { color: #1d3558; font-size: .88rem; }
+.invitation-filter { display: flex; gap: 6px; padding: 0 22px 12px; }
+.invitation-filter button { min-height: 35px; padding: 0 11px; border: 1px solid #ccd8e7; border-radius: 2px; background: white; color: #64748b; cursor: pointer; font-size: .72rem; font-weight: 800; }
+.invitation-filter button.is-active { border-color: #7ca5e3; background: #eaf2ff; color: var(--brand-strong); }
+.invitation-settings-list { margin: 0; padding: 2px 22px 10px; list-style: none; }
+.invitation-settings-list li { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; min-height: 96px; align-items: center; gap: 13px; border-top: 1px solid #e2e9f2; }
+.invitation-status-icon { display: grid; width: 40px; height: 44px; place-items: center; border: 1px solid #adc3df; border-left: 3px solid #315c9d; background: #f5f8fc; color: #315078; }
+.invitation-status-icon--revoked { border-color: #d5dce6; border-left-color: #8996a8; background: #f4f5f7; color: #7b8798; }
+.invitation-settings-code { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.invitation-settings-code > span:first-child { display: flex; align-items: center; gap: 8px; }
+.invitation-settings-code strong { overflow: hidden; color: #172d4e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86rem; text-overflow: ellipsis; white-space: nowrap; }
+.invitation-settings-code > span:not(:first-child) { color: var(--muted); font-size: .68rem; }
+.invitation-status-chip { padding: 4px 6px; border: 1px solid #a8c7f4; background: #eaf2ff; color: #1d4ed8; font-size: .61rem; font-weight: 850; white-space: nowrap; }
+.invitation-status-chip--revoked { border-color: #d5dce6; background: #f2f4f7; color: #718096; }
+.invitation-revoke-button { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid #d7b3b9; border-radius: 2px; background: white; color: #a1283a; cursor: pointer; font-size: .72rem; font-weight: 800; }
+.invitation-revoke-button:hover { border-color: #c96d79; background: #fff1f2; }
+.invitation-settings-empty { display: flex; min-height: 220px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; margin: 0 22px; border-top: 1px solid #e2e9f2; color: #718096; text-align: center; }
+.invitation-settings-empty strong { color: #27364d; }
+.invitation-settings-empty span { font-size: .78rem; }
+.invitation-security-note { display: flex; align-items: flex-start; gap: 10px; margin: 4px 22px 22px; padding: 14px; border: 1px solid #d5dfeb; border-left: 3px solid #526c91; background: #f7f9fc; color: #52627a; }
+.invitation-security-note > svg { flex: none; margin-top: 1px; }
+.invitation-security-note p { display: flex; flex-direction: column; gap: 5px; margin: 0; }
+.invitation-security-note strong { color: #293a54; font-size: .78rem; }
+.invitation-security-note span { font-size: .72rem; line-height: 1.5; }
+.invitation-revoke-dialog { width: min(100%, 500px); padding: 25px; border: 1px solid #31496e; border-radius: 4px 4px 0 0; background: white; box-shadow: 0 22px 70px rgb(0 0 0 / 35%); }
+.invitation-revoke-icon { display: grid; width: 48px; height: 48px; place-items: center; margin-bottom: 18px; background: #fff1f2; color: #b42335; }
+.invitation-revoke-dialog h2 { line-height: 1.35; }
+.invitation-revoke-dialog > p:not(.eyebrow) { margin: 12px 0 22px; color: var(--muted); font-size: .82rem; line-height: 1.65; }
+.invitation-revoke-dialog > div { display: flex; justify-content: flex-end; gap: 8px; }
+.invitation-revoke-confirm { border-color: #921d2e; background: #921d2e; }
 .setting-panel { padding: 22px; }
 .setting-panel .panel-heading { justify-content: flex-start; }
 .panel-icon { display: grid; width: 40px; height: 40px; place-items: center; flex: none; border-radius: 3px; background: var(--ink); color: var(--brand); }
@@ -336,6 +384,7 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
   .expense-modal { border-radius: 6px; }
   .category-delete-dialog { border-radius: 4px; }
   .member-role-dialog { border-radius: 4px; }
+  .invitation-revoke-dialog { border-radius: 4px; }
   .range-panel { grid-template-columns: 1fr auto; align-items: end; }
   .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .analytics-grid { grid-template-columns: minmax(0, 1.5fr) minmax(280px, .7fr); }
@@ -383,6 +432,22 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
   .member-role-button { grid-column: 2 / -1; width: 100%; }
   .member-permission-note { margin: 14px 14px 0; }
   .member-safety-note { margin: 4px 14px 16px; }
+  .invitation-issued-panel { padding: 18px 14px; }
+  .invitation-copy-grid { grid-template-columns: 1fr; }
+  .invitation-copy-grid > div { grid-template-columns: 1fr; }
+  .invitation-copy-grid button { width: 100%; }
+  .invitation-issued-actions .secondary-button { width: 100%; }
+  .invitation-settings-toolbar { align-items: stretch; flex-direction: column; padding: 20px 16px; }
+  .invitation-settings-toolbar .dark-button { width: 100%; }
+  .invitation-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px 14px 10px; }
+  .invitation-summary > span { justify-content: center; }
+  .invitation-summary > span:last-child { grid-column: 1 / -1; }
+  .invitation-filter { padding: 0 14px 10px; }
+  .invitation-filter button { flex: 1; }
+  .invitation-settings-list { padding: 2px 14px 10px; }
+  .invitation-settings-list li { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 14px 0; }
+  .invitation-revoke-button { grid-column: 2; width: 100%; }
+  .invitation-security-note { margin: 4px 14px 16px; }
   .chart-wrap { height: 240px; }
   .budget-actions { align-items: stretch; flex-direction: column-reverse; }
 }

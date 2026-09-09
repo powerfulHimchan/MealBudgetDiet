@@ -44,7 +44,7 @@ const menuItems = [
     href: "/settings/invitations",
     icon: TicketCheck,
     label: "초대 코드",
-    status: "다음 구현",
+    status: "사용 가능",
   },
   {
     description: "비밀번호 변경, 로그아웃, 회원 탈퇴를 관리합니다.",
