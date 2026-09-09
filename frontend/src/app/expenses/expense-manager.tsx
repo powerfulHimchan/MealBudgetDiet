@@ -1,0 +1,441 @@
+"use client";
+
+import {
+  BarChart3,
+  ChevronDown,
+  House,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  ReceiptText,
+  RotateCcw,
+  Search,
+  Settings,
+  SlidersHorizontal,
+  Tags,
+  Trash2,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+
+type Category = { id: string; name: string; sortOrder: number; version: number };
+type Expense = {
+  id: string;
+  amount: number;
+  spentOn: string;
+  category: Pick<Category, "id" | "name"> | null;
+  merchant: string | null;
+  memo: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+};
+type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean };
+type Filters = { from: string; to: string; categoryId: string; keyword: string };
+type ExpenseDraft = {
+  amount: string;
+  spentOn: string;
+  categoryId: string;
+  merchant: string;
+  memo: string;
+};
+
+const won = new Intl.NumberFormat("ko-KR");
+const initialFilters: Filters = { from: "", to: "", categoryId: "", keyword: "" };
+
+function todayInSeoul() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+}
+
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, { credentials: "include", ...init });
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null) as { detail?: string } | null;
+    throw new Error(problem?.detail ?? "요청을 처리하지 못했습니다.");
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+async function mutation<T>(url: string, method: string, body?: unknown): Promise<T> {
+  const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
+  return request<T>(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      [csrf.headerName]: csrf.token,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+function expenseQuery(filters: Filters, cursor?: string) {
+  const params = new URLSearchParams({ size: "20" });
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  if (filters.categoryId === "uncategorized") params.set("uncategorized", "true");
+  else if (filters.categoryId) params.set("categoryId", filters.categoryId);
+  if (filters.keyword.trim()) params.set("keyword", filters.keyword.trim());
+  if (cursor) params.set("cursor", cursor);
+  return `/api/v1/expenses?${params}`;
+}
+
+export function ExpenseManager() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasNext, setHasNext] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [role, setRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
+  const [categoryDraft, setCategoryDraft] = useState({ name: "", sortOrder: "" });
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [draft, setDraft] = useState<ExpenseDraft>({
+    amount: "",
+    spentOn: todayInSeoul(),
+    categoryId: "",
+    merchant: "",
+    memo: "",
+  });
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      request<{ items: Category[] }>("/api/v1/categories"),
+      request<ExpensePage>(expenseQuery(initialFilters)),
+      request<{ currentUserRole: "ADMIN" | "MEMBER" }>("/api/v1/ledger"),
+    ])
+      .then(([categoryData, expenseData, ledger]) => {
+        if (!active) return;
+        setCategories(categoryData.items);
+        setExpenses(expenseData.items);
+        setNextCursor(expenseData.nextCursor);
+        setHasNext(expenseData.hasNext);
+        setRole(ledger.currentUserRole);
+        if (new URLSearchParams(window.location.search).get("new") === "1") {
+          setDraft({
+            amount: "",
+            spentOn: todayInSeoul(),
+            categoryId: categoryData.items[0]?.id ?? "",
+            merchant: "",
+            memo: "",
+          });
+          setIsExpenseOpen(true);
+        }
+      })
+      .catch((reason: Error) => active && setError(reason.message))
+      .finally(() => active && setIsLoading(false));
+    return () => { active = false; };
+  }, []);
+
+  const loadedTotal = useMemo(
+    () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
+    [expenses],
+  );
+
+  async function refreshExpenses(nextFilters: Filters = appliedFilters) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const page = await request<ExpensePage>(expenseQuery(nextFilters));
+      setExpenses(page.items);
+      setNextCursor(page.nextCursor);
+      setHasNext(page.hasNext);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "식비를 불러오지 못했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function refreshCategories() {
+    const data = await request<{ items: Category[] }>("/api/v1/categories");
+    setCategories(data.items);
+  }
+
+  function openCreate() {
+    setEditingExpense(null);
+    setDraft({
+      amount: "",
+      spentOn: todayInSeoul(),
+      categoryId: categories[0]?.id ?? "",
+      merchant: "",
+      memo: "",
+    });
+    setIsExpenseOpen(true);
+  }
+
+  function openEdit(expense: Expense) {
+    setEditingExpense(expense);
+    setDraft({
+      amount: String(expense.amount),
+      spentOn: expense.spentOn,
+      categoryId: expense.category?.id ?? categories[0]?.id ?? "",
+      merchant: expense.merchant ?? "",
+      memo: expense.memo ?? "",
+    });
+    setIsExpenseOpen(true);
+  }
+
+  async function saveExpense(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setError(null);
+    try {
+      const body = {
+        amount: Number(draft.amount),
+        spentOn: draft.spentOn,
+        categoryId: draft.categoryId,
+        merchant: draft.merchant,
+        memo: draft.memo,
+        ...(editingExpense ? { version: editingExpense.version } : {}),
+      };
+      if (editingExpense) {
+        await mutation(`/api/v1/expenses/${editingExpense.id}`, "PUT", body);
+        setNotice("식비 내역을 수정했습니다.");
+      } else {
+        await mutation("/api/v1/expenses", "POST", body);
+        setNotice("식비 내역을 등록했습니다.");
+      }
+      setIsExpenseOpen(false);
+      await refreshExpenses();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "식비를 저장하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function deleteExpense(expense: Expense) {
+    if (!window.confirm(`${expense.merchant ?? "선택한 식비"} 내역을 삭제할까요?`)) return;
+    setError(null);
+    try {
+      await mutation(`/api/v1/expenses/${expense.id}?version=${expense.version}`, "DELETE");
+      setNotice("식비 내역을 삭제했습니다.");
+      await refreshExpenses();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "식비를 삭제하지 못했습니다.");
+    }
+  }
+
+  async function loadMore() {
+    if (!nextCursor) return;
+    setIsLoading(true);
+    try {
+      const page = await request<ExpensePage>(expenseQuery(appliedFilters, nextCursor));
+      setExpenses((current) => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+      setHasNext(page.hasNext);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "다음 식비를 불러오지 못했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function submitCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setError(null);
+    try {
+      const body = { name: categoryDraft.name, sortOrder: Number(categoryDraft.sortOrder) };
+      if (editingCategory) {
+        await mutation(`/api/v1/categories/${editingCategory.id}`, "PUT", {
+          ...body,
+          version: editingCategory.version,
+        });
+        setNotice("카테고리를 수정했습니다.");
+      } else {
+        await mutation("/api/v1/categories", "POST", body);
+        setNotice("카테고리를 추가했습니다.");
+      }
+      setCategoryDraft({ name: "", sortOrder: "" });
+      setEditingCategory(null);
+      await refreshCategories();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "카테고리를 저장하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function deleteCategory(category: Category) {
+    if (!window.confirm(`${category.name} 카테고리를 삭제할까요? 기존 식비는 분류 없음으로 남습니다.`)) return;
+    setError(null);
+    try {
+      await mutation(`/api/v1/categories/${category.id}?version=${category.version}`, "DELETE");
+      setNotice("카테고리를 삭제했습니다.");
+      await Promise.all([refreshCategories(), refreshExpenses()]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "카테고리를 삭제하지 못했습니다.");
+    }
+  }
+
+  function applyFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAppliedFilters(filters);
+    void refreshExpenses(filters);
+  }
+
+  function resetFilters() {
+    setFilters(initialFilters);
+    setAppliedFilters(initialFilters);
+    void refreshExpenses(initialFilters);
+  }
+
+  return (
+    <main className="app-shell expense-shell">
+      <header className="topbar">
+        <Link className="brand" href="/" aria-label="MealBudgetDiet 홈">
+          <span className="brand-mark">M</span>
+          <span>MealBudgetDiet</span>
+        </Link>
+        <button className="avatar" type="button" aria-label="계정 설정">힘</button>
+      </header>
+
+      <section className="expense-hero">
+        <div>
+          <p className="eyebrow">SHARED LEDGER</p>
+          <h1>식비 내역</h1>
+          <p>함께 사용한 식비를 빠르게 기록하고 필요한 내역을 찾아보세요.</p>
+        </div>
+        <button className="expense-add-button" type="button" onClick={openCreate}>
+          <Plus size={19} /> 식비 등록
+        </button>
+      </section>
+
+      {error && <div className="message-banner message-banner--error" role="alert">{error}</div>}
+      {notice && (
+        <button className="message-banner message-banner--notice" type="button" onClick={() => setNotice(null)}>
+          {notice}<X size={16} />
+        </button>
+      )}
+
+      <div className="expense-layout">
+        <div className="expense-main-column">
+          <form className="filter-panel" onSubmit={applyFilters}>
+            <div className="filter-title"><SlidersHorizontal size={18} /><strong>검색 조건</strong></div>
+            <label>
+              <span>시작일</span>
+              <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
+            </label>
+            <label>
+              <span>종료일</span>
+              <input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
+            </label>
+            <label>
+              <span>카테고리</span>
+              <span className="select-wrap">
+                <select value={filters.categoryId} onChange={(event) => setFilters({ ...filters, categoryId: event.target.value })}>
+                  <option value="">전체 카테고리</option>
+                  {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+                  <option value="uncategorized">분류 없음</option>
+                </select>
+                <ChevronDown size={16} />
+              </span>
+            </label>
+            <label className="keyword-field">
+              <span>검색어</span>
+              <span className="input-with-icon"><Search size={17} /><input value={filters.keyword} placeholder="상호명 또는 메모" onChange={(event) => setFilters({ ...filters, keyword: event.target.value })} /></span>
+            </label>
+            <div className="filter-actions">
+              <button className="secondary-button" type="button" onClick={resetFilters}><RotateCcw size={16} />초기화</button>
+              <button className="dark-button" type="submit"><Search size={16} />검색</button>
+            </div>
+          </form>
+
+          <section className="expense-results" aria-labelledby="expense-results-title">
+            <div className="results-heading">
+              <div>
+                <p className="eyebrow">불러온 내역</p>
+                <h2 id="expense-results-title">{expenses.length}건 · {won.format(loadedTotal)}원</h2>
+              </div>
+              {isLoading && <LoaderCircle className="spin" aria-label="불러오는 중" size={22} />}
+            </div>
+
+            {!isLoading && expenses.length === 0 ? (
+              <div className="expense-empty"><ReceiptText size={28} /><strong>조건에 맞는 식비가 없습니다.</strong><span>첫 식비를 등록해 보세요.</span></div>
+            ) : (
+              <ul className="expense-records">
+                {expenses.map((expense) => (
+                  <li key={expense.id}>
+                    <div className="expense-date-box"><strong>{expense.spentOn.slice(8)}</strong><span>{expense.spentOn.slice(5, 7)}월</span></div>
+                    <div className="expense-record-copy">
+                      <div><span className="category-tag">{expense.category?.name ?? "분류 없음"}</span><span className="expense-full-date">{expense.spentOn.replaceAll("-", ".")}</span></div>
+                      <strong>{expense.merchant ?? "상호명 없음"}</strong>
+                      {expense.memo && <p>{expense.memo}</p>}
+                    </div>
+                    <strong className="expense-record-amount">-{won.format(expense.amount)}원</strong>
+                    <div className="record-actions">
+                      <button type="button" aria-label={`${expense.merchant ?? "식비"} 수정`} onClick={() => openEdit(expense)}><Pencil size={16} /></button>
+                      <button type="button" aria-label={`${expense.merchant ?? "식비"} 삭제`} onClick={() => void deleteExpense(expense)}><Trash2 size={16} /></button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {hasNext && <button className="load-more-button" type="button" disabled={isLoading} onClick={() => void loadMore()}>내역 더 보기</button>}
+          </section>
+        </div>
+
+        <aside className="category-panel" aria-labelledby="category-title">
+          <div className="category-heading"><span><Tags size={19} /></span><div><p className="eyebrow">CATEGORY</p><h2 id="category-title">카테고리</h2></div></div>
+          <ul>
+            {categories.map((category) => (
+              <li key={category.id}>
+                <span className="category-order">{String(category.sortOrder).padStart(2, "0")}</span>
+                <strong>{category.name}</strong>
+                {role === "ADMIN" && <span className="category-actions">
+                  <button type="button" aria-label={`${category.name} 수정`} onClick={() => { setEditingCategory(category); setCategoryDraft({ name: category.name, sortOrder: String(category.sortOrder) }); }}><Pencil size={15} /></button>
+                  <button type="button" aria-label={`${category.name} 삭제`} onClick={() => void deleteCategory(category)}><Trash2 size={15} /></button>
+                </span>}
+              </li>
+            ))}
+          </ul>
+          {role === "ADMIN" ? (
+            <form className="category-form" onSubmit={submitCategory}>
+              <strong>{editingCategory ? "카테고리 수정" : "새 카테고리"}</strong>
+              <div><input required maxLength={50} placeholder="이름" value={categoryDraft.name} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} /><input required min={1} type="number" placeholder="순서" value={categoryDraft.sortOrder} onChange={(event) => setCategoryDraft({ ...categoryDraft, sortOrder: event.target.value })} /></div>
+              <div className="category-form-actions">
+                {editingCategory && <button className="secondary-button" type="button" onClick={() => { setEditingCategory(null); setCategoryDraft({ name: "", sortOrder: "" }); }}>취소</button>}
+                <button className="dark-button" type="submit" disabled={isSaving}>{editingCategory ? "저장" : "추가"}</button>
+              </div>
+            </form>
+          ) : <p className="category-help">카테고리 변경은 관리자만 할 수 있습니다.</p>}
+        </aside>
+      </div>
+
+      <nav className="bottom-nav" aria-label="주요 메뉴">
+        <Link href="/"><House size={20} /><span>홈</span></Link>
+        <Link className="is-active" href="/expenses"><ReceiptText size={20} /><span>식비</span></Link>
+        <Link href="/statistics"><BarChart3 size={20} /><span>통계</span></Link>
+        <Link href="/settings"><Settings size={20} /><span>설정</span></Link>
+      </nav>
+
+      {isExpenseOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsExpenseOpen(false); }}>
+          <section className="expense-modal" role="dialog" aria-modal="true" aria-labelledby="expense-form-title">
+            <div className="modal-heading"><div><p className="eyebrow">EXPENSE</p><h2 id="expense-form-title">{editingExpense ? "식비 수정" : "식비 등록"}</h2></div><button type="button" aria-label="닫기" onClick={() => setIsExpenseOpen(false)}><X size={20} /></button></div>
+            <form onSubmit={saveExpense}>
+              <label className="amount-field"><span>금액</span><span><input required min={1} inputMode="numeric" type="number" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} placeholder="0" /><b>원</b></span></label>
+              <div className="form-row">
+                <label><span>사용 날짜</span><input required type="date" value={draft.spentOn} onChange={(event) => setDraft({ ...draft, spentOn: event.target.value })} /></label>
+                <label><span>카테고리</span><span className="select-wrap"><select required value={draft.categoryId} onChange={(event) => setDraft({ ...draft, categoryId: event.target.value })}><option value="" disabled>선택</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><ChevronDown size={16} /></span></label>
+              </div>
+              <label><span>상호명 <small>선택</small></span><input maxLength={100} value={draft.merchant} onChange={(event) => setDraft({ ...draft, merchant: event.target.value })} placeholder="예: 동네마트" /></label>
+              <label><span>메모 <small>선택</small></span><textarea maxLength={1000} value={draft.memo} onChange={(event) => setDraft({ ...draft, memo: event.target.value })} placeholder="함께 기억할 내용을 적어두세요." /></label>
+              <div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setIsExpenseOpen(false)}>취소</button><button className="expense-add-button" type="submit" disabled={isSaving}>{isSaving && <LoaderCircle className="spin" size={17} />}{editingExpense ? "수정 저장" : "등록하기"}</button></div>
+            </form>
+          </section>
+        </div>
+      )}
+    </main>
+  );
+}

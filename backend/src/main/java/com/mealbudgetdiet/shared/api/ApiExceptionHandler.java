@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,6 +34,19 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ProblemDetail handleConflict(DataIntegrityViolationException exception, HttpServletRequest request) {
 		return problem(HttpStatus.CONFLICT, "RESOURCE_CONFLICT", "이미 사용 중인 값입니다.", request);
+	}
+
+	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+	ProblemDetail handleOptimisticLock(
+		ObjectOptimisticLockingFailureException exception,
+		HttpServletRequest request
+	) {
+		return problem(
+			HttpStatus.CONFLICT,
+			"VERSION_CONFLICT",
+			"다른 사용자가 먼저 변경했습니다. 최신 내용을 확인해 주세요.",
+			request
+		);
 	}
 
 	private ProblemDetail problem(HttpStatus status, String code, String detail, HttpServletRequest request) {
