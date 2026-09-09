@@ -76,18 +76,20 @@ class PushNotificationIntegrationTest {
 		registerSubscription(
 			adminSession, "https://updates.push.services.mozilla.com/wpush/v2/admin-device", false);
 
-		createExpense(adminSession, categoryId, 79_000, "2026-09-29");
+		createExpense(adminSession, categoryId, 79_000, "2026-09-15");
 		assertThat(count("budget_alerts")).isZero();
 
-		createExpense(memberSession, categoryId, 6_000, "2026-09-29");
+		createExpense(memberSession, categoryId, 6_000, "2026-09-15");
 		assertThat(count("budget_alerts")).isOne();
 		assertThat(count("push_deliveries")).isEqualTo(2);
 		assertThat(jdbcTemplate.queryForObject(
 			"select total_spent from budget_alerts", Long.class)).isEqualTo(85_000);
 		assertThat(jdbcTemplate.queryForObject(
-			"select remaining_days from budget_alerts", Integer.class)).isEqualTo(2);
+			"select remaining_days from budget_alerts", Integer.class)).isEqualTo(16);
+		assertThat(jdbcTemplate.queryForObject(
+			"select alert_type from budget_alerts", String.class)).isEqualTo("MONTHLY_BUDGET_OVERRUN_RISK");
 
-		createExpense(adminSession, categoryId, 1_000, "2026-09-29");
+		createExpense(adminSession, categoryId, 1_000, "2026-09-15");
 		assertThat(count("budget_alerts")).isOne();
 		assertThat(count("push_deliveries")).isEqualTo(2);
 
@@ -204,7 +206,7 @@ class PushNotificationIntegrationTest {
 		@Bean
 		@Primary
 		Clock fixedClock() {
-			return Clock.fixed(Instant.parse("2026-09-29T03:00:00Z"), ZoneOffset.UTC);
+			return Clock.fixed(Instant.parse("2026-09-15T03:00:00Z"), ZoneOffset.UTC);
 		}
 	}
 }
