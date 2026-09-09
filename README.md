@@ -10,7 +10,7 @@
 
 ## Tech stack
 
-- Frontend: Next.js 16, React 19, TypeScript, Tailwing CSS, PWA
+- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS, PWA
 - Backend: Java 21, Spring Boot 4, Spring Security, Spring Data JPA, Flyway
 - Data: PostgreSQL 18, Spring Session JDBC
 - Test & delivery: JUnit 5, Testcontainers, Docker Compose, GitHub Actions
