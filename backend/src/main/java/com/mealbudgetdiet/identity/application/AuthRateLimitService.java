@@ -3,6 +3,8 @@ package com.mealbudgetdiet.identity.application;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -95,7 +97,7 @@ public class AuthRateLimitService {
 	@Transactional
 	public void removeExpiredRateLimits() {
 		jdbcClient.sql("delete from auth_rate_limits where updated_at < :cutoff")
-			.param("cutoff", clock.instant().minus(retention))
+			.param("cutoff", toUtcOffsetDateTime(clock.instant().minus(retention)))
 			.update();
 	}
 
@@ -123,8 +125,8 @@ public class AuthRateLimitService {
 			""")
 			.param("scope", scope)
 			.param("subjectHash", subjectHash)
-			.param("windowStart", windowStart)
-			.param("now", now)
+			.param("windowStart", toUtcOffsetDateTime(windowStart))
+			.param("now", toUtcOffsetDateTime(now))
 			.param("counterCeiling", limit + 1)
 			.query(Integer.class)
 			.single();
@@ -135,6 +137,10 @@ public class AuthRateLimitService {
 	private static Instant fixedWindowStart(Instant now, Duration window) {
 		long windowSeconds = window.getSeconds();
 		return Instant.ofEpochSecond(Math.floorDiv(now.getEpochSecond(), windowSeconds) * windowSeconds);
+	}
+
+	private static OffsetDateTime toUtcOffsetDateTime(Instant instant) {
+		return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
 	}
 
 	private static int positive(int value, String name) {
