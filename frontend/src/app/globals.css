@@ -442,10 +442,51 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .account-withdrawal-dialog form > div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .account-withdrawal-dialog label strong { color: #9f1239; }
 .account-withdrawal-confirm { border-color: #8f1d2f; background: #8f1d2f; }
+.auth-shell { display: grid; min-height: 100vh; background: #080d18; }
+.auth-promo { position: relative; display: flex; min-height: 100%; justify-content: space-between; flex-direction: column; overflow: hidden; padding: 42px; background: linear-gradient(145deg, #050810 0%, #0b1427 67%, #102c5d 100%); color: white; }
+.auth-promo::after { position: absolute; right: -90px; bottom: -155px; width: 320px; height: 320px; border: 50px solid rgb(59 130 246 / 14%); content: ""; transform: rotate(15deg); }
+.auth-brand { position: relative; z-index: 1; display: inline-flex; align-items: center; align-self: flex-start; gap: 11px; font-size: 1.05rem; font-weight: 900; letter-spacing: -.03em; }
+.auth-brand .brand-mark { border: 1px solid #314b73; background: #071020; }
+.auth-promo-copy { position: relative; z-index: 1; max-width: 600px; margin: 70px 0 32px; }
+.auth-promo-copy .eyebrow { color: #75aaff; letter-spacing: .08em; }
+.auth-promo-copy h1 { font-size: clamp(2.15rem, 4.2vw, 4.15rem); line-height: 1.08; }
+.auth-promo-copy > p:last-child { max-width: 520px; margin: 24px 0 0; color: #aebcd1; line-height: 1.75; }
+.auth-benefits { position: relative; z-index: 1; display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.auth-benefits li { display: grid; max-width: 520px; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 13px; padding: 13px 0; border-top: 1px solid rgb(148 178 222 / 18%); }
+.auth-benefits li > span { display: grid; width: 42px; height: 42px; place-items: center; background: rgb(59 130 246 / 14%); color: #78aeff; }
+.auth-benefits li > div { display: flex; flex-direction: column; gap: 4px; }
+.auth-benefits strong { font-size: .86rem; }
+.auth-benefits small { color: #92a5c0; font-size: .72rem; }
+.auth-security-note { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; margin: 35px 0 0; color: #8094b1; font-size: .7rem; font-weight: 700; }
+.auth-form-side { display: flex; min-height: 100%; align-items: center; justify-content: center; padding: 32px; background: radial-gradient(circle at 90% 5%, rgb(59 130 246 / 14%), transparent 23rem), #f2f6fc; }
+.auth-card { width: min(100%, 500px); padding: 38px; border: 1px solid #b8c8dc; border-top: 5px solid #111d34; background: white; box-shadow: 18px 18px 0 rgb(30 64 175 / 7%); }
+.auth-card-icon { display: grid; width: 50px; height: 50px; place-items: center; margin-bottom: 22px; background: var(--ink); color: var(--brand); }
+.auth-card > .eyebrow { margin-bottom: 5px; color: #315c9d; letter-spacing: .07em; }
+.auth-card h2 { font-size: 1.8rem; }
+.auth-card-description { margin: 11px 0 25px; color: var(--muted); font-size: .82rem; line-height: 1.65; }
+.auth-form { display: grid; gap: 14px; }
+.auth-form label { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #40526b; font-size: .75rem; font-weight: 850; }
+.auth-form label > span { display: flex; justify-content: space-between; gap: 8px; }
+.auth-form label small { color: #7b8ba1; font-size: .66rem; font-weight: 700; }
+.auth-form input { width: 100%; min-height: 46px; padding: 0 13px; border: 1px solid #b8c9df; border-radius: 2px; outline: none; background: #fbfdff; color: var(--ink); font: inherit; }
+.auth-form input:focus { border-color: var(--brand); background: white; box-shadow: 0 0 0 3px rgb(59 130 246 / 12%); }
+.auth-form-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(150px, .9fr); gap: 10px; }
+.auth-submit, .auth-primary-link { display: inline-flex; min-height: 49px; align-items: center; justify-content: center; gap: 8px; border: 1px solid #07101f; border-radius: 2px; background: #080d18; color: white; cursor: pointer; font-weight: 850; }
+.auth-submit { width: 100%; margin-top: 5px; }
+.auth-submit:hover, .auth-primary-link:hover { border-color: #1d4ed8; background: #102448; }
+.auth-submit:disabled { cursor: not-allowed; opacity: .48; }
+.auth-card-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); color: #718096; font-size: .74rem; }
+.auth-card-footer a { color: #1d4ed8; font-weight: 850; }
+.auth-complete-panel { display: flex; align-items: center; flex-direction: column; padding: 27px 20px; border: 1px solid #c0d0e3; border-left: 4px solid #315c9d; background: #f5f8fc; text-align: center; }
+.auth-complete-panel svg { color: #315c9d; }
+.auth-complete-panel strong { margin-top: 13px; }
+.auth-complete-panel span { margin: 6px 0 18px; color: var(--muted); font-size: .78rem; }
+.auth-complete-panel .auth-primary-link { width: 100%; }
 .spin { animation: spin 900ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (min-width: 760px) {
+  .auth-shell { grid-template-columns: minmax(0, 1.12fr) minmax(480px, .88fr); }
   .app-shell { padding: 18px 36px 48px; }
   .topbar { min-height: 86px; }
   .dashboard-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: stretch; }
@@ -479,6 +520,14 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 }
 
 @media (max-width: 520px) {
+  .auth-promo { min-height: auto; padding: 24px 20px 28px; }
+  .auth-promo-copy { margin: 42px 0 10px; }
+  .auth-promo-copy h1 { font-size: 2rem; }
+  .auth-promo-copy > p:last-child { margin-top: 17px; font-size: .82rem; }
+  .auth-benefits, .auth-security-note { display: none; }
+  .auth-form-side { align-items: flex-start; padding: 18px 14px 40px; }
+  .auth-card { padding: 26px 20px; box-shadow: 8px 8px 0 rgb(30 64 175 / 7%); }
+  .auth-form-row { grid-template-columns: 1fr; }
   .expense-shell { padding-right: 14px; padding-left: 14px; }
   .expense-hero { align-items: flex-start; flex-direction: column; padding: 25px 20px; }
   .expense-hero .expense-add-button { width: 100%; }

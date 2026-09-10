@@ -8,13 +8,19 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function mutation<T>(url: string, method: string, body?: unknown): Promise<T> {
+export async function mutation<T>(
+  url: string,
+  method: string,
+  body?: unknown,
+  additionalHeaders?: Record<string, string>,
+): Promise<T> {
   const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
   return request<T>(url, {
     method,
     headers: {
       "Content-Type": "application/json",
       [csrf.headerName]: csrf.token,
+      ...additionalHeaders,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
