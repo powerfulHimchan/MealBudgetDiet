@@ -10,4 +10,9 @@ public record PasswordResetRequest(
 	@Size(max = 320, message = "이메일은 320자 이하여야 합니다.")
 	String email
 ) {
+	public PasswordResetRequest {
+		if (email != null) {
+			email = email.trim();
+		}
+	}
 }
