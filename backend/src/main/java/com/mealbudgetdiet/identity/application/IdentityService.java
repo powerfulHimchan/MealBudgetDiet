@@ -1,13 +1,14 @@
 package com.mealbudgetdiet.identity.application;
 
-import java.util.Locale;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.identity.domain.User;
 import com.mealbudgetdiet.identity.infrastructure.UserRepository;
@@ -56,6 +57,16 @@ public class IdentityService {
 
 	public boolean passwordMatches(User user, String rawPassword) {
 		return user.getPasswordHash() != null && passwordEncoder.matches(rawPassword, user.getPasswordHash());
+	}
+
+	@Transactional
+	public String changePassword(UUID userId, String currentPassword, String newPassword) {
+		User user = getUser(userId);
+		if (!passwordMatches(user, currentPassword)) {
+			throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "현재 비밀번호가 올바르지 않습니다.");
+		}
+		user.changePassword(passwordEncoder.encode(newPassword));
+		return user.getEmail();
 	}
 
 	public void withdraw(User user) {

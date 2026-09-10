@@ -69,6 +69,8 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByText("MBD-****7K2P", { exact: true })).toBeVisible();
     } else if (screen.route === "/settings/account") {
       await expect(mobile.getByRole("heading", { name: "프로필 사진" })).toBeVisible();
+      await expect(mobile.getByRole("heading", { name: "비밀번호 변경" })).toBeVisible();
+      await expect(mobile.getByRole("heading", { name: "공유 장부 종료" })).toBeVisible();
       await expect(mobile.getByText("himchan@example.com", { exact: true })).toBeVisible();
     }
     await mobile.evaluate(() => window.scrollTo(0, 0));
@@ -100,6 +102,16 @@ test("capture implemented frontend screens", async ({ browser }) => {
         fullPage: true,
         animations: "disabled",
       });
+    }
+    if (screen.route === "/settings/account") {
+      await mobile.getByRole("button", { name: "장부 종료" }).click();
+      await expect(mobile.getByRole("dialog", { name: "우리집 식비 장부를 종료할까요?" })).toBeVisible();
+      await mobile.screenshot({
+        path: path.join(screenshotDirectory, "account-ledger-deletion-mobile.png"),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await mobile.getByRole("button", { name: "취소" }).click();
     }
   }
 
@@ -182,6 +194,47 @@ test("upload and delete a profile image", async ({ page }) => {
   await expect(page.getByText("프로필 사진을 등록했습니다.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "사진 삭제" }).click();
   await expect(page.getByText("프로필 사진을 삭제했습니다.", { exact: true })).toBeVisible();
+});
+
+test("change a password from account settings", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/account");
+
+  await page.getByLabel("현재 비밀번호", { exact: true }).first().fill("password123!");
+  await page.getByLabel(/새 비밀번호 8~72자/).fill("new-password123!");
+  await page.getByLabel("새 비밀번호 확인").fill("different-password!");
+  await page.getByRole("button", { name: "비밀번호 변경" }).click();
+  await expect(
+    page.getByText("새 비밀번호 확인이 일치하지 않습니다.", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByLabel("새 비밀번호 확인").fill("new-password123!");
+  await page.getByRole("button", { name: "비밀번호 변경" }).click();
+  await expect(page).toHaveURL("/");
+});
+
+test("requires explicit confirmation before the last administrator deletes the ledger", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/account");
+
+  await page.getByRole("button", { name: "장부 종료" }).click();
+  const dialog = page.getByRole("dialog", { name: "우리집 식비 장부를 종료할까요?" });
+  const confirmButton = dialog.getByRole("button", { name: "장부와 계정 삭제" });
+  await expect(dialog.getByText(/모든 식비, 예산, 이미지와 참여자 계정/)).toBeVisible();
+  await dialog.getByLabel("현재 비밀번호").fill("password123!");
+  await expect(confirmButton).toBeDisabled();
+  await dialog.getByLabel(/확인을 위해/).fill("우리집 식비 삭제");
+  await expect(confirmButton).toBeEnabled();
+  await confirmButton.click();
+  await expect(page).toHaveURL("/");
+});
+
+test("logs out the current device from account settings", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings/account");
+
+  await page.getByRole("button", { name: "로그아웃" }).click();
+  await expect(page).toHaveURL("/");
 });
 
 test("change the shared budget cycle start day", async ({ page }) => {

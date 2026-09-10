@@ -398,7 +398,7 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .expense-image-picker input { position: absolute; width: 1px !important; height: 1px; min-height: 0 !important; overflow: hidden; opacity: 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 .account-settings-grid { display: grid; gap: 18px; margin-top: 18px; }
-.profile-settings-panel, .account-next-panel { padding: 22px; border: 1px solid rgb(8 13 24 / 12%); border-radius: 6px; background: white; box-shadow: 0 10px 25px rgb(15 23 42 / 6%); }
+.profile-settings-panel, .account-security-panel, .account-session-panel, .account-danger-panel { padding: 22px; border: 1px solid rgb(8 13 24 / 12%); border-radius: 4px; background: white; box-shadow: 0 10px 25px rgb(15 23 42 / 6%); }
 .profile-settings-panel .panel-heading { justify-content: flex-start; }
 .profile-editor { display: flex; align-items: center; gap: 18px; margin: 20px 0; padding: 18px; border: 1px solid #cfdae8; border-left: 4px solid var(--brand); background: #f7faff; }
 .profile-preview { position: relative; display: grid; width: 96px; height: 96px; flex: none; overflow: hidden; place-items: center; background: #0a1425; color: #8ebdff; font-size: 2rem; }
@@ -406,13 +406,42 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .profile-editor > div { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
 .profile-editor > div > strong, .profile-editor > div > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profile-editor > div > span { color: #64748b; font-size: .78rem; }
+.profile-editor .account-role-label { align-self: flex-start; padding: 4px 7px; border: 1px solid #aec7eb; background: #eaf2ff; color: #1d4ed8; font-size: .65rem; font-weight: 850; }
 .profile-editor p { margin: 5px 0 0; color: #64748b; font-size: .74rem; line-height: 1.55; }
 .profile-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .profile-actions label { cursor: pointer; }
 .profile-actions input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
-.account-next-panel { border-left: 5px solid #61738e; background: #f7f9fc; }
-.account-next-panel h2 { margin: 5px 0 9px; }
-.account-next-panel > p:last-child { margin: 0; color: #64748b; font-size: .8rem; line-height: 1.6; }
+.account-settings-stack { display: grid; gap: 18px; }
+.account-security-panel .panel-heading { justify-content: flex-start; }
+.account-panel-description { margin: 15px 0 17px; color: #64748b; font-size: .78rem; line-height: 1.55; }
+.account-password-form { display: grid; gap: 12px; }
+.account-password-form label, .account-withdrawal-dialog label { display: flex; flex-direction: column; gap: 7px; color: #45566f; font-size: .75rem; font-weight: 800; }
+.account-password-form label span, .account-withdrawal-dialog label span { display: flex; justify-content: space-between; gap: 8px; }
+.account-password-form label small { color: #8a99ad; font-size: .66rem; }
+.account-password-form input, .account-withdrawal-dialog input { width: 100%; min-height: 43px; padding: 0 12px; border: 1px solid #bdcde1; border-radius: 2px; outline: none; background: white; color: var(--ink); font: inherit; }
+.account-password-form input:focus, .account-withdrawal-dialog input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgb(59 130 246 / 12%); }
+.account-password-form .dark-button { justify-self: end; margin-top: 2px; }
+.account-session-panel { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 17px; border-left: 4px solid #526b91; background: #f8fafd; }
+.account-session-icon { display: grid; width: 42px; height: 42px; place-items: center; background: #e8eef7; color: #334e75; }
+.account-session-panel > div { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.account-session-panel > div strong { font-size: .85rem; }
+.account-session-panel > div span { color: #64748b; font-size: .71rem; line-height: 1.4; }
+.account-danger-panel { display: flex; align-items: center; justify-content: space-between; gap: 22px; border-color: #e2b3b9; border-left: 5px solid #a72a3b; background: #fffafb; }
+.account-danger-panel > div { display: flex; align-items: flex-start; gap: 14px; }
+.account-danger-icon { display: grid; width: 46px; height: 46px; flex: none; place-items: center; background: #fff0f2; color: #a72a3b; }
+.account-danger-panel .eyebrow { margin-bottom: 4px; color: #a72a3b; }
+.account-danger-panel h2 { font-size: 1.1rem; }
+.account-danger-panel > div p:last-child { max-width: 670px; margin: 8px 0 0; color: #72555a; font-size: .78rem; line-height: 1.55; }
+.account-withdrawal-button { flex: none; border-color: #cb8f98; color: #9f1239; }
+.account-withdrawal-dialog { width: min(100%, 520px); max-height: calc(100vh - 24px); overflow-y: auto; padding: 25px; border: 1px solid #6e3440; border-radius: 4px 4px 0 0; background: white; box-shadow: 0 22px 70px rgb(0 0 0 / 35%); }
+.account-withdrawal-icon { display: grid; width: 49px; height: 49px; place-items: center; margin-bottom: 18px; background: #fff0f2; color: #a72a3b; }
+.account-withdrawal-dialog .eyebrow { color: #a72a3b; }
+.account-withdrawal-dialog h2 { line-height: 1.35; }
+.account-withdrawal-dialog > p:not(.eyebrow) { margin: 12px 0 20px; color: var(--muted); font-size: .82rem; line-height: 1.65; }
+.account-withdrawal-dialog form { display: grid; gap: 14px; }
+.account-withdrawal-dialog form > div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.account-withdrawal-dialog label strong { color: #9f1239; }
+.account-withdrawal-confirm { border-color: #8f1d2f; background: #8f1d2f; }
 .spin { animation: spin 900ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -438,12 +467,14 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
   .category-delete-dialog { border-radius: 4px; }
   .member-role-dialog { border-radius: 4px; }
   .invitation-revoke-dialog { border-radius: 4px; }
+  .account-withdrawal-dialog { border-radius: 4px; }
   .range-panel { grid-template-columns: 1fr auto; align-items: end; }
   .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .analytics-grid { grid-template-columns: minmax(0, 1.5fr) minmax(280px, .7fr); }
   .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settings-menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .account-settings-grid { grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr); align-items: start; }
+  .account-danger-panel { grid-column: 1 / -1; }
   .budget-guide { grid-column: 1 / -1; }
 }
 
@@ -505,6 +536,15 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
   .profile-preview { width: 78px; height: 78px; }
   .profile-actions { flex-direction: column; }
   .profile-actions > *, .profile-actions label { width: 100%; }
+  .account-password-form .dark-button { width: 100%; }
+  .account-session-panel { grid-template-columns: 42px minmax(0, 1fr); }
+  .account-session-panel .secondary-button { grid-column: 1 / -1; width: 100%; }
+  .account-danger-panel { align-items: stretch; flex-direction: column; padding: 19px 16px; }
+  .account-danger-panel > div { align-items: flex-start; }
+  .account-withdrawal-button { width: 100%; }
+  .account-withdrawal-dialog { padding: 22px 18px; }
+  .account-withdrawal-dialog form > div { flex-direction: column-reverse; }
+  .account-withdrawal-dialog form > div button { width: 100%; }
   .invitation-security-note { margin: 4px 14px 16px; }
   .chart-wrap { height: 240px; }
   .budget-actions { align-items: stretch; flex-direction: column-reverse; }

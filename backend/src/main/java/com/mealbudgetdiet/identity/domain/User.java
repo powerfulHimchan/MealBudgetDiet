@@ -83,6 +83,10 @@ public class User {
 		this.profileImageId = profileImageId;
 	}
 
+	public void changePassword(String passwordHash) {
+		this.passwordHash = passwordHash;
+	}
+
 	public void withdraw() {
 		this.status = UserStatus.WITHDRAWN;
 		this.passwordHash = null;
