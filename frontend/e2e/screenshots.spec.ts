@@ -27,6 +27,8 @@ test("capture implemented frontend screens", async ({ browser }) => {
     { route: "/login", file: "login-mobile.png", heading: "로그인" },
     { route: "/join?code=MBD-TEST-7K2P", file: "join-mobile.png", heading: "초대받은 장부에 참여" },
     { route: "/setup", file: "setup-mobile.png", heading: "첫 장부 만들기" },
+    { route: "/forgot-password", file: "forgot-password-mobile.png", heading: "비밀번호 찾기" },
+    { route: "/reset-password?token=test-reset-token", file: "reset-password-mobile.png", heading: "새 비밀번호 설정" },
   ];
   for (const screen of authScreens) {
     await authMobile.goto(screen.route);
@@ -309,6 +311,32 @@ test("creates the first administrator and ledger", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "141,200원 남았어요" })).toBeVisible();
 });
 
+test("requests a password reset without revealing whether the account exists", async ({ page }) => {
+  await mockExpenseApis(page, false);
+  await page.goto("/forgot-password");
+
+  await page.getByLabel("이메일").fill("missing@example.com");
+  await page.getByRole("button", { name: "재설정 링크 받기" }).click();
+
+  await expect(page.getByText("이메일을 확인해 주세요.", { exact: true })).toBeVisible();
+  await expect(page.getByText("가입된 계정이라면 비밀번호 재설정 링크를 보내드렸습니다.", { exact: true })).toBeVisible();
+});
+
+test("resets a password with the token from the email", async ({ page }) => {
+  await mockExpenseApis(page, false);
+  await page.goto("/reset-password?token=test-reset-token");
+
+  await page.getByLabel(/새 비밀번호 8~72자/).fill("recovered-password123!");
+  await page.getByLabel("새 비밀번호 확인").fill("different-password!");
+  await page.getByRole("button", { name: "비밀번호 재설정" }).click();
+  await expect(page.getByText("비밀번호 확인이 일치하지 않습니다.", { exact: true })).toBeVisible();
+
+  await page.getByLabel("새 비밀번호 확인").fill("recovered-password123!");
+  await page.getByRole("button", { name: "비밀번호 재설정" }).click();
+  await expect(page.getByText("새 비밀번호를 저장했습니다.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "새 비밀번호로 로그인" })).toHaveAttribute("href", "/login");
+});
+
 test("change the shared budget cycle start day", async ({ page }) => {
   await mockExpenseApis(page);
   await page.goto("/settings/budget");
@@ -475,6 +503,18 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
         json: { id: members[1].id, email: body.email, displayName: body.displayName, role: "MEMBER", profileImageUrl: null },
         status: 201,
       });
+    } else if (pathname === "/api/v1/auth/password-reset-requests") {
+      await route.fulfill({ status: 202 });
+    } else if (pathname === "/api/v1/auth/password-resets") {
+      const body = route.request().postDataJSON() as { token: string };
+      if (body.token !== "test-reset-token") {
+        await route.fulfill({ json: { detail: "비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다." }, status: 400 });
+      } else {
+        await route.fulfill({
+          headers: { "set-cookie": "MBD_SESSION=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax" },
+          status: 204,
+        });
+      }
     } else if (pathname === "/api/v1/bootstrap/admin") {
       if (route.request().headers()["x-bootstrap-token"] !== "test-bootstrap-token") {
         await route.fulfill({ json: { detail: "요청한 리소스를 찾을 수 없습니다." }, status: 404 });

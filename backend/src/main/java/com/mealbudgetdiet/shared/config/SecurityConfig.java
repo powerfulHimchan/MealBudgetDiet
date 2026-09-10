@@ -40,7 +40,9 @@ public class SecurityConfig {
 					"/api/v1/bootstrap/**",
 					"/api/v1/auth/csrf",
 					"/api/v1/auth/login",
-					"/api/v1/auth/register"
+					"/api/v1/auth/register",
+					"/api/v1/auth/password-reset-requests",
+					"/api/v1/auth/password-resets"
 				).permitAll()
 				.anyRequest().authenticated())
 			.csrf(csrf -> csrf

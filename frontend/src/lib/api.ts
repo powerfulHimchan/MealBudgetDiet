@@ -5,7 +5,8 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(problem?.detail ?? "요청을 처리하지 못했습니다.");
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  const responseText = await response.text();
+  return (responseText ? JSON.parse(responseText) : undefined) as T;
 }
 
 export async function mutation<T>(

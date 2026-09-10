@@ -21,6 +21,7 @@ final class PersistentSessionCookieFilter extends OncePerRequestFilter {
 		"/api/v1/auth/login",
 		"/api/v1/auth/logout",
 		"/api/v1/auth/register",
+		"/api/v1/auth/password-resets",
 		"/api/v1/account/password-change",
 		"/api/v1/account/withdrawal"
 	);

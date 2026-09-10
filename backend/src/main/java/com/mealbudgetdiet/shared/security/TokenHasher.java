@@ -11,9 +11,17 @@ import org.springframework.stereotype.Component;
 public class TokenHasher {
 
 	public String hash(String rawToken) {
+		return digest(rawToken.trim().toUpperCase());
+	}
+
+	public String hashExact(String rawToken) {
+		return digest(rawToken);
+	}
+
+	private String digest(String value) {
 		try {
 			byte[] digest = MessageDigest.getInstance("SHA-256")
-				.digest(rawToken.trim().toUpperCase().getBytes(StandardCharsets.UTF_8));
+				.digest(value.getBytes(StandardCharsets.UTF_8));
 			return HexFormat.of().formatHex(digest);
 		}
 		catch (NoSuchAlgorithmException exception) {

@@ -30,6 +30,10 @@ spring:
 app:
   bootstrap-token: ${BOOTSTRAP_TOKEN:}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:3000}
+  password-reset:
+    token-ttl: ${PASSWORD_RESET_TOKEN_TTL:30m}
+    email-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:false}
+    email-from: ${PASSWORD_RESET_EMAIL_FROM:no-reply@mealbudgetdiet.local}
   push:
     vapid-public-key: ${VAPID_PUBLIC_KEY:}
     vapid-private-key: ${VAPID_PRIVATE_KEY:}
