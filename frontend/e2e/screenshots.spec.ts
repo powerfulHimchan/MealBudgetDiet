@@ -16,6 +16,29 @@ test("capture implemented frontend screens", async ({ browser }) => {
   });
   await desktop.close();
 
+  const authMobile = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true,
+  });
+  await mockExpenseApis(authMobile, false);
+  const authScreens = [
+    { route: "/login", file: "login-mobile.png", heading: "로그인" },
+    { route: "/join?code=MBD-TEST-7K2P", file: "join-mobile.png", heading: "초대받은 장부에 참여" },
+    { route: "/setup", file: "setup-mobile.png", heading: "첫 장부 만들기" },
+  ];
+  for (const screen of authScreens) {
+    await authMobile.goto(screen.route);
+    await expect(authMobile.getByRole("heading", { name: screen.heading })).toBeVisible();
+    await authMobile.screenshot({
+      path: path.join(screenshotDirectory, screen.file),
+      fullPage: true,
+      animations: "disabled",
+    });
+  }
+  await authMobile.close();
+
   const mobile = await browser.newPage({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 1,
@@ -237,6 +260,55 @@ test("logs out the current device from account settings", async ({ page }) => {
   await expect(page).toHaveURL("/");
 });
 
+test("redirects an anonymous user to login and returns to the requested page", async ({ page }) => {
+  await mockExpenseApis(page, false);
+  await page.goto("/statistics?from=2026-09-01&to=2026-09-30");
+
+  await expect(page).toHaveURL(/\/login\?next=/);
+  await page.getByLabel("이메일").fill("himchan@example.com");
+  await page.getByLabel("비밀번호", { exact: true }).fill("wrong-password");
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page.getByText("이메일 또는 비밀번호가 올바르지 않습니다.", { exact: true })).toBeVisible();
+
+  await page.getByLabel("비밀번호", { exact: true }).fill("password123!");
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+
+  await expect(page).toHaveURL("/statistics?from=2026-09-01&to=2026-09-30");
+  await expect(page.getByRole("heading", { name: "기간별 통계" })).toBeVisible();
+});
+
+test("joins a shared ledger with the invitation code from the URL", async ({ page }) => {
+  await mockExpenseApis(page, false);
+  await page.goto("/join?code=MBD-TEST-7K2P");
+
+  await expect(page.getByLabel("초대 코드")).toHaveValue("MBD-TEST-7K2P");
+  await page.getByLabel("표시 이름").fill("가족");
+  await page.getByLabel("이메일").fill("family@example.com");
+  await page.getByLabel("비밀번호", { exact: false }).first().fill("password123!");
+  await page.getByLabel("비밀번호 확인").fill("different-password!");
+  await page.getByRole("button", { name: "가입하고 시작하기" }).click();
+  await expect(page.getByText("비밀번호 확인이 일치하지 않습니다.", { exact: true })).toBeVisible();
+
+  await page.getByLabel("비밀번호 확인").fill("password123!");
+  await page.getByRole("button", { name: "가입하고 시작하기" }).click();
+  await expect(page).toHaveURL("/");
+});
+
+test("creates the first administrator and ledger", async ({ page }) => {
+  await mockExpenseApis(page, false);
+  await page.goto("/setup");
+
+  await page.getByLabel("Bootstrap 토큰").fill("test-bootstrap-token");
+  await page.getByLabel("표시 이름").fill("힘찬");
+  await page.getByLabel("이메일").fill("himchan@example.com");
+  await page.getByLabel("비밀번호", { exact: false }).first().fill("password123!");
+  await page.getByLabel("비밀번호 확인").fill("password123!");
+  await page.getByRole("button", { name: "관리자 계정 만들기" }).click();
+
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "141,200원 남았어요" })).toBeVisible();
+});
+
 test("change the shared budget cycle start day", async ({ page }) => {
   await mockExpenseApis(page);
   await page.goto("/settings/budget");
@@ -259,7 +331,10 @@ test("change the shared push usage threshold", async ({ page }) => {
   await expect(page.getByLabel("Push 기준 사용률")).toHaveValue("75");
 });
 
-async function mockExpenseApis(page: import("@playwright/test").Page) {
+async function mockExpenseApis(page: import("@playwright/test").Page, authenticated = true) {
+  if (authenticated) {
+    await page.context().addCookies([{ name: "MBD_SESSION", value: "screenshot-session", url: "http://127.0.0.1:3000" }]);
+  }
   let categories = [
     { id: "11111111-1111-1111-1111-111111111111", name: "장보기", sortOrder: 1, version: 0 },
     { id: "22222222-2222-2222-2222-222222222222", name: "외식", sortOrder: 2, version: 0 },
@@ -381,6 +456,35 @@ async function mockExpenseApis(page: import("@playwright/test").Page) {
       const yearMonth = pathname.split("/").at(-1);
       const period = budgetCycleStarting(yearMonth!, ledger.budgetCycleStartDay);
       await route.fulfill({ json: { yearMonth, period: { from: period.from, to: period.to }, amount: 800000, source: "DEFAULT", version: 0 } });
+    } else if (pathname === "/api/v1/bootstrap/status") {
+      await route.fulfill({ json: { available: true } });
+    } else if (pathname === "/api/v1/auth/login") {
+      const body = route.request().postDataJSON() as { email: string; password: string };
+      if (body.password === "wrong-password") {
+        await route.fulfill({ json: { detail: "이메일 또는 비밀번호가 올바르지 않습니다." }, status: 401 });
+      } else {
+        await route.fulfill({
+          headers: { "set-cookie": "MBD_SESSION=authenticated-session; Path=/; HttpOnly; SameSite=Lax" },
+          json: { id: members[0].id, email: body.email, displayName: "힘찬", role: "ADMIN", profileImageUrl: null },
+        });
+      }
+    } else if (pathname === "/api/v1/auth/register") {
+      const body = route.request().postDataJSON() as { inviteCode: string; email: string; displayName: string };
+      await route.fulfill({
+        headers: { "set-cookie": "MBD_SESSION=registered-session; Path=/; HttpOnly; SameSite=Lax" },
+        json: { id: members[1].id, email: body.email, displayName: body.displayName, role: "MEMBER", profileImageUrl: null },
+        status: 201,
+      });
+    } else if (pathname === "/api/v1/bootstrap/admin") {
+      if (route.request().headers()["x-bootstrap-token"] !== "test-bootstrap-token") {
+        await route.fulfill({ json: { detail: "요청한 리소스를 찾을 수 없습니다." }, status: 404 });
+      } else {
+        await route.fulfill({
+          headers: { "set-cookie": "MBD_SESSION=bootstrap-session; Path=/; HttpOnly; SameSite=Lax" },
+          json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", role: "ADMIN", profileImageUrl: null },
+          status: 201,
+        });
+      }
     } else if (pathname === "/api/v1/auth/csrf") {
       await route.fulfill({ json: { headerName: "X-XSRF-TOKEN", token: "screenshot-token" } });
     } else if (pathname === "/api/v1/auth/me") {
