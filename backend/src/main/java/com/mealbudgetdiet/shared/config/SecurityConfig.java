@@ -13,6 +13,7 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -24,7 +25,10 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SecurityConfig {
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain securityFilterChain(
+		HttpSecurity http,
+		DefaultCookieSerializer cookieSerializer
+	) throws Exception {
 		var csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 		csrfRepository.setCookiePath("/");
 
@@ -48,6 +52,9 @@ public class SecurityConfig {
 					writeProblem(response, HttpServletResponse.SC_UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "로그인이 필요합니다."))
 				.accessDeniedHandler((request, response, exception) ->
 					writeProblem(response, HttpServletResponse.SC_FORBIDDEN, "ACCESS_DENIED", "요청 권한이 없습니다.")))
+			.addFilterAfter(
+				new PersistentSessionCookieFilter(cookieSerializer),
+				SecurityContextHolderFilter.class)
 			.build();
 	}
 
@@ -76,6 +83,7 @@ public class SecurityConfig {
 		serializer.setUseHttpOnlyCookie(true);
 		serializer.setSameSite("Lax");
 		serializer.setUseSecureCookie(secureCookie);
+		serializer.setCookieMaxAge(Integer.MAX_VALUE);
 		return serializer;
 	}
 

@@ -210,12 +210,18 @@ class LedgerCollaborationIntegrationTest {
 	@Test
 	@Order(7)
 	void withdrawsMemberAndInvalidatesTheirSession() throws Exception {
-		mockMvc.perform(post("/api/v1/account/withdrawal")
+		var result = mockMvc.perform(post("/api/v1/account/withdrawal")
 				.with(csrf())
 				.cookie(memberSession)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"password\":\"member-password!\"}"))
-			.andExpect(status().isNoContent());
+			.andExpect(status().isNoContent())
+			.andReturn();
+
+		assertThat(result.getResponse().getHeader("Set-Cookie"))
+			.isNotNull()
+			.contains("MBD_SESSION=")
+			.contains("Max-Age=0");
 
 		mockMvc.perform(get("/api/v1/auth/me").cookie(memberSession))
 			.andExpect(status().isUnauthorized());

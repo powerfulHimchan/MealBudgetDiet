@@ -71,8 +71,16 @@ class AuthenticationFlowIntegrationTest {
 			.andReturn();
 
 		String setCookie = result.getResponse().getHeader("Set-Cookie");
-		assertThat(setCookie).isNotNull().contains("MBD_SESSION=").contains("HttpOnly");
+		assertThat(setCookie)
+			.isNotNull()
+			.contains("MBD_SESSION=")
+			.contains("Max-Age=" + Integer.MAX_VALUE)
+			.contains("HttpOnly");
 		adminSession = sessionCookie(setCookie);
+		assertThat(jdbcTemplate.queryForObject(
+			"select max_inactive_interval from spring_session", Integer.class)).isEqualTo(-1);
+		assertThat(jdbcTemplate.queryForObject(
+			"select expiry_time from spring_session", Long.class)).isEqualTo(Long.MAX_VALUE);
 		assertThat(jdbcTemplate.queryForObject("select count(*) from categories", Integer.class)).isEqualTo(5);
 		assertThat(jdbcTemplate.queryForObject("select password_hash from users", String.class))
 			.startsWith("{bcrypt}")
@@ -82,10 +90,19 @@ class AuthenticationFlowIntegrationTest {
 	@Test
 	@Order(2)
 	void restoresAuthenticatedUserFromJdbcSession() throws Exception {
-		mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
+		jdbcTemplate.update("update spring_session set last_access_time = 0");
+
+		var result = mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.displayName").value("힘찬"))
-			.andExpect(jsonPath("$.role").value("ADMIN"));
+			.andExpect(jsonPath("$.role").value("ADMIN"))
+			.andReturn();
+
+		assertThat(result.getResponse().getHeader("Set-Cookie"))
+			.contains("MBD_SESSION=")
+			.contains("Max-Age=" + Integer.MAX_VALUE);
+		assertThat(jdbcTemplate.queryForObject(
+			"select last_access_time from spring_session", Long.class)).isPositive();
 	}
 
 	@Test
@@ -144,8 +161,18 @@ class AuthenticationFlowIntegrationTest {
 	@Test
 	@Order(5)
 	void logsOutAndInvalidatesCurrentSession() throws Exception {
-		mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).cookie(adminSession))
-			.andExpect(status().isNoContent());
+		var result = mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).cookie(adminSession))
+			.andExpect(status().isNoContent())
+			.andReturn();
+
+		assertThat(result.getResponse().getHeader("Set-Cookie"))
+			.contains("MBD_SESSION=")
+			.contains("Max-Age=0");
+		assertThat(jdbcTemplate.queryForObject(
+			"select count(*) from spring_session where principal_name = ?",
+			Integer.class,
+			"owner@example.com"
+		)).isZero();
 
 		mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
 			.andExpect(status().isUnauthorized());

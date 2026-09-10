@@ -23,7 +23,7 @@ spring:
       max-file-size: 5MB
       max-request-size: 6MB
   session:
-    timeout: 30d
+    timeout: -1s
     jdbc:
       initialize-schema: never
 

@@ -3,8 +3,6 @@ package com.mealbudgetdiet.identity.api;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,8 +10,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mealbudgetdiet.identity.application.SessionAuthenticationService;
 import com.mealbudgetdiet.identity.application.IdentityService;
+import com.mealbudgetdiet.identity.application.SessionAuthenticationService;
+import com.mealbudgetdiet.identity.application.SessionLogoutService;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.ledger.application.OnboardingService;
 
@@ -27,15 +26,18 @@ public class AuthController {
 
 	private final OnboardingService onboardingService;
 	private final SessionAuthenticationService sessionAuthenticationService;
+	private final SessionLogoutService sessionLogoutService;
 	private final IdentityService identityService;
 
 	public AuthController(
 		OnboardingService onboardingService,
 		SessionAuthenticationService sessionAuthenticationService,
+		SessionLogoutService sessionLogoutService,
 		IdentityService identityService
 	) {
 		this.onboardingService = onboardingService;
 		this.sessionAuthenticationService = sessionAuthenticationService;
+		this.sessionLogoutService = sessionLogoutService;
 		this.identityService = identityService;
 	}
 
@@ -73,11 +75,7 @@ public class AuthController {
 
 	@PostMapping("/logout")
 	ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
-		new SecurityContextLogoutHandler().logout(
-			request,
-			response,
-			SecurityContextHolder.getContext().getAuthentication()
-		);
+		sessionLogoutService.logout(request, response);
 		return ResponseEntity.noContent().build();
 	}
 

@@ -8,8 +8,6 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mealbudgetdiet.identity.application.SessionInvalidationService;
+import com.mealbudgetdiet.identity.application.SessionLogoutService;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
 import com.mealbudgetdiet.ledger.application.LedgerSnapshot;
@@ -47,17 +46,20 @@ public class LedgerController {
 	private final LedgerAccessService ledgerAccessService;
 	private final MemberManagementService memberManagementService;
 	private final SessionInvalidationService sessionInvalidationService;
+	private final SessionLogoutService sessionLogoutService;
 	private final LedgerSettingsService ledgerSettingsService;
 
 	public LedgerController(
 		LedgerAccessService ledgerAccessService,
 		MemberManagementService memberManagementService,
 		SessionInvalidationService sessionInvalidationService,
+		SessionLogoutService sessionLogoutService,
 		LedgerSettingsService ledgerSettingsService
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.memberManagementService = memberManagementService;
 		this.sessionInvalidationService = sessionInvalidationService;
+		this.sessionLogoutService = sessionLogoutService;
 		this.ledgerSettingsService = ledgerSettingsService;
 	}
 
@@ -112,8 +114,7 @@ public class LedgerController {
 		var result = memberManagementService.withdraw(
 			principal.id(), requestBody.password(), requestBody.confirmation());
 		sessionInvalidationService.invalidateByEmails(result.invalidatedEmails());
-		new SecurityContextLogoutHandler().logout(
-			request, response, SecurityContextHolder.getContext().getAuthentication());
+		sessionLogoutService.logout(request, response);
 		return ResponseEntity.noContent().build();
 	}
 
