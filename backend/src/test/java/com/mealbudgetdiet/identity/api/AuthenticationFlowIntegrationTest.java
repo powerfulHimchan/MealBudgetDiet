@@ -161,9 +161,6 @@ class AuthenticationFlowIntegrationTest {
 	@Test
 	@Order(5)
 	void logsOutAndInvalidatesCurrentSession() throws Exception {
-		int sessionCountBeforeLogout = jdbcTemplate.queryForObject(
-			"select count(*) from spring_session", Integer.class);
-
 		var result = mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).cookie(adminSession))
 			.andExpect(status().isNoContent())
 			.andReturn();
@@ -172,7 +169,10 @@ class AuthenticationFlowIntegrationTest {
 			.contains("MBD_SESSION=")
 			.contains("Max-Age=0");
 		assertThat(jdbcTemplate.queryForObject(
-			"select count(*) from spring_session", Integer.class)).isEqualTo(sessionCountBeforeLogout - 1);
+			"select count(*) from spring_session where principal_name = ?",
+			Integer.class,
+			"owner@example.com"
+		)).isZero();
 
 		mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
 			.andExpect(status().isUnauthorized());
