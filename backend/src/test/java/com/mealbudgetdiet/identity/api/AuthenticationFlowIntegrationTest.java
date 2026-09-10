@@ -160,6 +160,71 @@ class AuthenticationFlowIntegrationTest {
 
 	@Test
 	@Order(5)
+	void changesPasswordAndInvalidatesEverySession() throws Exception {
+		var secondLogin = mockMvc.perform(post("/api/v1/auth/login")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com","password":"password123!"}
+					"""))
+			.andExpect(status().isOk())
+			.andReturn();
+		Cookie secondAdminSession = sessionCookie(secondLogin.getResponse().getHeader("Set-Cookie"));
+
+		mockMvc.perform(post("/api/v1/account/password-change")
+				.with(csrf())
+				.cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"currentPassword":"wrong-password","newPassword":"new-password123!"}
+					"""))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+
+		var result = mockMvc.perform(post("/api/v1/account/password-change")
+				.with(csrf())
+				.cookie(adminSession)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"currentPassword":"password123!","newPassword":"new-password123!"}
+					"""))
+			.andExpect(status().isNoContent())
+			.andReturn();
+
+		assertThat(result.getResponse().getHeader("Set-Cookie"))
+			.contains("MBD_SESSION=")
+			.contains("Max-Age=0");
+		assertThat(jdbcTemplate.queryForObject(
+			"select count(*) from spring_session where principal_name = ?",
+			Integer.class,
+			"owner@example.com"
+		)).isZero();
+		mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
+			.andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/v1/auth/me").cookie(secondAdminSession))
+			.andExpect(status().isUnauthorized());
+
+		mockMvc.perform(post("/api/v1/auth/login")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com","password":"password123!"}
+					"""))
+			.andExpect(status().isUnauthorized());
+
+		var relogin = mockMvc.perform(post("/api/v1/auth/login")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com","password":"new-password123!"}
+					"""))
+			.andExpect(status().isOk())
+			.andReturn();
+		adminSession = sessionCookie(relogin.getResponse().getHeader("Set-Cookie"));
+	}
+
+	@Test
+	@Order(6)
 	void logsOutAndInvalidatesCurrentSession() throws Exception {
 		var result = mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).cookie(adminSession))
 			.andExpect(status().isNoContent())
