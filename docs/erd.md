@@ -388,6 +388,22 @@ AND expires_at > current_timestamp
 AND user.status = ACTIVE
 ```
 
+### 2.9.1 auth_rate_limits
+
+서버 인스턴스 전체에서 공유하는 인증 요청 고정 윈도우 카운터를 저장한다.
+
+| 컬럼 | 타입 | Null | 규칙 |
+|---|---|:---:|---|
+| scope | varchar(40) | N | PK 일부, 제한 종류 |
+| subject_hash | varchar(64) | N | PK 일부, 환경별 HMAC-SHA-256 식별자 |
+| window_started_at | timestamptz | N | 현재 고정 윈도우 시작 시각 |
+| attempt_count | integer | N | 윈도우 내 요청 횟수, 0보다 큼 |
+| updated_at | timestamptz | N | 최종 요청 시각, 만료 행 정리 기준 |
+
+- 이메일, 클라이언트 주소와 비밀번호는 원문으로 저장하지 않는다.
+- 로그인 성공 시 해당 이메일·클라이언트 조합의 카운터를 삭제한다.
+- 오래된 카운터는 예약 정리 작업으로 삭제한다.
+
 ### 2.10 push_subscriptions
 
 사용자가 푸시 알림을 허용한 브라우저 기기의 Web Push 구독을 저장한다.

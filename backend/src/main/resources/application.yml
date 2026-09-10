@@ -34,6 +34,17 @@ app:
     token-ttl: ${PASSWORD_RESET_TOKEN_TTL:30m}
     email-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:false}
     email-from: ${PASSWORD_RESET_EMAIL_FROM:no-reply@mealbudgetdiet.local}
+  auth-security:
+    rate-limit-secret: ${AUTH_RATE_LIMIT_SECRET:local-development-rate-limit-secret-change-me}
+    login:
+      max-failures: ${AUTH_LOGIN_MAX_FAILURES:5}
+      window: ${AUTH_LOGIN_WINDOW:15m}
+    password-reset:
+      max-requests-per-email: ${AUTH_PASSWORD_RESET_EMAIL_MAX_REQUESTS:3}
+      max-requests-per-client: ${AUTH_PASSWORD_RESET_CLIENT_MAX_REQUESTS:10}
+      window: ${AUTH_PASSWORD_RESET_WINDOW:1h}
+    retention: ${AUTH_RATE_LIMIT_RETENTION:7d}
+    cleanup-cron: ${AUTH_RATE_LIMIT_CLEANUP_CRON:0 0 4 * * *}
   push:
     vapid-public-key: ${VAPID_PUBLIC_KEY:}
     vapid-private-key: ${VAPID_PRIVATE_KEY:}
@@ -72,3 +83,6 @@ management:
 logging:
   pattern:
     correlation: "[%X{traceId:-}] "
+  structured:
+    format:
+      console: ${STRUCTURED_LOG_FORMAT:ecs}
