@@ -1,5 +1,7 @@
 package com.mealbudgetdiet.identity.api;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -11,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mealbudgetdiet.identity.application.IdentityService;
+import com.mealbudgetdiet.identity.application.PasswordResetService;
 import com.mealbudgetdiet.identity.application.SessionAuthenticationService;
+import com.mealbudgetdiet.identity.application.SessionInvalidationService;
 import com.mealbudgetdiet.identity.application.SessionLogoutService;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.ledger.application.OnboardingService;
@@ -28,17 +32,23 @@ public class AuthController {
 	private final SessionAuthenticationService sessionAuthenticationService;
 	private final SessionLogoutService sessionLogoutService;
 	private final IdentityService identityService;
+	private final PasswordResetService passwordResetService;
+	private final SessionInvalidationService sessionInvalidationService;
 
 	public AuthController(
 		OnboardingService onboardingService,
 		SessionAuthenticationService sessionAuthenticationService,
 		SessionLogoutService sessionLogoutService,
-		IdentityService identityService
+		IdentityService identityService,
+		PasswordResetService passwordResetService,
+		SessionInvalidationService sessionInvalidationService
 	) {
 		this.onboardingService = onboardingService;
 		this.sessionAuthenticationService = sessionAuthenticationService;
 		this.sessionLogoutService = sessionLogoutService;
 		this.identityService = identityService;
+		this.passwordResetService = passwordResetService;
+		this.sessionInvalidationService = sessionInvalidationService;
 	}
 
 	@GetMapping("/csrf")
@@ -75,6 +85,24 @@ public class AuthController {
 
 	@PostMapping("/logout")
 	ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+		sessionLogoutService.logout(request, response);
+		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/password-reset-requests")
+	ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequest requestBody) {
+		passwordResetService.requestReset(requestBody.email());
+		return ResponseEntity.accepted().build();
+	}
+
+	@PostMapping("/password-resets")
+	ResponseEntity<Void> resetPassword(
+		@Valid @RequestBody PasswordResetConfirmRequest requestBody,
+		HttpServletRequest request,
+		HttpServletResponse response
+	) {
+		String email = passwordResetService.resetPassword(requestBody.token(), requestBody.newPassword());
+		sessionInvalidationService.invalidateByEmails(List.of(email));
 		sessionLogoutService.logout(request, response);
 		return ResponseEntity.noContent().build();
 	}

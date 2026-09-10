@@ -6,6 +6,7 @@ import {
   KeyRound,
   LoaderCircle,
   LogIn,
+  Mail,
   ShieldCheck,
   UserPlus,
   UsersRound,
@@ -16,10 +17,11 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { mutation, request } from "../lib/api";
 
-type AuthMode = "login" | "join" | "setup";
+type AuthMode = "login" | "join" | "setup" | "forgot" | "reset";
 type AuthScreenProps = {
   mode: AuthMode;
   initialInviteCode?: string;
+  initialResetToken?: string;
   nextPath?: string;
 };
 
@@ -42,6 +44,18 @@ const content = {
     description: "배포 시 설정한 Bootstrap 토큰으로 최초 관리자와 공유 장부를 만듭니다.",
     submit: "관리자 계정 만들기",
   },
+  forgot: {
+    eyebrow: "PASSWORD RECOVERY",
+    title: "비밀번호 찾기",
+    description: "가입한 이메일로 30분 동안 한 번 사용할 수 있는 재설정 링크를 보내드립니다.",
+    submit: "재설정 링크 받기",
+  },
+  reset: {
+    eyebrow: "SET NEW PASSWORD",
+    title: "새 비밀번호 설정",
+    description: "다른 서비스에서 사용하지 않는 새 비밀번호를 입력해 주세요.",
+    submit: "비밀번호 재설정",
+  },
 } as const;
 
 function safeDestination(nextPath?: string) {
@@ -51,7 +65,7 @@ function safeDestination(nextPath?: string) {
   return nextPath;
 }
 
-export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScreenProps) {
+export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "", nextPath }: AuthScreenProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,11 +76,13 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
   const [ledgerName, setLedgerName] = useState("우리집 식비");
   const [monthlyBudget, setMonthlyBudget] = useState("800000");
   const [bootstrapAvailable, setBootstrapAvailable] = useState<boolean | null>(null);
+  const [requestSent, setRequestSent] = useState(false);
+  const [resetComplete, setResetComplete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (mode === "join") return;
+    if (mode !== "login" && mode !== "setup") return;
     let active = true;
     request<{ available: boolean }>("/api/v1/bootstrap/status")
       .then((response) => active && setBootstrapAvailable(response.available))
@@ -77,7 +93,7 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (mode !== "login" && password !== passwordConfirmation) {
+    if ((mode === "join" || mode === "setup" || mode === "reset") && password !== passwordConfirmation) {
       setError("비밀번호 확인이 일치하지 않습니다.");
       return;
     }
@@ -94,7 +110,7 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
       } else if (mode === "join") {
         await mutation("/api/v1/auth/register", "POST", { inviteCode, email, password, displayName });
         router.replace("/");
-      } else {
+      } else if (mode === "setup") {
         await mutation(
           "/api/v1/bootstrap/admin",
           "POST",
@@ -102,8 +118,17 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
           { "X-Bootstrap-Token": bootstrapToken },
         );
         router.replace("/");
+      } else if (mode === "forgot") {
+        await mutation("/api/v1/auth/password-reset-requests", "POST", { email });
+        setRequestSent(true);
+      } else {
+        await mutation("/api/v1/auth/password-resets", "POST", {
+          token: initialResetToken,
+          newPassword: password,
+        });
+        setResetComplete(true);
       }
-      router.refresh();
+      if (mode === "login" || mode === "join" || mode === "setup") router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "요청을 처리하지 못했습니다.");
       setIsSubmitting(false);
@@ -112,11 +137,13 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
 
   const current = content[mode];
   const submitDisabled = isSubmitting
-    || !email
-    || !password
-    || (mode !== "login" && (!displayName || !passwordConfirmation))
+    || ((mode === "login" || mode === "join" || mode === "setup" || mode === "forgot") && !email)
+    || ((mode === "login" || mode === "join" || mode === "setup" || mode === "reset") && !password)
+    || ((mode === "join" || mode === "setup") && !displayName)
+    || ((mode === "join" || mode === "setup" || mode === "reset") && !passwordConfirmation)
     || (mode === "join" && !inviteCode)
-    || (mode === "setup" && (!bootstrapToken || !ledgerName || !monthlyBudget || bootstrapAvailable === false));
+    || (mode === "setup" && (!bootstrapToken || !ledgerName || !monthlyBudget || bootstrapAvailable === false))
+    || (mode === "reset" && !initialResetToken);
 
   return (
     <main className="auth-shell">
@@ -140,13 +167,27 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
       <section className="auth-form-side">
         <div className="auth-card">
           <span className="auth-card-icon">
-            {mode === "login" ? <LogIn size={25} /> : mode === "join" ? <UserPlus size={25} /> : <KeyRound size={25} />}
+            {mode === "login" ? <LogIn size={25} /> : mode === "join" ? <UserPlus size={25} /> : mode === "forgot" ? <Mail size={25} /> : <KeyRound size={25} />}
           </span>
           <p className="eyebrow">{current.eyebrow}</p>
           <h2>{current.title}</h2>
           <p className="auth-card-description">{current.description}</p>
 
-          {mode === "setup" && bootstrapAvailable === false ? (
+          {mode === "forgot" && requestSent ? (
+            <div className="auth-complete-panel" aria-live="polite">
+              <Mail size={25} />
+              <strong>이메일을 확인해 주세요.</strong>
+              <span>가입된 계정이라면 비밀번호 재설정 링크를 보내드렸습니다.</span>
+              <Link className="auth-primary-link" href="/login">로그인으로 이동</Link>
+            </div>
+          ) : mode === "reset" && resetComplete ? (
+            <div className="auth-complete-panel" aria-live="polite">
+              <ShieldCheck size={25} />
+              <strong>새 비밀번호를 저장했습니다.</strong>
+              <span>보안을 위해 모든 기기에서 로그아웃했습니다. 새 비밀번호로 로그인해 주세요.</span>
+              <Link className="auth-primary-link" href="/login">새 비밀번호로 로그인</Link>
+            </div>
+          ) : mode === "setup" && bootstrapAvailable === false ? (
             <div className="auth-complete-panel">
               <CircleDollarSign size={25} />
               <strong>첫 장부 설정이 완료되어 있습니다.</strong>
@@ -156,6 +197,11 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
           ) : (
             <form className="auth-form" onSubmit={(event) => void submit(event)}>
               {error && <div className="message-banner message-banner--error" role="alert">{error}</div>}
+              {mode === "reset" && !initialResetToken && (
+                <div className="message-banner message-banner--error" role="alert">
+                  비밀번호 재설정 링크가 올바르지 않습니다. 이메일에서 받은 링크를 다시 확인해 주세요.
+                </div>
+              )}
 
               {mode === "join" && (
                 <label>
@@ -182,29 +228,33 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
                   </div>
                 </>
               )}
-              {mode !== "login" && (
+              {(mode === "join" || mode === "setup") && (
                 <label>
                   <span>표시 이름</span>
                   <input autoComplete="name" maxLength={50} onChange={(event) => setDisplayName(event.target.value)} placeholder="장부에 표시할 이름" required value={displayName} />
                 </label>
               )}
-              <label>
-                <span>이메일</span>
-                <input autoComplete="email" maxLength={320} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required type="email" value={email} />
-              </label>
-              <label>
-                <span>비밀번호 {mode !== "login" && <small>8~72자</small>}</span>
-                <input autoComplete={mode === "login" ? "current-password" : "new-password"} maxLength={72} minLength={mode === "login" ? undefined : 8} onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
-              </label>
-              {mode !== "login" && (
+              {mode !== "reset" && (
                 <label>
-                  <span>비밀번호 확인</span>
+                  <span>이메일</span>
+                  <input autoComplete="email" maxLength={320} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required type="email" value={email} />
+                </label>
+              )}
+              {mode !== "forgot" && (
+                <label>
+                  <span>{mode === "reset" ? "새 비밀번호" : "비밀번호"} {mode !== "login" && <small>8~72자</small>}</span>
+                  <input autoComplete={mode === "login" ? "current-password" : "new-password"} maxLength={72} minLength={mode === "login" ? undefined : 8} onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
+                </label>
+              )}
+              {(mode === "join" || mode === "setup" || mode === "reset") && (
+                <label>
+                  <span>{mode === "reset" ? "새 비밀번호 확인" : "비밀번호 확인"}</span>
                   <input autoComplete="new-password" maxLength={72} minLength={8} onChange={(event) => setPasswordConfirmation(event.target.value)} required type="password" value={passwordConfirmation} />
                 </label>
               )}
 
               <button className="auth-submit" disabled={submitDisabled} type="submit">
-                {isSubmitting ? <LoaderCircle className="spin" size={18} /> : mode === "login" ? <LogIn size={18} /> : <UserPlus size={18} />}
+                {isSubmitting ? <LoaderCircle className="spin" size={18} /> : mode === "login" ? <LogIn size={18} /> : mode === "join" ? <UserPlus size={18} /> : mode === "forgot" ? <Mail size={18} /> : <KeyRound size={18} />}
                 {current.submit}
               </button>
             </form>
@@ -213,6 +263,7 @@ export function AuthScreen({ mode, initialInviteCode = "", nextPath }: AuthScree
           <div className="auth-card-footer">
             {mode === "login" ? (
               <>
+                <span>비밀번호를 잊었다면</span><Link href="/forgot-password">비밀번호 재설정</Link>
                 <span>초대 코드를 받았다면</span><Link href="/join">초대 코드로 가입</Link>
                 {bootstrapAvailable && <><span>처음 설치한 관리자라면</span><Link href="/setup">첫 장부 설정</Link></>}
               </>

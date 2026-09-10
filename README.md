@@ -6,7 +6,7 @@
 
 ## Project status
 
-요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 로그인·초대 가입·최초 관리자 화면, 명시적 폐기형 영속 로그인, 공용 장부 협업, 식비·카테고리 관리, 사용자 지정 예산 주기·통계, 사용자 지정 기준의 조건부 PWA 푸시, 식비 이미지 첨부와 프로필·계정 관리를 완료했습니다.
+요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 로그인·초대 가입·최초 관리자·비밀번호 재설정 화면, 명시적 폐기형 영속 로그인, 공용 장부 협업, 식비·카테고리 관리, 사용자 지정 예산 주기·통계, 사용자 지정 기준의 조건부 PWA 푸시, 식비 이미지 첨부와 프로필·계정 관리를 완료했습니다.
 
 ## Tech stack
 
@@ -47,6 +47,24 @@ VAPID_SUBJECT=mailto:admin@example.com
 ```
 
 키가 설정되지 않은 환경에서는 식비 관리 기능은 그대로 동작하고 푸시 전송만 비활성화됩니다.
+
+### 비밀번호 재설정 이메일 설정
+
+비밀번호 재설정 메일을 실제로 발송하려면 SMTP 계정을 설정하고 발송 기능을 활성화합니다. `PUBLIC_BASE_URL`은 사용자가 접속할 실제 HTTPS 주소로 지정해야 합니다.
+
+```dotenv
+PUBLIC_BASE_URL=https://meal.example.com
+PASSWORD_RESET_EMAIL_ENABLED=true
+PASSWORD_RESET_EMAIL_FROM=no-reply@example.com
+SPRING_MAIL_HOST=smtp.example.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=...
+SPRING_MAIL_PASSWORD=...
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+```
+
+재설정 링크는 기본 30분 동안 한 번만 사용할 수 있고, 새 링크가 발급되면 이전 링크는 즉시 무효화됩니다. SMTP 비밀번호는 저장소에 커밋하지 않습니다.
 
 ## Documentation
 

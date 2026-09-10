@@ -23,6 +23,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mealbudgetdiet.TestcontainersConfiguration;
+import com.mealbudgetdiet.TestcontainersConfiguration.TestPasswordResetEmailSender;
 import com.mealbudgetdiet.shared.security.TokenHasher;
 
 import jakarta.servlet.http.Cookie;
@@ -42,6 +43,9 @@ class AuthenticationFlowIntegrationTest {
 
 	@Autowired
 	private TokenHasher tokenHasher;
+
+	@Autowired
+	private TestPasswordResetEmailSender passwordResetEmailSender;
 
 	private static Cookie adminSession;
 
@@ -230,6 +234,138 @@ class AuthenticationFlowIntegrationTest {
 
 	@Test
 	@Order(6)
+	void resetsPasswordWithAOneTimeTokenAndInvalidatesEverySession() throws Exception {
+		passwordResetEmailSender.clear();
+
+		mockMvc.perform(post("/api/v1/auth/password-reset-requests")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"missing@example.com"}
+					"""))
+			.andExpect(status().isAccepted());
+		assertThat(passwordResetEmailSender.size()).isZero();
+
+		mockMvc.perform(post("/api/v1/auth/password-reset-requests")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"Owner@Example.com "}
+					"""))
+			.andExpect(status().isAccepted());
+		assertThat(passwordResetEmailSender.size()).isEqualTo(1);
+		String firstToken = resetTokenFromLatestEmail();
+		String storedHash = jdbcTemplate.queryForObject(
+			"select token_hash from password_reset_tokens where token_hash = ?",
+			String.class,
+			tokenHasher.hashExact(firstToken)
+		);
+		assertThat(storedHash)
+			.isEqualTo(tokenHasher.hashExact(firstToken))
+			.doesNotContain(firstToken);
+		jdbcTemplate.update(
+			"update password_reset_tokens set expires_at = current_timestamp - interval '1 second' where token_hash = ?",
+			storedHash
+		);
+		mockMvc.perform(post("/api/v1/auth/password-resets")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"token":"%s","newPassword":"recovered-password123!"}
+					""".formatted(firstToken)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("PASSWORD_RESET_TOKEN_INVALID"));
+
+		mockMvc.perform(post("/api/v1/auth/password-reset-requests")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com"}
+					"""))
+			.andExpect(status().isAccepted());
+		assertThat(passwordResetEmailSender.size()).isEqualTo(2);
+		String invalidatedToken = resetTokenFromLatestEmail();
+
+		mockMvc.perform(post("/api/v1/auth/password-reset-requests")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com"}
+					"""))
+			.andExpect(status().isAccepted());
+		assertThat(passwordResetEmailSender.size()).isEqualTo(3);
+		String activeToken = resetTokenFromLatestEmail();
+
+		mockMvc.perform(post("/api/v1/auth/password-resets")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"token":"%s","newPassword":"recovered-password123!"}
+					""".formatted(invalidatedToken)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("PASSWORD_RESET_TOKEN_INVALID"));
+
+		mockMvc.perform(post("/api/v1/auth/login")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com","password":"new-password123!"}
+					"""))
+			.andExpect(status().isOk());
+		assertThat(jdbcTemplate.queryForObject(
+			"select count(*) from spring_session where principal_name = ?",
+			Integer.class,
+			"owner@example.com"
+		)).isEqualTo(2);
+
+		var result = mockMvc.perform(post("/api/v1/auth/password-resets")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"token":"%s","newPassword":"recovered-password123!"}
+					""".formatted(activeToken)))
+			.andExpect(status().isNoContent())
+			.andReturn();
+
+		assertThat(result.getResponse().getHeader("Set-Cookie"))
+			.contains("MBD_SESSION=")
+			.contains("Max-Age=0");
+		assertThat(jdbcTemplate.queryForObject(
+			"select count(*) from spring_session where principal_name = ?",
+			Integer.class,
+			"owner@example.com"
+		)).isZero();
+
+		mockMvc.perform(post("/api/v1/auth/password-resets")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"token":"%s","newPassword":"another-password123!"}
+					""".formatted(activeToken)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("PASSWORD_RESET_TOKEN_INVALID"));
+
+		mockMvc.perform(post("/api/v1/auth/login")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com","password":"new-password123!"}
+					"""))
+			.andExpect(status().isUnauthorized());
+
+		var relogin = mockMvc.perform(post("/api/v1/auth/login")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"email":"owner@example.com","password":"recovered-password123!"}
+					"""))
+			.andExpect(status().isOk())
+			.andReturn();
+		adminSession = sessionCookie(relogin.getResponse().getHeader("Set-Cookie"));
+	}
+
+	@Test
+	@Order(7)
 	void logsOutAndInvalidatesCurrentSession() throws Exception {
 		var result = mockMvc.perform(post("/api/v1/auth/logout").with(csrf()).cookie(adminSession))
 			.andExpect(status().isNoContent())
@@ -253,5 +389,11 @@ class AuthenticationFlowIntegrationTest {
 		int valueStart = setCookieHeader.indexOf(prefix) + prefix.length();
 		int valueEnd = setCookieHeader.indexOf(';', valueStart);
 		return new Cookie("MBD_SESSION", setCookieHeader.substring(valueStart, valueEnd));
+	}
+
+	private String resetTokenFromLatestEmail() {
+		String rawQuery = passwordResetEmailSender.latest().resetLink().getRawQuery();
+		assertThat(rawQuery).startsWith("token=");
+		return rawQuery.substring("token=".length());
 	}
 }

@@ -1,5 +1,9 @@
 package com.mealbudgetdiet;
 
+import java.net.URI;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
@@ -8,8 +12,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import com.mealbudgetdiet.media.infrastructure.ImageObjectStore;
-
-import java.util.concurrent.ConcurrentHashMap;
+import com.mealbudgetdiet.identity.application.PasswordResetEmailSender;
 
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
@@ -38,6 +41,37 @@ public class TestcontainersConfiguration {
 				objects.remove(key);
 			}
 		};
+	}
+
+	@Bean
+	@Primary
+	TestPasswordResetEmailSender testPasswordResetEmailSender() {
+		return new TestPasswordResetEmailSender();
+	}
+
+	public static final class TestPasswordResetEmailSender implements PasswordResetEmailSender {
+
+		private final ConcurrentLinkedDeque<PasswordResetEmail> messages = new ConcurrentLinkedDeque<>();
+
+		@Override
+		public void send(String email, String displayName, URI resetLink) {
+			messages.addLast(new PasswordResetEmail(email, displayName, resetLink));
+		}
+
+		public PasswordResetEmail latest() {
+			return messages.getLast();
+		}
+
+		public int size() {
+			return messages.size();
+		}
+
+		public void clear() {
+			messages.clear();
+		}
+	}
+
+	public record PasswordResetEmail(String email, String displayName, URI resetLink) {
 	}
 
 }
