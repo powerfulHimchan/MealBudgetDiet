@@ -477,11 +477,51 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .auth-submit:disabled { cursor: not-allowed; opacity: .48; }
 .auth-card-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); color: #718096; font-size: .74rem; }
 .auth-card-footer a { color: #1d4ed8; font-weight: 850; }
+.auth-legal-links { display: flex; flex-wrap: wrap; gap: 7px 16px; margin-top: 18px; color: #64748b; font-size: .7rem; font-weight: 750; }
+.auth-legal-links a { text-decoration: underline; text-underline-offset: 3px; }
 .auth-complete-panel { display: flex; align-items: center; flex-direction: column; padding: 27px 20px; border: 1px solid #c0d0e3; border-left: 4px solid #315c9d; background: #f5f8fc; text-align: center; }
 .auth-complete-panel svg { color: #315c9d; }
 .auth-complete-panel strong { margin-top: 13px; }
 .auth-complete-panel span { margin: 6px 0 18px; color: var(--muted); font-size: .78rem; }
 .auth-complete-panel .auth-primary-link { width: 100%; }
+.public-document-shell { width: min(100% - 32px, 920px); min-height: 100vh; margin: 0 auto; padding: 28px 0 48px; }
+.public-document-header, .public-document-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.public-document-header .auth-brand { color: #10203a; }
+.public-document-header .auth-brand .brand-mark { color: var(--brand); }
+.public-document-login, .public-document-footer a { display: inline-flex; align-items: center; gap: 6px; color: #315078; font-size: .78rem; font-weight: 850; }
+.public-document { margin-top: 28px; border: 1px solid #b9c9dd; border-top: 6px solid #0d1a2f; background: white; box-shadow: 16px 16px 0 rgb(29 78 216 / 7%); }
+.public-document-hero { padding: 42px 44px 36px; border-bottom: 1px solid #d5dfeb; background: linear-gradient(135deg, #070b13, #0c172c 72%, #123263); color: white; }
+.public-document-icon { display: grid; width: 50px; height: 50px; place-items: center; margin-bottom: 22px; background: #17386d; color: #7db1ff; }
+.public-document-hero .eyebrow { margin-bottom: 7px; color: #7db1ff; letter-spacing: .08em; }
+.public-document-hero > p:last-child { max-width: 680px; margin: 14px 0 0; color: #b7c5d9; line-height: 1.7; }
+.public-document-body { padding: 14px 44px 42px; }
+.public-document-body section { padding: 28px 0; border-bottom: 1px solid #dde5ef; }
+.public-document-body section:last-of-type { border-bottom: 0; }
+.public-document-body h2 { margin-bottom: 14px; color: #14233b; font-size: 1.08rem; letter-spacing: -.035em; }
+.public-document-body p, .public-document-body li { color: #53637a; font-size: .86rem; line-height: 1.75; }
+.public-document-body p { margin: 10px 0 0; }
+.public-document-body ul { margin: 0; padding-left: 20px; }
+.public-document-body a { color: #1d4ed8; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.public-document-date { margin: 22px 0 0 !important; color: #708197 !important; font-size: .74rem !important; font-weight: 800; }
+.public-document-table-wrap { overflow-x: auto; border: 1px solid #c7d4e4; }
+.public-document-table-wrap table { width: 100%; min-width: 650px; border-collapse: collapse; text-align: left; }
+.public-document-table-wrap th, .public-document-table-wrap td { padding: 13px 14px; border-bottom: 1px solid #dde5ee; color: #45566e; font-size: .77rem; line-height: 1.55; vertical-align: top; }
+.public-document-table-wrap th { background: #edf3fb; color: #203b62; font-weight: 900; }
+.public-document-table-wrap tr:last-child td { border-bottom: 0; }
+.public-document-table-wrap td:first-child { width: 110px; color: #1d3659; font-weight: 850; }
+.public-document-notice, .public-document-danger { display: flex; gap: 12px; margin-top: 12px; padding: 16px 18px; border-left: 4px solid #315c9d; background: #edf4ff; color: #315078; font-size: .78rem; font-weight: 750; line-height: 1.65; }
+.public-document-danger { align-items: flex-start; border-left-color: #9f1239; background: #fff1f2; color: #7f1d2d; }
+.public-document-danger > div { display: flex; flex-direction: column; gap: 3px; }
+.public-document-danger svg { flex: none; margin-top: 2px; }
+.public-document-steps { display: grid; gap: 10px; margin: 0 0 22px; padding: 0; counter-reset: step; list-style: none; }
+.public-document-steps li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 2px 12px; padding: 15px; border: 1px solid #cbd7e5; border-left: 4px solid #315c9d; background: #f8fafd; counter-increment: step; }
+.public-document-steps li::before { display: grid; width: 30px; height: 30px; grid-row: 1 / 3; place-items: center; background: #0c172a; color: #7db1ff; content: counter(step); font-size: .75rem; font-weight: 900; }
+.public-document-steps strong { color: #1e3353; }
+.public-document-steps span { grid-column: 2; color: #64748b; font-size: .77rem; }
+.public-document-primary { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; border: 1px solid #07101f; background: #080d18; color: white !important; font-size: .83rem; font-weight: 850; text-decoration: none !important; }
+.public-document-primary:hover { border-color: #1d4ed8; background: #102448; }
+.public-document-footer { padding: 26px 4px 0; }
+.public-document-footer nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px 18px; }
 .spin { animation: spin 900ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -528,6 +568,15 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
   .auth-form-side { align-items: flex-start; padding: 18px 14px 40px; }
   .auth-card { padding: 26px 20px; box-shadow: 8px 8px 0 rgb(30 64 175 / 7%); }
   .auth-form-row { grid-template-columns: 1fr; }
+  .public-document-shell { width: min(100% - 20px, 920px); padding-top: 16px; }
+  .public-document-header { padding: 0 4px; }
+  .public-document { margin-top: 18px; box-shadow: 7px 7px 0 rgb(29 78 216 / 7%); }
+  .public-document-hero { padding: 30px 22px 27px; }
+  .public-document-body { padding: 8px 20px 30px; }
+  .public-document-body section { padding: 23px 0; }
+  .public-document-primary { width: 100%; }
+  .public-document-footer { align-items: flex-start; flex-direction: column; }
+  .public-document-footer nav { justify-content: flex-start; }
   .expense-shell { padding-right: 14px; padding-left: 14px; }
   .expense-hero { align-items: flex-start; flex-direction: column; padding: 25px 20px; }
   .expense-hero .expense-add-button { width: 100%; }

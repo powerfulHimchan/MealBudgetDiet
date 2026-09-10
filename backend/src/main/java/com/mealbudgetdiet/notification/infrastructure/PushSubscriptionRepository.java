@@ -16,6 +16,10 @@ public interface PushSubscriptionRepository extends JpaRepository<PushSubscripti
 
 	Optional<PushSubscription> findByIdAndUserId(UUID id, UUID userId);
 
+	void deleteAllByUserId(UUID userId);
+
+	boolean existsByUserId(UUID userId);
+
 	@Query("""
 		select subscription from PushSubscription subscription, LedgerMember member
 		where subscription.userId = member.id.userId

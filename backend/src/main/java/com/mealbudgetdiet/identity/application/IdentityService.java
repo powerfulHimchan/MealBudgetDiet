@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.identity.domain.User;
+import com.mealbudgetdiet.identity.infrastructure.PasswordResetTokenRepository;
 import com.mealbudgetdiet.identity.infrastructure.UserRepository;
+import com.mealbudgetdiet.notification.infrastructure.PushSubscriptionRepository;
 import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
@@ -19,10 +21,19 @@ public class IdentityService {
 
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final PasswordResetTokenRepository passwordResetTokenRepository;
+	private final PushSubscriptionRepository pushSubscriptionRepository;
 
-	public IdentityService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+	public IdentityService(
+		UserRepository userRepository,
+		PasswordEncoder passwordEncoder,
+		PasswordResetTokenRepository passwordResetTokenRepository,
+		PushSubscriptionRepository pushSubscriptionRepository
+	) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
+		this.passwordResetTokenRepository = passwordResetTokenRepository;
+		this.pushSubscriptionRepository = pushSubscriptionRepository;
 	}
 
 	public User createUser(String email, String password, String displayName) {
@@ -70,6 +81,8 @@ public class IdentityService {
 	}
 
 	public void withdraw(User user) {
+		passwordResetTokenRepository.deleteAllByUserId(user.getId());
+		pushSubscriptionRepository.deleteAllByUserId(user.getId());
 		user.withdraw();
 	}
 

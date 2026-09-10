@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.MethodOrderer;
@@ -26,6 +27,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.jayway.jsonpath.JsonPath;
 import com.mealbudgetdiet.TestcontainersConfiguration;
+import com.mealbudgetdiet.identity.domain.PasswordResetToken;
+import com.mealbudgetdiet.identity.domain.UserStatus;
+import com.mealbudgetdiet.identity.infrastructure.PasswordResetTokenRepository;
+import com.mealbudgetdiet.identity.infrastructure.UserRepository;
+import com.mealbudgetdiet.notification.domain.PushSubscription;
+import com.mealbudgetdiet.notification.infrastructure.PushSubscriptionRepository;
 
 import jakarta.servlet.http.Cookie;
 
@@ -42,6 +49,15 @@ class LedgerCollaborationIntegrationTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private PasswordResetTokenRepository passwordResetTokenRepository;
+
+	@Autowired
+	private PushSubscriptionRepository pushSubscriptionRepository;
 
 	private static Cookie adminSession;
 	private static Cookie memberSession;
@@ -210,6 +226,11 @@ class LedgerCollaborationIntegrationTest {
 	@Test
 	@Order(7)
 	void withdrawsMemberAndInvalidatesTheirSession() throws Exception {
+		passwordResetTokenRepository.saveAndFlush(new PasswordResetToken(
+			memberId, "f".repeat(64), Instant.now().plusSeconds(3600)));
+		pushSubscriptionRepository.saveAndFlush(new PushSubscription(
+			memberId, "https://fcm.googleapis.com/member-test", "p256dh-key", "auth-key"));
+
 		var result = mockMvc.perform(post("/api/v1/account/withdrawal")
 				.with(csrf())
 				.cookie(memberSession)
@@ -229,6 +250,17 @@ class LedgerCollaborationIntegrationTest {
 		mockMvc.perform(get("/api/v1/members").cookie(adminSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items.length()").value(1));
+
+		var withdrawnUser = userRepository.findById(memberId).orElseThrow();
+		assertThat(withdrawnUser.getStatus()).isEqualTo(UserStatus.WITHDRAWN);
+		assertThat(withdrawnUser.getEmail())
+			.isEqualTo("deleted+" + memberId + "@users.invalid")
+			.doesNotContain("member-ledger@example.com");
+		assertThat(withdrawnUser.getDisplayName()).isEqualTo("탈퇴한 사용자");
+		assertThat(withdrawnUser.getPasswordHash()).isNull();
+		assertThat(userRepository.existsByEmail("member-ledger@example.com")).isFalse();
+		assertThat(passwordResetTokenRepository.existsByUserId(memberId)).isFalse();
+		assertThat(pushSubscriptionRepository.existsByUserId(memberId)).isFalse();
 	}
 
 	@Test

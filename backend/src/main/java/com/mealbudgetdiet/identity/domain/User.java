@@ -17,6 +17,8 @@ import jakarta.persistence.Table;
 @Table(name = "users")
 public class User {
 
+	private static final String DELETED_DISPLAY_NAME = "탈퇴한 사용자";
+
 	@Id
 	private UUID id;
 
@@ -88,6 +90,8 @@ public class User {
 	}
 
 	public void withdraw() {
+		this.email = "deleted+" + id + "@users.invalid";
+		this.displayName = DELETED_DISPLAY_NAME;
 		this.status = UserStatus.WITHDRAWN;
 		this.passwordHash = null;
 		this.profileImageId = null;

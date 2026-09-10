@@ -264,6 +264,8 @@ Max-Age: 2147483647초, 인증 요청마다 갱신
 | `/join?code=...` | 초대 코드 기반 회원가입 |
 | `/forgot-password` | 비밀번호 재설정 요청 |
 | `/reset-password` | 새 비밀번호 설정 |
+| `/privacy` | 공개 개인정보처리방침 |
+| `/account-deletion` | 공개 계정 삭제 안내, 로그인 후 웹 삭제 경로 |
 | `/` | 현재 예산 주기 대시보드 |
 | `/expenses` | 식비 목록, 검색, 수정·삭제 |
 | `/statistics` | 기간별 통계 |
@@ -275,6 +277,8 @@ Max-Age: 2147483647초, 인증 요청마다 갱신
 | `/settings/invitations` | 초대 코드 관리 |
 | `/settings/account` | 프로필 사진, 비밀번호 변경, 로그아웃, 탈퇴 |
 | `/offline` | 연결 필요 안내 |
+
+`/privacy`와 `/account-deletion`은 세션 없이 접근할 수 있다. Google Play의 외부 계정 삭제 URL에는 `/account-deletion`을 등록하고, 사용자는 앱을 다시 설치하지 않아도 브라우저에서 로그인한 뒤 `/settings/account`의 삭제 절차를 완료할 수 있다.
 
 ### 8.2 상태 관리
 
@@ -292,6 +296,14 @@ Max-Age: 2147483647초, 인증 요청마다 갱신
 - 네트워크 연결이 없으면 쓰기 작업을 큐에 넣지 않고 즉시 안내한다.
 - 사용자가 명시적으로 허용한 기기만 Web Push 구독을 등록한다.
 - 알림 권한을 거부해도 식비 관리 기능은 정상적으로 사용할 수 있다.
+- 192px, 512px, maskable 및 monochrome PNG 아이콘을 manifest에 제공한다.
+
+### 8.4 Android TWA
+
+- 앱 이름은 `MealBudgetDiet`, 패키지 ID는 `com.powerfulhimchan.mealbudgetdiet`로 고정한다.
+- 운영 HTTPS origin과 Android 서명 인증서는 Digital Asset Links로 검증한다.
+- Play 제출 빌드는 Android 16(API 36) 이상을 대상으로 한다.
+- Android wrapper는 Bubblewrap으로 생성하고 Android Browser Helper 및 Bubblewrap 갱신 시 내부 테스트 트랙에서 회귀 검증한다.
 
 ### 8.4 월 예산 초과 위험 푸시
 

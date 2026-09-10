@@ -1,8 +1,10 @@
-const CACHE_NAME = "meal-budget-diet-shell-v4";
+const CACHE_NAME = "meal-budget-diet-shell-v5";
 const OFFLINE_URL = "/offline";
+const APP_ICON_URL = "/icons/icon-192.png";
+const BADGE_ICON_URL = "/icons/icon-badge-96.png";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll([OFFLINE_URL, "/icon.svg"])));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll([OFFLINE_URL, APP_ICON_URL, BADGE_ICON_URL])));
   self.skipWaiting();
 });
 
@@ -36,8 +38,8 @@ self.addEventListener("push", (event) => {
     if (existing.length > 0) return;
     await self.registration.showNotification(payload.title ?? "MealBudgetDiet", {
       body: payload.body ?? "새로운 알림이 도착했습니다.",
-      icon: "/icon.svg",
-      badge: "/icon.svg",
+      icon: APP_ICON_URL,
+      badge: BADGE_ICON_URL,
       tag,
       data: payload.data ?? { url: "/" },
     });
