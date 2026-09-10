@@ -121,7 +121,8 @@ public class MemberManagementService {
 
 		imageService.deleteProfileImage(userId);
 		membership.leave(clock.instant());
+		String invalidatedEmail = user.getEmail();
 		identityService.withdraw(user);
-		return new WithdrawalResult(false, java.util.List.of(user.getEmail()));
+		return new WithdrawalResult(false, java.util.List.of(invalidatedEmail));
 	}
 }

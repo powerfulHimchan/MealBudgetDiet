@@ -204,9 +204,9 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 | 컬럼 | 타입 | Null | 규칙 |
 |---|---|:---:|---|
 | id | uuid | N | PK |
-| email | varchar(320) | N | 소문자 정규화 후 unique |
+| email | varchar(320) | N | 소문자 정규화 후 unique, 탈퇴 시 비식별 대체값 |
 | password_hash | varchar(255) | Y | 탈퇴 시 제거 가능 |
-| display_name | varchar(50) | N | 탈퇴 후에도 유지 |
+| display_name | varchar(50) | N | 탈퇴 시 공통 비식별 표시값으로 교체 |
 | profile_image_id | uuid | Y | images FK, 본인 활성 PROFILE 이미지 |
 | status | varchar(20) | N | ACTIVE, WITHDRAWN |
 | created_at | timestamptz | N | 생성 시각 |
@@ -214,10 +214,10 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 
 - 이메일 비교 전 trim과 소문자 정규화를 수행한다.
 - WITHDRAWN 사용자는 로그인할 수 없다.
-- 탈퇴 시 기존 세션과 비밀번호 재설정 토큰을 폐기한다.
+- 탈퇴 시 이메일과 표시 이름을 비식별 값으로 교체하고 기존 세션과 비밀번호 재설정 토큰을 폐기한다.
 - 프로필 이미지를 교체·삭제하거나 탈퇴하면 참조를 제거하고 미참조 이미지와 Object Storage 객체를 삭제한다.
-- 표시 이름은 요구사항에 따라 유지한다.
-- 재가입 정책은 구현 단계에서 동일 이메일 계정 재활성 방식으로 처리한다.
+- 공유 장부 기록은 탈퇴 계정의 원래 식별정보와 연결되지 않은 상태로 유지할 수 있다.
+- 같은 이메일로 재가입하면 이전 계정을 재활성화하지 않고 새 계정을 생성한다.
 
 ### 2.3 ledger_members
 

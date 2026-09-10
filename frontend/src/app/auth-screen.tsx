@@ -271,6 +271,10 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
               <><span>이미 계정이 있다면</span><Link href="/login">로그인</Link></>
             )}
           </div>
+          <nav aria-label="정책 문서" className="auth-legal-links">
+            <Link href="/privacy">개인정보처리방침</Link>
+            <Link href="/account-deletion">계정 삭제 안내</Link>
+          </nav>
         </div>
       </section>
     </main>
