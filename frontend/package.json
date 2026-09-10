@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "screenshots": "playwright test e2e/screenshots.spec.ts"
+    "screenshots": "playwright test e2e/screenshots.spec.ts",
+    "e2e:full-stack": "playwright test --config=playwright.full-stack.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

@@ -390,7 +390,7 @@ frontend
 | Repository | Testcontainers PostgreSQL | 커서 조회, 집계 SQL, 제약조건 |
 | API | REST Assured | 인증, 권한, 요청 검증, 오류 규격 |
 | Front component | Vitest | 폼과 상태 표시 |
-| E2E | Playwright | 가입, 로그인, 식비 CRUD, 통계 |
+| E2E | Playwright, Docker Compose | 실제 PostgreSQL·MinIO·백엔드·프론트엔드 기반 가입, 로그인, 초대, 공유 식비·이미지 CRUD, 통계 |
 | Security | integration tests | CSRF, 영속 세션 폐기, 이미지 접근, 권한 우회 차단 |
 | Media integration | Testcontainers, 이미지 fixture | 5MB 제한, 형식 검증, 메타데이터 제거, 임시 파일 정리 |
 
@@ -409,6 +409,8 @@ Pull Request와 main push 시 다음 작업을 수행한다.
 7. 결과와 실패 원인 표시
 
 배포는 테스트 성공 이후 별도 workflow 또는 hosting platform 연동으로 수행한다.
+
+핵심 E2E는 backend와 frontend 검증이 모두 통과한 뒤 빈 전용 PostgreSQL 볼륨에서 실행한다. 두 개의 독립 브라우저 세션으로 관리자와 일반 참여자의 공유 상태를 검증하며, 실패 시 Playwright trace·화면·동영상과 전체 서비스 로그를 CI artifact로 보관한다.
 
 ## 14. 운영 관찰
 
