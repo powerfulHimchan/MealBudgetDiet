@@ -170,6 +170,11 @@ class AuthenticationFlowIntegrationTest {
 			.andExpect(status().isOk())
 			.andReturn();
 		Cookie secondAdminSession = sessionCookie(secondLogin.getResponse().getHeader("Set-Cookie"));
+		assertThat(jdbcTemplate.queryForObject(
+			"select count(*) from spring_session where principal_name = ?",
+			Integer.class,
+			"owner@example.com"
+		)).isEqualTo(2);
 
 		mockMvc.perform(post("/api/v1/account/password-change")
 				.with(csrf())
