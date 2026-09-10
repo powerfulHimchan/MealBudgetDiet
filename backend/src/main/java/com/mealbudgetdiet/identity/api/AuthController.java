@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mealbudgetdiet.identity.application.AuthRateLimitException;
+import com.mealbudgetdiet.identity.application.AuthRateLimitService;
+import com.mealbudgetdiet.identity.application.AuthSecurityAuditLogger;
 import com.mealbudgetdiet.identity.application.IdentityService;
 import com.mealbudgetdiet.identity.application.PasswordResetService;
 import com.mealbudgetdiet.identity.application.SessionAuthenticationService;
@@ -19,6 +22,7 @@ import com.mealbudgetdiet.identity.application.SessionInvalidationService;
 import com.mealbudgetdiet.identity.application.SessionLogoutService;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.ledger.application.OnboardingService;
+import com.mealbudgetdiet.shared.api.ApiException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,6 +38,8 @@ public class AuthController {
 	private final IdentityService identityService;
 	private final PasswordResetService passwordResetService;
 	private final SessionInvalidationService sessionInvalidationService;
+	private final AuthRateLimitService authRateLimitService;
+	private final AuthSecurityAuditLogger auditLogger;
 
 	public AuthController(
 		OnboardingService onboardingService,
@@ -41,7 +47,9 @@ public class AuthController {
 		SessionLogoutService sessionLogoutService,
 		IdentityService identityService,
 		PasswordResetService passwordResetService,
-		SessionInvalidationService sessionInvalidationService
+		SessionInvalidationService sessionInvalidationService,
+		AuthRateLimitService authRateLimitService,
+		AuthSecurityAuditLogger auditLogger
 	) {
 		this.onboardingService = onboardingService;
 		this.sessionAuthenticationService = sessionAuthenticationService;
@@ -49,6 +57,8 @@ public class AuthController {
 		this.identityService = identityService;
 		this.passwordResetService = passwordResetService;
 		this.sessionInvalidationService = sessionInvalidationService;
+		this.authRateLimitService = authRateLimitService;
+		this.auditLogger = auditLogger;
 	}
 
 	@GetMapping("/csrf")
@@ -79,8 +89,26 @@ public class AuthController {
 		HttpServletRequest request,
 		HttpServletResponse response
 	) {
-		return response(sessionAuthenticationService.login(
-			requestBody.email(), requestBody.password(), request, response));
+		String clientAddress = request.getRemoteAddr();
+		try {
+			authRateLimitService.acquireLoginAttempt(requestBody.email(), clientAddress);
+		}
+		catch (AuthRateLimitException exception) {
+			auditLogger.loginRateLimited(requestBody.email(), clientAddress);
+			throw exception;
+		}
+		MealBudgetPrincipal principal;
+		try {
+			principal = sessionAuthenticationService.login(
+				requestBody.email(), requestBody.password(), request, response);
+		}
+		catch (ApiException exception) {
+			auditLogger.loginFailed(requestBody.email(), clientAddress);
+			throw exception;
+		}
+		authRateLimitService.clearLoginFailures(requestBody.email(), clientAddress);
+		auditLogger.loginSucceeded(requestBody.email(), clientAddress);
+		return response(principal);
 	}
 
 	@PostMapping("/logout")
@@ -90,8 +118,17 @@ public class AuthController {
 	}
 
 	@PostMapping("/password-reset-requests")
-	ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequest requestBody) {
-		passwordResetService.requestReset(requestBody.email());
+	ResponseEntity<Void> requestPasswordReset(
+		@Valid @RequestBody PasswordResetRequest requestBody,
+		HttpServletRequest request
+	) {
+		String clientAddress = request.getRemoteAddr();
+		boolean allowed = authRateLimitService.acquirePasswordResetRequest(
+			requestBody.email(), clientAddress);
+		if (allowed) {
+			passwordResetService.requestReset(requestBody.email());
+		}
+		auditLogger.passwordResetRequested(requestBody.email(), clientAddress, allowed);
 		return ResponseEntity.accepted().build();
 	}
 
@@ -101,10 +138,18 @@ public class AuthController {
 		HttpServletRequest request,
 		HttpServletResponse response
 	) {
-		String email = passwordResetService.resetPassword(requestBody.token(), requestBody.newPassword());
-		sessionInvalidationService.invalidateByEmails(List.of(email));
-		sessionLogoutService.logout(request, response);
-		return ResponseEntity.noContent().build();
+		String clientAddress = request.getRemoteAddr();
+		try {
+			String email = passwordResetService.resetPassword(requestBody.token(), requestBody.newPassword());
+			sessionInvalidationService.invalidateByEmails(List.of(email));
+			sessionLogoutService.logout(request, response);
+			auditLogger.passwordResetSucceeded(email, clientAddress);
+			return ResponseEntity.noContent().build();
+		}
+		catch (ApiException exception) {
+			auditLogger.passwordResetFailed(clientAddress, exception.getCode());
+			throw exception;
+		}
 	}
 
 	@GetMapping("/me")

@@ -6,7 +6,7 @@
 
 ## Project status
 
-요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 로그인·초대 가입·최초 관리자·비밀번호 재설정 화면, 명시적 폐기형 영속 로그인, 공용 장부 협업, 식비·카테고리 관리, 사용자 지정 예산 주기·통계, 사용자 지정 기준의 조건부 PWA 푸시, 식비 이미지 첨부와 프로필·계정 관리를 완료했습니다.
+요구사항과 시스템 설계, 프로젝트 골격, 반응형 UI, PostgreSQL 마이그레이션, 로그인·초대 가입·최초 관리자·비밀번호 재설정 화면, 인증 요청 제한과 익명화된 보안 로그, 명시적 폐기형 영속 로그인, 공용 장부 협업, 식비·카테고리 관리, 사용자 지정 예산 주기·통계, 사용자 지정 기준의 조건부 PWA 푸시, 식비 이미지 첨부와 프로필·계정 관리를 완료했습니다.
 
 ## Tech stack
 
@@ -65,6 +65,22 @@ SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 ```
 
 재설정 링크는 기본 30분 동안 한 번만 사용할 수 있고, 새 링크가 발급되면 이전 링크는 즉시 무효화됩니다. SMTP 비밀번호는 저장소에 커밋하지 않습니다.
+
+### 인증 보안 설정
+
+로그인 실패와 비밀번호 재설정 요청 횟수는 PostgreSQL에 저장해 서버가 여러 대여도 동일하게 제한합니다. 이메일과 클라이언트 주소는 원문 대신 환경별 HMAC 식별자로 저장하고 ECS JSON 보안 로그에도 같은 방식으로 익명화합니다.
+
+```dotenv
+AUTH_RATE_LIMIT_SECRET=32자-이상의-운영환경별-무작위-비밀값
+AUTH_LOGIN_MAX_FAILURES=5
+AUTH_LOGIN_WINDOW=15m
+AUTH_PASSWORD_RESET_EMAIL_MAX_REQUESTS=3
+AUTH_PASSWORD_RESET_CLIENT_MAX_REQUESTS=10
+AUTH_PASSWORD_RESET_WINDOW=1h
+STRUCTURED_LOG_FORMAT=ecs
+```
+
+`AUTH_RATE_LIMIT_SECRET`은 운영 환경마다 별도로 생성하며 저장소에 커밋하지 않습니다. 로그인 제한 시 API는 `429`와 `Retry-After`를 반환하고, 비밀번호 재설정 요청은 계정 존재 여부를 숨기기 위해 제한 여부와 관계없이 `202`를 반환합니다.
 
 ## Documentation
 

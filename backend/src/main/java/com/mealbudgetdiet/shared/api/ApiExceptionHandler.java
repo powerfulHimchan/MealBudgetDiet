@@ -4,18 +4,32 @@ import java.net.URI;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import jakarta.servlet.http.HttpServletRequest;
+import com.mealbudgetdiet.identity.application.AuthRateLimitException;
 
+import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+	@ExceptionHandler(AuthRateLimitException.class)
+	ResponseEntity<ProblemDetail> handleRateLimit(
+		AuthRateLimitException exception,
+		HttpServletRequest request
+	) {
+		var body = problem(exception.getStatus(), exception.getCode(), exception.getMessage(), request);
+		return ResponseEntity.status(exception.getStatus())
+			.header(HttpHeaders.RETRY_AFTER, Long.toString(exception.getRetryAfterSeconds()))
+			.body(body);
+	}
 
 	@ExceptionHandler(ApiException.class)
 	ProblemDetail handleApiException(ApiException exception, HttpServletRequest request) {
