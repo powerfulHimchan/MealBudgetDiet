@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.identity.application.IdentityService;
+import com.mealbudgetdiet.identity.domain.ServiceRole;
 import com.mealbudgetdiet.ledger.domain.Ledger;
 import com.mealbudgetdiet.ledger.domain.LedgerMember;
 import com.mealbudgetdiet.ledger.domain.LedgerMemberId;
@@ -58,7 +59,7 @@ public class OnboardingService {
 
 	@Transactional(readOnly = true)
 	public boolean isBootstrapAvailable() {
-		return identityService.countUsers() == 0;
+		return !identityService.hasActiveServiceAdmin();
 	}
 
 	@Transactional
@@ -72,16 +73,36 @@ public class OnboardingService {
 	) {
 		verifyBootstrapToken(suppliedToken);
 		jdbcTemplate.execute("select pg_advisory_xact_lock(" + BOOTSTRAP_LOCK_KEY + ")");
-		if (identityService.countUsers() != 0) {
+		if (identityService.hasActiveServiceAdmin()) {
 			throw new ApiException(HttpStatus.CONFLICT, "BOOTSTRAP_ALREADY_COMPLETED", "최초 관리자 설정이 이미 완료되었습니다.");
 		}
 
-		var user = identityService.createUser(email, password, displayName);
-		var ledger = ledgerRepository.saveAndFlush(new Ledger(ledgerName.trim(), defaultMonthlyBudget));
-		memberRepository.save(new LedgerMember(ledger.getId(), user.getId(), MemberRole.ADMIN));
-		jdbcTemplate.queryForObject("select seed_default_categories(?)", Integer.class, ledger.getId());
+		var user = identityService.createUser(email, password, displayName, ServiceRole.SERVICE_ADMIN);
+		createLedgerForUser(user.getId(), ledgerName, defaultMonthlyBudget);
 
-		return new AuthenticatedUser(user.getId(), user.getEmail(), user.getDisplayName(), MemberRole.ADMIN);
+		return new AuthenticatedUser(
+			user.getId(), user.getEmail(), user.getDisplayName(), ServiceRole.SERVICE_ADMIN, MemberRole.ADMIN);
+	}
+
+	@Transactional
+	public AuthenticatedUser registerLedgerAdmin(
+		String email,
+		String password,
+		String displayName,
+		String ledgerName,
+		long defaultMonthlyBudget
+	) {
+		if (!identityService.hasActiveServiceAdmin()) {
+			throw new ApiException(
+				HttpStatus.CONFLICT,
+				"SERVICE_SETUP_REQUIRED",
+				"서비스 관리자 설정을 먼저 완료해 주세요."
+			);
+		}
+		var user = identityService.createUser(email, password, displayName, ServiceRole.USER);
+		createLedgerForUser(user.getId(), ledgerName, defaultMonthlyBudget);
+		return new AuthenticatedUser(
+			user.getId(), user.getEmail(), user.getDisplayName(), ServiceRole.USER, MemberRole.ADMIN);
 	}
 
 	@Transactional
@@ -109,7 +130,18 @@ public class OnboardingService {
 			memberRepository.save(new LedgerMember(invitation.getLedgerId(), user.getId(), MemberRole.MEMBER));
 		}
 		invitation.markUsed(clock.instant());
-		return new AuthenticatedUser(user.getId(), user.getEmail(), user.getDisplayName(), MemberRole.MEMBER);
+		return new AuthenticatedUser(
+			user.getId(), user.getEmail(), user.getDisplayName(), ServiceRole.USER, MemberRole.MEMBER);
+	}
+
+	private void createLedgerForUser(
+		java.util.UUID userId,
+		String ledgerName,
+		long defaultMonthlyBudget
+	) {
+		var ledger = ledgerRepository.saveAndFlush(new Ledger(ledgerName.trim(), defaultMonthlyBudget));
+		memberRepository.save(new LedgerMember(ledger.getId(), userId, MemberRole.ADMIN));
+		jdbcTemplate.queryForObject("select seed_default_categories(?)", Integer.class, ledger.getId());
 	}
 
 	private void verifyBootstrapToken(String suppliedToken) {
