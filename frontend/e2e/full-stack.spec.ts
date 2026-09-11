@@ -18,7 +18,7 @@ function todayInSeoul() {
 
 async function createFirstAdmin(page: Page) {
   await page.goto("/setup");
-  await expect(page.getByRole("heading", { name: "첫 장부 만들기" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "서비스 관리자 설정" })).toBeVisible();
 
   const form = page.locator("form.auth-form");
   await form.getByLabel("Bootstrap 토큰").fill(bootstrapToken);
