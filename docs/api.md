@@ -1,4 +1,4 @@
-# MealBudgetDiet REST API 설계
+# Sikbi REST API 설계
 
 - 문서 버전: 1.2
 - Base path: `/api/v1`
@@ -56,7 +56,7 @@ CSRF 토큰이 없거나 올바르지 않으면 HTTP 403을 반환한다.
 
 ```json
 {
-  "type": "https://mealbudgetdiet.app/problems/validation",
+  "type": "https://sikbi.app/problems/validation",
   "title": "Request validation failed",
   "status": 400,
   "code": "VALIDATION_FAILED",
@@ -790,7 +790,7 @@ version이 현재 DB 값과 다르면 HTTP 409:
 
 ```json
 {
-  "type": "https://mealbudgetdiet.app/problems/version-conflict",
+  "type": "https://sikbi.app/problems/version-conflict",
   "title": "Expense was changed",
   "status": 409,
   "code": "EXPENSE_VERSION_CONFLICT",
