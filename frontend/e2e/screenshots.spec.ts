@@ -67,7 +67,10 @@ test("capture implemented frontend screens", async ({ browser }) => {
   for (const screen of screens) {
     await mobile.goto(screen.route);
     await expect(mobile.getByRole("heading", { level: 1, name: screen.heading })).toBeVisible();
-    if (screen.route === "/expenses") {
+    if (screen.route === "/") {
+      await expect(mobile.getByText("사용률", { exact: true })).toBeVisible();
+      await expect(mobile.getByText("82.4%", { exact: true })).toBeVisible();
+    } else if (screen.route === "/expenses") {
       await expect(mobile.getByText("동네마트", { exact: true })).toBeVisible();
     } else if (screen.route === "/statistics") {
       await expect(mobile.getByText("658,800원", { exact: true })).toBeVisible();
