@@ -12,10 +12,6 @@ const receiptPng = Buffer.from(
   "base64",
 );
 
-function todayInSeoul() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-}
-
 async function createFirstAdmin(page: Page) {
   await page.goto("/setup");
   await expect(page.getByRole("heading", { name: "서비스 관리자 설정" })).toBeVisible();
