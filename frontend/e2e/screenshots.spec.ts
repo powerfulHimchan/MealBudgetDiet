@@ -493,7 +493,7 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
       } else {
         await route.fulfill({
           headers: { "set-cookie": "MBD_SESSION=authenticated-session; Path=/; HttpOnly; SameSite=Lax" },
-          json: { id: members[0].id, email: body.email, displayName: "힘찬", role: "ADMIN", profileImageUrl: null },
+          json: { id: members[0].id, email: body.email, displayName: "힘찬", serviceRole: "SERVICE_ADMIN", ledgerRole: "ADMIN", profileImageUrl: null },
         });
       }
     } else if (pathname === "/api/v1/auth/register") {
@@ -521,14 +521,14 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
       } else {
         await route.fulfill({
           headers: { "set-cookie": "MBD_SESSION=bootstrap-session; Path=/; HttpOnly; SameSite=Lax" },
-          json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", role: "ADMIN", profileImageUrl: null },
+          json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", serviceRole: "SERVICE_ADMIN", ledgerRole: "ADMIN", profileImageUrl: null },
           status: 201,
         });
       }
     } else if (pathname === "/api/v1/auth/csrf") {
       await route.fulfill({ json: { headerName: "X-XSRF-TOKEN", token: "screenshot-token" } });
     } else if (pathname === "/api/v1/auth/me") {
-      await route.fulfill({ json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", role: "ADMIN", profileImageUrl: members[0].profileImageUrl } });
+      await route.fulfill({ json: { id: members[0].id, email: "himchan@example.com", displayName: "힘찬", serviceRole: "SERVICE_ADMIN", ledgerRole: "ADMIN", profileImageUrl: members[0].profileImageUrl } });
     } else {
       await route.fulfill({ status: 204 });
     }
