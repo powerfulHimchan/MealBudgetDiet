@@ -163,7 +163,7 @@ export function StatisticsView() {
               <div className="panel-heading"><div><p className="eyebrow">DAILY TREND</p><h2>일별 지출 추이</h2></div>{isLoading && <LoaderCircle className="spin" size={20} />}</div>
               <div className="chart-wrap" role="img" aria-label="일별 지출 추이 차트">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.daily} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  <AreaChart accessibilityLayer={false} data={data.daily} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                     <defs><linearGradient id="spending-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} /></linearGradient></defs>
                     <CartesianGrid stroke="#dbe4f0" strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} minTickGap={22} />
