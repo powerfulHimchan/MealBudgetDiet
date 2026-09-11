@@ -46,6 +46,7 @@ erDiagram
         varchar password_hash
         varchar display_name
         uuid profile_image_id FK
+        varchar service_role
         varchar status
         timestamptz created_at
         timestamptz updated_at
@@ -181,7 +182,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 
 ### 2.1 ledgers
 
-실제 환경에서 단 하나의 공용 식비 장부를 표현한다. 테이블을 별도로 두어 데이터 소유 경계와 전체 삭제 범위를 명확하게 한다.
+서비스 안의 독립적인 식비 장부를 표현한다. 각 장부를 별도 데이터 소유 경계로 두어 권한과 전체 삭제 범위를 명확하게 한다.
 
 | 컬럼 | 타입 | Null | 규칙 |
 |---|---|:---:|---|
@@ -195,7 +196,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 | created_at | timestamptz | N | 생성 시각 |
 | updated_at | timestamptz | N | 최종 수정 시각 |
 
-운영 profile에서는 ACTIVE 장부가 하나만 존재하도록 application invariant와 초기화 절차로 제한한다. 데모 환경은 별도 DB를 사용한다.
+운영 서비스는 여러 ACTIVE 장부를 지원한다. 현재 UI에서는 계정 하나가 하나의 ACTIVE 장부를 만들거나 초대로 참여하며, 서비스 관리자는 Bootstrap에서 자신의 첫 장부도 함께 생성한다. 데모 환경은 별도 DB를 사용한다.
 
 ### 2.2 users
 
@@ -208,10 +209,12 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 | password_hash | varchar(255) | Y | 탈퇴 시 제거 가능 |
 | display_name | varchar(50) | N | 탈퇴 시 공통 비식별 표시값으로 교체 |
 | profile_image_id | uuid | Y | images FK, 본인 활성 PROFILE 이미지 |
+| service_role | varchar(20) | N | USER, SERVICE_ADMIN |
 | status | varchar(20) | N | ACTIVE, WITHDRAWN |
 | created_at | timestamptz | N | 생성 시각 |
 | updated_at | timestamptz | N | 최종 수정 시각 |
 
+- `service_role`은 서비스 운영 권한이며 장부 권한과 독립적이다.
 - 이메일 비교 전 trim과 소문자 정규화를 수행한다.
 - WITHDRAWN 사용자는 로그인할 수 없다.
 - 탈퇴 시 이메일과 표시 이름을 비식별 값으로 교체하고 기존 세션과 비밀번호 재설정 토큰을 폐기한다.
@@ -221,7 +224,7 @@ Spring Session JDBC가 생성하는 세션 테이블은 애플리케이션 도�
 
 ### 2.3 ledger_members
 
-사용자와 공용 장부의 참여 관계 및 관리자 역할을 저장한다.
+사용자와 장부의 참여 관계 및 장부 역할을 저장한다. `ADMIN`은 해당 장부 관리자이고 `MEMBER`는 해당 장부를 사용하는 멤버다.
 
 | 컬럼 | 타입 | Null | 규칙 |
 |---|---|:---:|---|
@@ -527,6 +530,7 @@ Enum 성격의 문자열에는 CHECK 제약조건을 둔다.
 
 ```text
 ledgers.status IN ('ACTIVE', 'TERMINATING')
+users.service_role IN ('USER', 'SERVICE_ADMIN')
 users.status IN ('ACTIVE', 'WITHDRAWN')
 ledger_members.role IN ('MEMBER', 'ADMIN')
 ledger_members.status IN ('ACTIVE', 'LEFT')
@@ -653,6 +657,7 @@ V9__add_budget_overrun_risk_alert_type.sql
 V10__create_media_storage.sql
 V11__add_budget_cycle_settings.sql
 V12__add_push_threshold_settings.sql
+V13__add_service_role.sql
 ```
 
 마이그레이션은 적용 후 수정하지 않고 새 버전 파일로 변경을 이어간다.
