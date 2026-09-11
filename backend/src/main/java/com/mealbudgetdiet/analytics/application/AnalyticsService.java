@@ -58,14 +58,16 @@ public class AnalyticsService {
 	@Transactional(readOnly = true)
 	public DashboardSnapshot dashboard(UUID userId, YearMonth requestedMonth, int recentSize) {
 		Ledger ledger = ledger(userId);
+		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
 		BudgetCycle cycle = requestedMonth == null
-			? BudgetCycle.containing(LocalDate.now(clock.withZone(SERVICE_ZONE)), ledger.getBudgetCycleStartDay())
+			? BudgetCycle.containing(today, ledger.getBudgetCycleStartDay())
 			: BudgetCycle.starting(requestedMonth, ledger.getBudgetCycleStartDay());
 		UUID ledgerId = ledger.getId();
 		var budget = budgetService.getAppliedBudget(userId, cycle.yearMonth());
 		LocalDate from = cycle.from();
 		LocalDate to = cycle.to();
 		long spent = totalAmount(ledgerId, from, to);
+		long projectedSpent = projectedAmount(spent, from, to, today);
 		BigDecimal usageRate = percentage(spent, budget.amount());
 		DashboardStatus status = usageRate.compareTo(BigDecimal.valueOf(100)) >= 0
 			? DashboardStatus.EXCEEDED
@@ -92,7 +94,7 @@ public class AnalyticsService {
 
 		return new DashboardSnapshot(
 			cycle.yearMonth(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
-			budget.amount() - spent, usageRate, ledger.getPushUsageThreshold(), status, recent);
+			budget.amount() - spent, projectedSpent, usageRate, ledger.getPushUsageThreshold(), status, recent);
 	}
 
 	@Transactional(readOnly = true)
@@ -176,7 +178,7 @@ public class AnalyticsService {
 		validateRange(from, to);
 		UUID ledgerId = ledger(userId).getId();
 		if (categoryId != null && categoryRepository.findByIdAndLedgerId(categoryId, ledgerId).isEmpty()) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "CATEGORY_INVALID", "현재 장부에서 사용할 수 없는 카테고리입니다.");
+			throw new ApiException(HttpStatus.BAD_REQUEST, "CATEGORY_INVALID", "현재 장부에서 사용할 수 있는 카테고리입니다.");
 		}
 
 		StringBuilder sql = new StringBuilder("""
@@ -210,10 +212,12 @@ public class AnalyticsService {
 			)
 		);
 
-		StringBuilder csv = new StringBuilder("\uFEFF사용일,금액,카테고리,상호명,메모\r\n");
+		StringBuilder csv = new StringBuilder("﻿사용일,금액,카테고리,상호명,메모
+");
 		for (List<String> row : rows) {
 			csv.append(row.stream().map(AnalyticsService::csvCell).collect(java.util.stream.Collectors.joining(",")))
-				.append("\r\n");
+				.append("
+");
 		}
 		return new CsvExport(
 			"meal-expenses-%s_%s.csv".formatted(from, to),
@@ -225,6 +229,20 @@ public class AnalyticsService {
 			"select coalesce(sum(amount), 0) from expenses where ledger_id = ? and spent_on between ? and ?",
 			Long.class, ledgerId, from, to);
 		return total == null ? 0 : total;
+	}
+
+	private long projectedAmount(long spent, LocalDate from, LocalDate to, LocalDate today) {
+		if (spent == 0 || today.isBefore(from)) {
+			return 0;
+		}
+		long totalDays = ChronoUnit.DAYS.between(from, to) + 1;
+		long elapsedDays = today.isAfter(to)
+			? totalDays
+			: ChronoUnit.DAYS.between(from, today) + 1;
+		return BigDecimal.valueOf(spent)
+			.multiply(BigDecimal.valueOf(totalDays))
+			.divide(BigDecimal.valueOf(elapsedDays), 0, RoundingMode.HALF_UP)
+			.longValueExact();
 	}
 
 	private Ledger ledger(UUID userId) {
@@ -282,6 +300,6 @@ public class AnalyticsService {
 		if (!value.isEmpty() && "=+-@".indexOf(value.charAt(0)) >= 0) {
 			value = "'" + value;
 		}
-		return "\"" + value.replace("\"", "\"\"") + "\"";
+		return """ + value.replace(""", """") + """;
 	}
 }
