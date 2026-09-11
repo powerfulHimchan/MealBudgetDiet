@@ -16,6 +16,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { multipartMutation, mutation, request } from "../../../lib/api";
+import { clearCurrentUserAvatar, updateCurrentUserAvatar } from "../../current-user-avatar";
 import { ImageCropDialog } from "../../ui/image-crop-dialog";
 import { SettingsPageFrame } from "../settings-page-frame";
 
@@ -64,6 +65,7 @@ export function AccountSettings() {
       .then(([current, currentLedger, memberData]) => {
         if (!active) return;
         setUser(current);
+        updateCurrentUserAvatar(current);
         setLedger(currentLedger);
         setMembers(memberData.items);
       })
@@ -107,7 +109,9 @@ export function AccountSettings() {
       formData.append("file", file);
       uploaded = await multipartMutation<UploadedImage>("/api/v1/uploads/images?purpose=PROFILE", formData);
       const response = await mutation<ProfileImageResponse>("/api/v1/account/profile-image", "PUT", { imageId: uploaded.id });
-      setUser({ ...user, profileImageUrl: response.profileImageUrl });
+      const updatedUser = { ...user, profileImageUrl: response.profileImageUrl };
+      setUser(updatedUser);
+      updateCurrentUserAvatar(updatedUser);
       setNotice(user.profileImageUrl ? "프로필 사진을 변경했습니다." : "프로필 사진을 등록했습니다.");
     } catch (reason) {
       if (uploaded) {
@@ -126,7 +130,9 @@ export function AccountSettings() {
     setNotice(null);
     try {
       await mutation("/api/v1/account/profile-image", "DELETE");
-      setUser({ ...user, profileImageUrl: null });
+      const updatedUser = { ...user, profileImageUrl: null };
+      setUser(updatedUser);
+      updateCurrentUserAvatar(updatedUser);
       setNotice("프로필 사진을 삭제했습니다.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "프로필 사진을 삭제하지 못했습니다.");
@@ -151,6 +157,7 @@ export function AccountSettings() {
     setIsChangingPassword(true);
     try {
       await mutation("/api/v1/account/password-change", "POST", { currentPassword, newPassword });
+      clearCurrentUserAvatar();
       router.replace("/");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "비밀번호를 변경하지 못했습니다.");
@@ -164,6 +171,7 @@ export function AccountSettings() {
     setNotice(null);
     try {
       await mutation("/api/v1/auth/logout", "POST");
+      clearCurrentUserAvatar();
       router.replace("/");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "로그아웃하지 못했습니다.");
@@ -189,6 +197,7 @@ export function AccountSettings() {
         password: withdrawalPassword,
         confirmation: isLastAdmin ? withdrawalConfirmation : undefined,
       });
+      clearCurrentUserAvatar();
       router.replace("/");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "회원 탈퇴를 처리하지 못했습니다.");
