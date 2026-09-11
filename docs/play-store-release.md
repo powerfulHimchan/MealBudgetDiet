@@ -1,7 +1,7 @@
 # Google Play 출시 가이드
 
 - 기준일: 2026-09-10
-- 앱 이름: `식비(Sikbi)`
+- 앱 이름: `Sikbi - 함께 쓰는 식비 관리`
 - Android 패키지 ID: `app.sikbi`
 - 배포 방식: 운영 PWA + Trusted Web Activity(TWA)
 - 생성 도구: GoogleChromeLabs Bubblewrap
@@ -64,8 +64,8 @@ npx --yes @bubblewrap/cli@latest init \
 
 | 질문 | 값 |
 |---|---|
-| Application name | `식비` |
-| Launcher name | `식비` |
+| Application name | `Sikbi - 함께 쓰는 식비 관리` |
+| Launcher name | `Sikbi` |
 | Package ID | `app.sikbi` |
 | Start URL | `/` |
 | Display mode | `standalone` |

@@ -3,13 +3,13 @@ import { expect, test } from "@playwright/test";
 test.describe("Google Play 공개 표면", () => {
   test("로그인 없이 개인정보처리방침과 계정 삭제 안내를 조회한다", async ({ page }) => {
     await page.goto("/privacy");
-    await expect(page).toHaveTitle("개인정보처리방침 | 식비");
+    await expect(page).toHaveTitle("개인정보처리방침 | Sikbi - 함께 쓰는 식비 관리");
     await expect(page.getByRole("heading", { level: 1, name: "개인정보처리방침" })).toBeVisible();
     await expect(page.getByRole("link", { name: "계정 삭제 안내" }).first()).toHaveAttribute("href", "/account-deletion");
 
     await page.goto("/account-deletion");
-    await expect(page).toHaveTitle("계정 삭제 안내 | 식비");
-    await expect(page.getByRole("heading", { level: 1, name: "식비 계정 삭제" })).toBeVisible();
+    await expect(page).toHaveTitle("계정 삭제 안내 | Sikbi - 함께 쓰는 식비 관리");
+    await expect(page.getByRole("heading", { level: 1, name: "Sikbi 계정 삭제" })).toBeVisible();
     const deletionLink = page.getByRole("link", { name: "로그인하고 계정 삭제" });
     await expect(deletionLink).toHaveAttribute("href", "/settings/account");
     await deletionLink.click();
@@ -23,7 +23,7 @@ test.describe("Google Play 공개 표면", () => {
 
     expect(manifest).toMatchObject({
       id: "/",
-      name: "식비",
+      name: "Sikbi - 함께 쓰는 식비 관리",
       start_url: "/",
       scope: "/",
       display: "standalone",

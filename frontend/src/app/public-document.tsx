@@ -13,8 +13,8 @@ export function PublicDocument({ eyebrow, title, description, children }: Public
   return (
     <main className="public-document-shell">
       <header className="public-document-header">
-        <Link aria-label="식비 로그인" className="auth-brand" href="/login">
-          <span className="brand-mark">S</span><span>식비</span>
+        <Link aria-label="Sikbi 로그인" className="auth-brand" href="/login">
+          <span className="brand-mark">S</span><span>Sikbi - 함께 쓰는 식비 관리</span>
         </Link>
         <Link className="public-document-login" href="/login">
           로그인 <ExternalLink size={15} />

@@ -10,7 +10,7 @@
 
 ## Production identity
 
-- Service name: `Sikbi` (화면 표시명: `식비`)
+- Service name: `Sikbi` (화면 표시명: `Sikbi - 함께 쓰는 식비 관리`)
 - Web origin: `https://sikbi.app`
 - API origin: `https://api.sikbi.app`
 - Android package ID: `app.sikbi`

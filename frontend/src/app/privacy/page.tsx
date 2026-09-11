@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PublicDocument } from "../public-document";
 
 export const metadata: Metadata = {
-  title: "개인정보처리방침 | 식비",
+  title: "개인정보처리방침 | Sikbi - 함께 쓰는 식비 관리",
   description: "식비(Sikbi)의 개인정보 수집, 이용, 보관 및 삭제 방침입니다.",
 };
 

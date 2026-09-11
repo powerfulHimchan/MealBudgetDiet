@@ -148,8 +148,8 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
   return (
     <main className="auth-shell">
       <aside className="auth-promo">
-        <Link aria-label="식비 로그인" className="auth-brand" href="/login">
-          <span className="brand-mark">S</span><span>식비</span>
+        <Link aria-label="Sikbi 로그인" className="auth-brand" href="/login">
+          <span className="brand-mark">S</span><span>Sikbi - 함께 쓰는 식비 관리</span>
         </Link>
         <div className="auth-promo-copy">
           <p className="eyebrow">BUDGET WITH PEOPLE YOU TRUST</p>

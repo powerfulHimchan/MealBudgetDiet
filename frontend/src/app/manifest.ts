@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "식비",
-    short_name: "식비",
+    name: "Sikbi - 함께 쓰는 식비 관리",
+    short_name: "Sikbi",
     description: "공용 식비와 월 예산을 함께 관리하세요.",
     start_url: "/",
     scope: "/",
