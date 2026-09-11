@@ -23,6 +23,7 @@ type AuthScreenProps = {
   initialInviteCode?: string;
   initialResetToken?: string;
   nextPath?: string;
+  sessionExpired?: boolean;
 };
 
 const content = {
@@ -71,7 +72,13 @@ function safeDestination(nextPath?: string) {
   return nextPath;
 }
 
-export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "", nextPath }: AuthScreenProps) {
+export function AuthScreen({
+  mode,
+  initialInviteCode = "",
+  initialResetToken = "",
+  nextPath,
+  sessionExpired = false,
+}: AuthScreenProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -210,6 +217,11 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
             </div>
           ) : (
             <form className="auth-form" onSubmit={(event) => void submit(event)}>
+              {sessionExpired && mode === "login" && (
+                <div className="message-banner message-banner--notice" role="status">
+                  로그인 세션이 초기화되었습니다. 다시 로그인해 주세요.
+                </div>
+              )}
               {error && <div className="message-banner message-banner--error" role="alert">{error}</div>}
               {mode === "reset" && !initialResetToken && (
                 <div className="message-banner message-banner--error" role="alert">
@@ -224,27 +236,23 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
                 </label>
               )}
               {mode === "setup" && (
-                <>
-                  <label>
-                    <span>Bootstrap 토큰</span>
-                    <input autoComplete="off" maxLength={200} onChange={(event) => setBootstrapToken(event.target.value)} required type="password" value={bootstrapToken} />
-                    <small>서버 배포 환경 변수에 설정한 일회용 토큰입니다.</small>
-                  </label>
-                </>
+                <label>
+                  <span>Bootstrap 토큰</span>
+                  <input autoComplete="off" maxLength={200} onChange={(event) => setBootstrapToken(event.target.value)} required type="password" value={bootstrapToken} />
+                  <small>서버 배포 환경 변수에 설정한 일회용 토큰입니다.</small>
+                </label>
               )}
               {(mode === "signup" || mode === "setup") && (
-                <>
-                  <div className="auth-form-row">
-                    <label>
-                      <span>장부 이름</span>
-                      <input maxLength={100} onChange={(event) => setLedgerName(event.target.value)} required value={ledgerName} />
-                    </label>
-                    <label>
-                      <span>기본 월 예산</span>
-                      <input inputMode="numeric" min={1} onChange={(event) => setMonthlyBudget(event.target.value)} required type="number" value={monthlyBudget} />
-                    </label>
-                  </div>
-                </>
+                <div className="auth-form-row">
+                  <label>
+                    <span>장부 이름</span>
+                    <input maxLength={100} onChange={(event) => setLedgerName(event.target.value)} required value={ledgerName} />
+                  </label>
+                  <label>
+                    <span>기본 월 예산</span>
+                    <input inputMode="numeric" min={1} onChange={(event) => setMonthlyBudget(event.target.value)} required type="number" value={monthlyBudget} />
+                  </label>
+                </div>
               )}
               {(mode === "signup" || mode === "join" || mode === "setup") && (
                 <label>
