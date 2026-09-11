@@ -51,7 +51,7 @@ class AuthenticationFlowIntegrationTest {
 
 	@Test
 	@Order(1)
-	void bootstrapsFirstAdminAndCreatesDefaultCategories() throws Exception {
+	void bootstrapsServiceAdminAndCreatesDefaultCategories() throws Exception {
 		mockMvc.perform(get("/api/v1/bootstrap/status"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.available").value(true));
@@ -71,7 +71,8 @@ class AuthenticationFlowIntegrationTest {
 					"""))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.email").value("owner@example.com"))
-			.andExpect(jsonPath("$.role").value("ADMIN"))
+			.andExpect(jsonPath("$.serviceRole").value("SERVICE_ADMIN"))
+			.andExpect(jsonPath("$.ledgerRole").value("ADMIN"))
 			.andReturn();
 
 		String setCookie = result.getResponse().getHeader("Set-Cookie");
@@ -99,7 +100,8 @@ class AuthenticationFlowIntegrationTest {
 		var result = mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.displayName").value("힘찬"))
-			.andExpect(jsonPath("$.role").value("ADMIN"))
+			.andExpect(jsonPath("$.serviceRole").value("SERVICE_ADMIN"))
+			.andExpect(jsonPath("$.ledgerRole").value("ADMIN"))
 			.andReturn();
 
 		assertThat(result.getResponse().getHeader("Set-Cookie"))
@@ -133,7 +135,8 @@ class AuthenticationFlowIntegrationTest {
 					"""))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.email").value("member@example.com"))
-			.andExpect(jsonPath("$.role").value("MEMBER"));
+			.andExpect(jsonPath("$.serviceRole").value("USER"))
+			.andExpect(jsonPath("$.ledgerRole").value("MEMBER"));
 
 		assertThat(jdbcTemplate.queryForObject("select use_count from invitations", Long.class)).isEqualTo(1L);
 		assertThat(jdbcTemplate.queryForObject("select count(*) from invitations where token_hash = ?", Integer.class, rawCode))
@@ -382,6 +385,42 @@ class AuthenticationFlowIntegrationTest {
 
 		mockMvc.perform(get("/api/v1/auth/me").cookie(adminSession))
 			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	@Order(8)
+	void createsOwnLedgerAndBecomesLedgerAdmin() throws Exception {
+		mockMvc.perform(post("/api/v1/auth/register-ledger")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "email": "ledger-admin@example.com",
+					  "password": "password789!",
+					  "displayName": "새 장부 관리자",
+					  "ledgerName": "개인 식비",
+					  "defaultMonthlyBudget": 500000
+					}
+					"""))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.email").value("ledger-admin@example.com"))
+			.andExpect(jsonPath("$.serviceRole").value("USER"))
+			.andExpect(jsonPath("$.ledgerRole").value("ADMIN"));
+
+		assertThat(jdbcTemplate.queryForObject(
+			"select service_role from users where email = 'ledger-admin@example.com'", String.class
+		)).isEqualTo("USER");
+		assertThat(jdbcTemplate.queryForObject("""
+			select lm.role
+			from ledger_members lm
+			join users u on u.id = lm.user_id
+			join ledgers l on l.id = lm.ledger_id
+			where u.email = 'ledger-admin@example.com' and l.name = '개인 식비'
+			""", String.class)).isEqualTo("ADMIN");
+		assertThat(jdbcTemplate.queryForObject(
+			"select count(*) from categories c join ledgers l on l.id = c.ledger_id where l.name = '개인 식비'",
+			Integer.class
+		)).isEqualTo(5);
 	}
 
 	private Cookie sessionCookie(String setCookieHeader) {
