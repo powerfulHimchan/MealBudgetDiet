@@ -9,6 +9,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.mealbudgetdiet.identity.domain.ServiceRole;
 import com.mealbudgetdiet.ledger.domain.MemberRole;
 
 public record MealBudgetPrincipal(
@@ -16,12 +17,16 @@ public record MealBudgetPrincipal(
 	String email,
 	String passwordHash,
 	String displayName,
-	MemberRole role
+	ServiceRole serviceRole,
+	MemberRole ledgerRole
 ) implements UserDetails, Serializable {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+		return List.of(
+			new SimpleGrantedAuthority("ROLE_" + serviceRole.name()),
+			new SimpleGrantedAuthority("ROLE_LEDGER_" + ledgerRole.name())
+		);
 	}
 
 	@Override
