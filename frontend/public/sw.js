@@ -1,4 +1,4 @@
-const CACHE_NAME = "meal-budget-diet-shell-v5";
+const CACHE_NAME = "sikbi-shell-v6";
 const OFFLINE_URL = "/offline";
 const APP_ICON_URL = "/icons/icon-192.png";
 const BADGE_ICON_URL = "/icons/icon-badge-96.png";
@@ -30,13 +30,13 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil((async () => {
-    const tag = payload.notificationId ?? payload.type ?? "meal-budget-diet";
+    const tag = payload.notificationId ?? payload.type ?? "sikbi";
     const cache = await caches.open(CACHE_NAME);
     const marker = new Request(`/__push_notifications__/${encodeURIComponent(tag)}`);
     if (await cache.match(marker)) return;
     const existing = await self.registration.getNotifications({ tag });
     if (existing.length > 0) return;
-    await self.registration.showNotification(payload.title ?? "MealBudgetDiet", {
+    await self.registration.showNotification(payload.title ?? "식비", {
       body: payload.body ?? "새로운 알림이 도착했습니다.",
       icon: APP_ICON_URL,
       badge: BADGE_ICON_URL,
