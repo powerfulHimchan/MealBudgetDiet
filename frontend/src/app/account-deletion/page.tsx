@@ -4,8 +4,8 @@ import Link from "next/link";
 import { PublicDocument } from "../public-document";
 
 export const metadata: Metadata = {
-  title: "계정 삭제 안내 | MealBudgetDiet",
-  description: "웹에서 MealBudgetDiet 계정과 관련 정보를 삭제하는 방법을 안내합니다.",
+  title: "계정 삭제 안내 | Sikbi",
+  description: "웹에서 Sikbi 계정과 관련 정보를 삭제하는 방법을 안내합니다.",
 };
 
 export default function AccountDeletionPage() {
@@ -13,7 +13,7 @@ export default function AccountDeletionPage() {
     <PublicDocument
       description="앱을 설치하지 않아도 이 웹페이지에서 로그인해 계정 삭제를 직접 요청할 수 있습니다."
       eyebrow="ACCOUNT DELETION"
-      title="MealBudgetDiet 계정 삭제"
+      title="Sikbi 계정 삭제"
     >
       <section>
         <h2>웹에서 직접 삭제하는 방법</h2>
@@ -48,7 +48,7 @@ export default function AccountDeletionPage() {
 
       <aside className="public-document-danger">
         <Trash2 size={20} />
-        <div><strong>삭제 요청에 문제가 있나요?</strong><span><a href="https://github.com/powerfulHimchan/MealBudgetDiet/issues">GitHub 문의 채널</a>에서 요청해 주세요. 공개 글에는 민감한 정보를 남기지 마세요.</span></div>
+        <div><strong>삭제 요청에 문제가 있나요?</strong><span><a href="https://github.com/powerfulHimchan/Sikbi/issues">GitHub 문의 채널</a>에서 요청해 주세요. 공개 글에는 민감한 정보를 남기지 마세요.</span></div>
       </aside>
     </PublicDocument>
   );
