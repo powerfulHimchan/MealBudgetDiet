@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AuthScreen } from "../auth-screen";
 
-export const metadata: Metadata = { title: "초대 가입 | MealBudgetDiet" };
+export const metadata: Metadata = { title: "초대 가입 | 식비" };
 
 export default async function JoinPage({
   searchParams,

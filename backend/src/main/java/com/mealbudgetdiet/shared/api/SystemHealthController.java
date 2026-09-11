@@ -10,7 +10,7 @@ public class SystemHealthController {
 
 	@GetMapping("/health")
 	public HealthResponse health() {
-		return new HealthResponse("UP", "meal-budget-diet");
+		return new HealthResponse("UP", "sikbi");
 	}
 
 	public record HealthResponse(String status, String service) {

@@ -13,6 +13,6 @@ class SystemHealthControllerTest {
 		var response = controller.health();
 
 		assertThat(response.status()).isEqualTo("UP");
-		assertThat(response.service()).isEqualTo("meal-budget-diet");
+		assertThat(response.service()).isEqualTo("sikbi");
 	}
 }
