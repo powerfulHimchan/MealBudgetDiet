@@ -76,7 +76,7 @@ public class ApiExceptionHandler {
 
 	private ProblemDetail problem(HttpStatus status, String code, String detail, HttpServletRequest request) {
 		var problem = ProblemDetail.forStatusAndDetail(status, detail);
-		problem.setType(URI.create("https://mealbudgetdiet.app/problems/" + code.toLowerCase().replace('_', '-')));
+		problem.setType(URI.create("https://sikbi.app/problems/" + code.toLowerCase().replace('_', '-')));
 		problem.setTitle(status.getReasonPhrase());
 		problem.setInstance(URI.create(request.getRequestURI()));
 		problem.setProperty("code", code);
