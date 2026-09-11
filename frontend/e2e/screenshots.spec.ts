@@ -282,6 +282,26 @@ test("redirects an anonymous user to login and returns to the requested page", a
   await expect(page.getByRole("heading", { name: "기간별 통계" })).toBeVisible();
 });
 
+test("recovers from an invalidated server session", async ({ page }) => {
+  await page.context().addCookies([{ name: "MBD_SESSION", value: "expired-session", url: "http://127.0.0.1:3000" }]);
+  await page.route("**/api/v1/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/v1/dashboard") {
+      await route.fulfill({ status: 401, json: { detail: "로그인이 필요합니다." } });
+    } else if (pathname === "/api/v1/bootstrap/status") {
+      await route.fulfill({ json: { available: false } });
+    } else {
+      await route.fulfill({ json: {} });
+    }
+  });
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/login\?expired=1&next=%2F/);
+  await expect(page.getByText("로그인 세션이 초기화되었습니다. 다시 로그인해 주세요.", { exact: true })).toBeVisible();
+  const cookies = await page.context().cookies();
+  expect(cookies.some((cookie) => cookie.name === "MBD_SESSION")).toBe(false);
+});
+
 test("joins a shared ledger with the invitation code from the URL", async ({ page }) => {
   await mockExpenseApis(page, false);
   await page.goto("/join?code=MBD-TEST-7K2P");
