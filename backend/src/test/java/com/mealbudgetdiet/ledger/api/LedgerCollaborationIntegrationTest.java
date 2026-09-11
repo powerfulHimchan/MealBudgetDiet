@@ -141,7 +141,8 @@ class LedgerCollaborationIntegrationTest {
 					}
 					""".formatted(invitationCode)))
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.role").value("MEMBER"))
+			.andExpect(jsonPath("$.serviceRole").value("USER"))
+			.andExpect(jsonPath("$.ledgerRole").value("MEMBER"))
 			.andReturn();
 
 		memberSession = sessionCookie(result.getResponse().getHeader("Set-Cookie"));
