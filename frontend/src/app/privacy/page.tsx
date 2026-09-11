@@ -3,18 +3,18 @@ import Link from "next/link";
 import { PublicDocument } from "../public-document";
 
 export const metadata: Metadata = {
-  title: "개인정보처리방침 | MealBudgetDiet",
-  description: "MealBudgetDiet의 개인정보 수집, 이용, 보관 및 삭제 방침입니다.",
+  title: "개인정보처리방침 | Sikbi",
+  description: "Sikbi의 개인정보 수집, 이용, 보관 및 삭제 방침입니다.",
 };
 
 export default function PrivacyPage() {
   return (
     <PublicDocument
-      description="MealBudgetDiet 운영자(powerfulHimchan)는 필요한 정보만 처리하고, 사용자가 자신의 정보를 통제할 수 있도록 합니다."
+      description="Sikbi 운영자(powerfulHimchan)는 필요한 정보만 처리하고, 사용자가 자신의 정보를 통제할 수 있도록 합니다."
       eyebrow="PRIVACY POLICY"
       title="개인정보처리방침"
     >
-      <p className="public-document-date">시행일: 2026년 9월 10일</p>
+      <p className="public-document-date">시행일: 2026년 9월 11일</p>
 
       <section>
         <h2>1. 처리하는 정보와 이용 목적</h2>
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
       <section>
         <h2>2. 처리 방법과 공유 범위</h2>
         <p>비밀번호 원문은 저장하지 않고 단방향 해시로 보관합니다. 업로드 이미지는 비공개 객체 저장소에 저장하며, 활성 공유 장부 참여자에게만 조회 권한을 부여합니다. 식비와 예산 정보는 사용자가 참여 중인 같은 공유 장부의 참여자에게 표시됩니다.</p>
-        <p>서비스 운영에 필요한 범위에서 호스팅, 데이터베이스·객체 저장소, 이메일 발송 사업자가 정보를 처리할 수 있습니다. 실제 운영 사업자와 국외 이전 여부는 배포 환경이 확정되면 이 방침에 반영합니다. 개인정보를 판매하거나 맞춤 광고에 이용하지 않습니다.</p>
+        <p>서비스 운영에 필요한 범위에서 Cloudflare가 DNS·보안 연결을, Railway가 애플리케이션 호스팅과 PostgreSQL 운영을 처리할 수 있습니다. 객체 저장소와 이메일 발송 사업자, 처리 위치와 국외 이전 세부사항은 운영 적용 전에 최종 확정해 이 방침에 반영합니다. 개인정보를 판매하거나 맞춤 광고에 이용하지 않습니다.</p>
       </section>
 
       <section>
@@ -63,11 +63,11 @@ export default function PrivacyPage() {
 
       <section>
         <h2>6. 문의</h2>
-        <p>개인정보 또는 계정 삭제 문의는 <a href="https://github.com/powerfulHimchan/MealBudgetDiet/issues">MealBudgetDiet GitHub 이슈</a>를 이용해 주세요. 공개 이슈에는 비밀번호, 초대 코드, 영수증 이미지 등 민감한 정보를 작성하지 마세요.</p>
+        <p>개인정보 또는 계정 삭제 문의는 <a href="https://github.com/powerfulHimchan/Sikbi/issues">Sikbi GitHub 이슈</a>를 이용해 주세요. 공개 이슈에는 비밀번호, 초대 코드, 영수증 이미지 등 민감한 정보를 작성하지 마세요.</p>
       </section>
 
       <aside className="public-document-notice">
-        운영 도메인과 인프라 사업자가 확정되면 연락 이메일, 처리 위탁 사업자, 국외 이전 및 백업 보존 기간을 실제 운영 내용에 맞게 갱신합니다.
+        운영 배포 전에 연락 이메일, 객체 저장소·이메일 발송 사업자, 국외 이전 세부사항 및 백업 보존 기간을 실제 운영 내용에 맞게 갱신합니다.
       </aside>
     </PublicDocument>
   );
