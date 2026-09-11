@@ -1,6 +1,6 @@
 spring:
   application:
-    name: meal-budget-diet
+    name: sikbi
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/meal_budget_diet}
     username: ${DB_USERNAME:mealbudget}
@@ -30,6 +30,7 @@ spring:
 app:
   bootstrap-token: ${BOOTSTRAP_TOKEN:}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:3000}
+  problem-base-url: ${PROBLEM_BASE_URL:https://sikbi.app/problems}
   password-reset:
     token-ttl: ${PASSWORD_RESET_TOKEN_TTL:30m}
     email-enabled: ${PASSWORD_RESET_EMAIL_ENABLED:false}
@@ -61,6 +62,7 @@ app:
     temp-retention: ${MEDIA_TEMP_RETENTION:24h}
 
 server:
+  port: ${PORT:8080}
   forward-headers-strategy: framework
   servlet:
     session:
