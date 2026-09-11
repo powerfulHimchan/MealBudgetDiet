@@ -138,7 +138,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
         fullPage: true,
         animations: "disabled",
       });
-      await mobile.getByRole("button", { name: "취소" }).click();
+      await mobile.getByRole("dialog", { name: "우리집 식비 장부를 종료할까요?" }).getByRole("button", { name: "취소" }).click();
     }
   }
 
