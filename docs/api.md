@@ -1023,6 +1023,7 @@ GET /api/v1/dashboard?yearMonth=2026-09&recentSize=5
   "budget": 800000,
   "spent": 658800,
   "remaining": 141200,
+  "projectedSpent": 790560,
   "usageRate": 82.35,
   "pushUsageThreshold": 80,
   "status": "WARNING",
@@ -1045,7 +1046,7 @@ status:
 - `WARNING`: `pushUsageThreshold` 이상 100% 미만
 - `EXCEEDED`: 100% 이상
 
-remaining은 초과 시 음수가 될 수 있다.
+remaining은 초과 시 음수가 될 수 있다. `projectedSpent`는 현재 주기에서 오늘까지의 일평균 지출 속도가 마지막 날까지 유지된다고 가정한 예상 총지출이다. 지난 주기는 실제 지출, 아직 시작하지 않은 주기는 0을 반환한다.
 
 대시보드의 주의 상태와 Push 판정은 같은 `pushUsageThreshold`를 사용한다. Push 발송에는 이 기준 외에도 예상 주기 종료 지출이 예산을 초과한다는 조건이 추가로 필요하다. `pushUsageThreshold`가 100이면 대시보드는 `WARNING` 없이 `NORMAL`에서 `EXCEEDED`로 전환된다.
 
