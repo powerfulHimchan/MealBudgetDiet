@@ -59,6 +59,7 @@ app:
     region: ${MEDIA_REGION:ap-northeast-2}
     access-key: ${MEDIA_ACCESS_KEY:mealbudget}
     secret-key: ${MEDIA_SECRET_KEY:mealbudget-secret}
+    path-style-access: ${MEDIA_PATH_STYLE_ACCESS:true}
     temp-retention: ${MEDIA_TEMP_RETENTION:24h}
 
 server:

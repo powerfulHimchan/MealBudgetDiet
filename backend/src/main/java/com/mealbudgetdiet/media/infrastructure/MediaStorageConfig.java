@@ -20,13 +20,14 @@ public class MediaStorageConfig {
 		@Value("${app.media.endpoint}") URI endpoint,
 		@Value("${app.media.region}") String region,
 		@Value("${app.media.access-key}") String accessKey,
-		@Value("${app.media.secret-key}") String secretKey
+		@Value("${app.media.secret-key}") String secretKey,
+		@Value("${app.media.path-style-access}") boolean pathStyleAccess
 	) {
 		return S3Client.builder()
 			.endpointOverride(endpoint)
 			.region(Region.of(region))
 			.credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
-			.forcePathStyle(true)
+			.forcePathStyle(pathStyleAccess)
 			.httpClientBuilder(UrlConnectionHttpClient.builder())
 			.build();
 	}
