@@ -1,4 +1,4 @@
-# MealBudgetDiet frontend
+# Sikbi frontend
 
 Next.js App Router 기반의 모바일 우선 PWA입니다.
 
@@ -12,6 +12,10 @@ npm run dev
 ```
 
 개발 서버는 http://localhost:3000 에서 실행됩니다. `/api/*` 요청은 기본적으로 http://localhost:8080 의 백엔드로 전달됩니다. 다른 주소를 사용하려면 `BACKEND_INTERNAL_URL` 환경 변수를 설정하세요.
+
+## Production
+
+운영 origin은 `https://sikbi.app`이며 Railway의 `sikbi-web` 서비스로 배포합니다. 상세 설정은 [운영 배포 가이드](../docs/deployment.md)를 참고하세요.
 
 ## Verification
 
