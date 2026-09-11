@@ -82,7 +82,7 @@ export function Dashboard() {
             <div className="budget-stats">
               <div><span>이번 주기 사용</span><strong>{won.format(data.spent)}원</strong></div>
               <div><span>전체 예산</span><strong>{won.format(data.budget)}원</strong></div>
-              <div className="usage-stat"><span>사용률</span><strong>{Number(data.usageRate).toFixed(1)}%</strong></div>
+              <div className="usage-stat"><span>현재 사용률</span><strong>{Number(data.usageRate).toFixed(1)}%</strong></div>
             </div>
 
             <div className="projection-panel">

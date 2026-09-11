@@ -1,5 +1,6 @@
 package com.mealbudgetdiet.media.api;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import org.springframework.http.CacheControl;
@@ -54,7 +55,8 @@ public class ImageController {
 		var image = imageService.content(principal.id(), imageId);
 		return ResponseEntity.ok()
 			.contentType(MediaType.parseMediaType(image.mimeType()))
-			.cacheControl(CacheControl.noStore())
+			.cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePrivate())
+			.varyBy("Cookie")
 			.header("X-Content-Type-Options", "nosniff")
 			.body(image.content());
 	}

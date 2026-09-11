@@ -42,11 +42,11 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .status-chip { flex: none; padding: 7px 10px; border-radius: 5px; background: rgb(59 130 246 / 22%); color: #bfdbfe; font-size: .78rem; font-weight: 800; }
 .progress-track { height: 9px; margin: 30px 0 22px; overflow: hidden; border-radius: 2px; background: rgb(255 255 255 / 12%); }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand), #7dd3fc); }
-.budget-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.budget-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .budget-stats div { display: flex; flex-direction: column; gap: 5px; }
 .budget-stats span { color: #9fb3c8; font-size: .78rem; }
 .budget-stats strong { font-size: 1.02rem; letter-spacing: -.03em; }
-.usage-stat { display: none !important; }
+.usage-stat { display: flex; }
 .primary-action { position: relative; z-index: 1; display: flex; width: 100%; min-height: 52px; align-items: center; justify-content: center; gap: 8px; margin-top: 28px; border: 0; border-radius: 7px; background: var(--brand); color: white; cursor: pointer; font-size: 1rem; font-weight: 850; transition: transform 160ms ease, background 160ms ease; }
 .primary-action:hover { background: #2563eb; }
 .primary-action:active { transform: scale(.985); }
