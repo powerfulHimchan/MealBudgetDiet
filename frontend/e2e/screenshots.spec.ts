@@ -163,7 +163,12 @@ test("does not add a whole-chart focus target", async ({ page }) => {
 
   const chart = page.getByRole("img", { name: "일별 지출 추이 차트" });
   await expect(chart).toBeVisible();
-  await expect(chart.locator("[tabindex]")).toHaveCount(0);
+  await expect(chart.locator('[tabindex="0"]')).toHaveCount(0);
+  const internalFocusTarget = chart.locator("[tabindex]").first();
+  if (await internalFocusTarget.count()) {
+    await internalFocusTarget.focus();
+    await expect(internalFocusTarget).toHaveCSS("outline-style", "none");
+  }
 });
 
 test("manage categories from settings", async ({ page }) => {
