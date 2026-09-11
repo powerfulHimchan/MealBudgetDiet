@@ -791,3 +791,16 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
   .image-crop-controls label { grid-template-columns: 82px minmax(0, 1fr); }
   .image-crop-dialog > footer button { flex: 1; }
 }
+
+
+/* Prevent the chart canvas from showing a full selection outline after touch. */
+.chart-wrap, .chart-wrap .recharts-wrapper, .chart-wrap .recharts-surface {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.chart-wrap .recharts-wrapper:focus,
+.chart-wrap .recharts-wrapper:focus-visible,
+.chart-wrap .recharts-surface:focus,
+.chart-wrap .recharts-surface:focus-visible {
+  outline: none;
+}
