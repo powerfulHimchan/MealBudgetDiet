@@ -31,7 +31,7 @@ async function createFirstAdmin(page: Page) {
 
   const responsePromise = page.waitForResponse((response) =>
     response.url().endsWith("/api/v1/bootstrap/admin") && response.request().method() === "POST");
-  await form.getByRole("button", { name: "관리자 계정 만들기" }).click();
+  await form.getByRole("button", { name: "서비스 관리자 계정 만들기" }).click();
   expect((await responsePromise).status()).toBe(201);
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "500,000원 남았어요" })).toBeVisible();
