@@ -3,6 +3,7 @@ package com.mealbudgetdiet.shared.api;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,16 @@ import com.mealbudgetdiet.identity.application.AuthRateLimitException;
 import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+	private final String problemBaseUrl;
+
+	public ApiExceptionHandler(
+		@Value("${app.problem-base-url:https://sikbi.app/problems}") String problemBaseUrl
+	) {
+		this.problemBaseUrl = problemBaseUrl.endsWith("/")
+			? problemBaseUrl.substring(0, problemBaseUrl.length() - 1)
+			: problemBaseUrl;
+	}
 
 	@ExceptionHandler(AuthRateLimitException.class)
 	ResponseEntity<ProblemDetail> handleRateLimit(
@@ -76,7 +87,7 @@ public class ApiExceptionHandler {
 
 	private ProblemDetail problem(HttpStatus status, String code, String detail, HttpServletRequest request) {
 		var problem = ProblemDetail.forStatusAndDetail(status, detail);
-		problem.setType(URI.create("https://sikbi.app/problems/" + code.toLowerCase().replace('_', '-')));
+		problem.setType(URI.create(problemBaseUrl + "/" + code.toLowerCase().replace('_', '-')));
 		problem.setTitle(status.getReasonPhrase());
 		problem.setInstance(URI.create(request.getRequestURI()));
 		problem.setProperty("code", code);
