@@ -16,6 +16,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { multipartMutation, mutation, request } from "../../../lib/api";
+import { ImageCropDialog } from "../../ui/image-crop-dialog";
 import { SettingsPageFrame } from "../settings-page-frame";
 
 type MemberRole = "ADMIN" | "MEMBER";
@@ -46,6 +47,7 @@ export function AccountSettings() {
   const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingImage, setIsSavingImage] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -77,7 +79,7 @@ export function AccountSettings() {
   const expectedConfirmation = ledger ? `${ledger.name} 삭제` : "";
   const isBusy = isSavingImage || isChangingPassword || isLoggingOut || isWithdrawing;
 
-  async function selectProfileImage(event: ChangeEvent<HTMLInputElement>) {
+  function selectProfileImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || !user) return;
@@ -89,7 +91,13 @@ export function AccountSettings() {
       setError("프로필 사진은 5MB 이하여야 합니다.");
       return;
     }
+    setError(null);
+    setNotice(null);
+    setCropFile(file);
+  }
 
+  async function uploadProfileImage(file: File) {
+    if (!user) return;
     setIsSavingImage(true);
     setError(null);
     setNotice(null);
@@ -224,7 +232,7 @@ export function AccountSettings() {
                 </span>
                 <strong>{user.displayName}</strong>
                 <span>{user.email}</span>
-                <p>JPEG, PNG, WebP · 최대 5MB<br />표시용 WebP로 안전하게 변환됩니다.</p>
+                <p>JPEG, PNG, WebP · 최대 5MB<br />업로드 전에 원하는 영역을 정사각형으로 크롭할 수 있습니다.</p>
               </div>
             </div>
             <div className="profile-actions">
@@ -259,9 +267,25 @@ export function AccountSettings() {
                   <span>새 비밀번호 확인</span>
                   <input autoComplete="new-password" disabled={isBusy} maxLength={72} minLength={8} onChange={(event) => setNewPasswordConfirmation(event.target.value)} required type="password" value={newPasswordConfirmation} />
                 </label>
-                <button className="dark-button" disabled={isBusy || !currentPassword || !newPassword || !newPasswordConfirmation} type="submit">
-                  {isChangingPassword && <LoaderCircle className="spin" size={16} />}비밀번호 변경
-                </button>
+                <div className="setting-form-actions">
+                  <button
+                    className="secondary-button"
+                    disabled={isBusy || (!currentPassword && !newPassword && !newPasswordConfirmation)}
+                    onClick={() => {
+                      setCurrentPassword("");
+                      setNewPassword("");
+                      setNewPasswordConfirmation("");
+                      setError(null);
+                      setNotice(null);
+                    }}
+                    type="button"
+                  >
+                    취소
+                  </button>
+                  <button className="dark-button" disabled={isBusy || !currentPassword || !newPassword || !newPasswordConfirmation} type="submit">
+                    {isChangingPassword && <LoaderCircle className="spin" size={16} />}비밀번호 변경
+                  </button>
+                </div>
               </form>
             </section>
 
@@ -292,6 +316,19 @@ export function AccountSettings() {
             </button>
           </section>
         </div>
+      )}
+
+      {cropFile && (
+        <ImageCropDialog
+          aspectRatio={1}
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onConfirm={async (file) => {
+            await uploadProfileImage(file);
+            setCropFile(null);
+          }}
+          title="프로필 사진 크롭"
+        />
       )}
 
       {isWithdrawalOpen && ledger && (
