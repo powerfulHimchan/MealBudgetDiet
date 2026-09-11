@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.mealbudgetdiet'
 version = '0.0.1-SNAPSHOT'
-description = 'Shared meal budget tracker'
+description = 'Sikbi shared meal budget tracker'
 
 java {
 	toolchain {
