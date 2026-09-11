@@ -3,14 +3,14 @@ import Link from "next/link";
 import { PublicDocument } from "../public-document";
 
 export const metadata: Metadata = {
-  title: "개인정보처리방침 | Sikbi",
-  description: "Sikbi의 개인정보 수집, 이용, 보관 및 삭제 방침입니다.",
+  title: "개인정보처리방침 | 식비",
+  description: "식비(Sikbi)의 개인정보 수집, 이용, 보관 및 삭제 방침입니다.",
 };
 
 export default function PrivacyPage() {
   return (
     <PublicDocument
-      description="Sikbi 운영자(powerfulHimchan)는 필요한 정보만 처리하고, 사용자가 자신의 정보를 통제할 수 있도록 합니다."
+      description="식비(Sikbi) 운영자(powerfulHimchan)는 필요한 정보만 처리하고, 사용자가 자신의 정보를 통제할 수 있도록 합니다."
       eyebrow="PRIVACY POLICY"
       title="개인정보처리방침"
     >
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
 
       <section>
         <h2>6. 문의</h2>
-        <p>개인정보 또는 계정 삭제 문의는 <a href="https://github.com/powerfulHimchan/Sikbi/issues">Sikbi GitHub 이슈</a>를 이용해 주세요. 공개 이슈에는 비밀번호, 초대 코드, 영수증 이미지 등 민감한 정보를 작성하지 마세요.</p>
+        <p>개인정보 또는 계정 삭제 문의는 <a href="https://github.com/powerfulHimchan/MealBudgetDiet/issues">Sikbi GitHub 이슈</a>를 이용해 주세요. 공개 이슈에는 비밀번호, 초대 코드, 영수증 이미지 등 민감한 정보를 작성하지 마세요.</p>
       </section>
 
       <aside className="public-document-notice">
