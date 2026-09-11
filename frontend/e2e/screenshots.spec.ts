@@ -25,6 +25,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
   await mockExpenseApis(authMobile, false);
   const authScreens = [
     { route: "/login", file: "login-mobile.png", heading: "로그인" },
+    { route: "/signup", file: "signup-mobile.png", heading: "새 장부 만들기" },
     { route: "/join?code=MBD-TEST-7K2P", file: "join-mobile.png", heading: "초대받은 장부에 참여" },
     { route: "/setup", file: "setup-mobile.png", heading: "첫 장부 만들기" },
     { route: "/forgot-password", file: "forgot-password-mobile.png", heading: "비밀번호 찾기" },
@@ -305,7 +306,7 @@ test("creates the first administrator and ledger", async ({ page }) => {
   await page.getByLabel("이메일").fill("himchan@example.com");
   await page.getByLabel("비밀번호", { exact: false }).first().fill("password123!");
   await page.getByLabel("비밀번호 확인").fill("password123!");
-  await page.getByRole("button", { name: "관리자 계정 만들기" }).click();
+  await page.getByRole("button", { name: "서비스 관리자 계정 만들기" }).click();
 
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "141,200원 남았어요" })).toBeVisible();
@@ -496,11 +497,18 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
           json: { id: members[0].id, email: body.email, displayName: "힘찬", serviceRole: "SERVICE_ADMIN", ledgerRole: "ADMIN", profileImageUrl: null },
         });
       }
+    } else if (pathname === "/api/v1/auth/register-ledger") {
+      const body = route.request().postDataJSON() as { email: string; displayName: string };
+      await route.fulfill({
+        headers: { "set-cookie": "MBD_SESSION=ledger-owner-session; Path=/; HttpOnly; SameSite=Lax" },
+        json: { id: "99999999-aaaa-bbbb-cccc-111111111111", email: body.email, displayName: body.displayName, serviceRole: "USER", ledgerRole: "ADMIN", profileImageUrl: null },
+        status: 201,
+      });
     } else if (pathname === "/api/v1/auth/register") {
       const body = route.request().postDataJSON() as { inviteCode: string; email: string; displayName: string };
       await route.fulfill({
         headers: { "set-cookie": "MBD_SESSION=registered-session; Path=/; HttpOnly; SameSite=Lax" },
-        json: { id: members[1].id, email: body.email, displayName: body.displayName, role: "MEMBER", profileImageUrl: null },
+        json: { id: members[1].id, email: body.email, displayName: body.displayName, serviceRole: "USER", ledgerRole: "MEMBER", profileImageUrl: null },
         status: 201,
       });
     } else if (pathname === "/api/v1/auth/password-reset-requests") {
