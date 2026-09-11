@@ -35,6 +35,10 @@ public class User {
 	private UUID profileImageId;
 
 	@Enumerated(EnumType.STRING)
+	@Column(name = "service_role", nullable = false, length = 20)
+	private ServiceRole serviceRole;
+
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private UserStatus status;
 
@@ -49,11 +53,12 @@ public class User {
 	protected User() {
 	}
 
-	public User(String email, String passwordHash, String displayName) {
+	public User(String email, String passwordHash, String displayName, ServiceRole serviceRole) {
 		this.id = UUID.randomUUID();
 		this.email = email;
 		this.passwordHash = passwordHash;
 		this.displayName = displayName;
+		this.serviceRole = serviceRole;
 		this.status = UserStatus.ACTIVE;
 	}
 
@@ -71,6 +76,10 @@ public class User {
 
 	public String getDisplayName() {
 		return displayName;
+	}
+
+	public ServiceRole getServiceRole() {
+		return serviceRole;
 	}
 
 	public UserStatus getStatus() {
@@ -97,9 +106,10 @@ public class User {
 		this.profileImageId = null;
 	}
 
-	public void reactivate(String passwordHash, String displayName) {
+	public void reactivate(String passwordHash, String displayName, ServiceRole serviceRole) {
 		this.passwordHash = passwordHash;
 		this.displayName = displayName;
+		this.serviceRole = serviceRole;
 		this.status = UserStatus.ACTIVE;
 	}
 }
