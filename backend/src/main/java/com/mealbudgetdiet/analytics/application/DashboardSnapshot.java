@@ -12,6 +12,7 @@ public record DashboardSnapshot(
 	long budget,
 	long spent,
 	long remaining,
+	long projectedSpent,
 	BigDecimal usageRate,
 	int pushUsageThreshold,
 	DashboardStatus status,
