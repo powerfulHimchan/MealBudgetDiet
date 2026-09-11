@@ -24,7 +24,7 @@ export function SettingsPageFrame({
     <main className="app-shell settings-shell">
       <header className="topbar">
         <Link className="brand" href="/"><span className="brand-mark">M</span><span>MealBudgetDiet</span></Link>
-        {badge ?? <span className="page-badge"><SlidersHorizontal size={16} /> 설정 메뉴</span>}
+        {badge ?? <span className="page-badge"><SlidersHorizontal size={16} /> 설정</span>}
       </header>
 
       {showBackLink && <Link className="settings-back-link" href="/settings"><ArrowLeft size={16} /> 설정으로 돌아가기</Link>}
