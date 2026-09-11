@@ -212,12 +212,10 @@ public class AnalyticsService {
 			)
 		);
 
-		StringBuilder csv = new StringBuilder("﻿사용일,금액,카테고리,상호명,메모
-");
+		StringBuilder csv = new StringBuilder("\uFEFF사용일,금액,카테고리,상호명,메모\r\n");
 		for (List<String> row : rows) {
 			csv.append(row.stream().map(AnalyticsService::csvCell).collect(java.util.stream.Collectors.joining(",")))
-				.append("
-");
+				.append("\r\n");
 		}
 		return new CsvExport(
 			"meal-expenses-%s_%s.csv".formatted(from, to),
@@ -300,6 +298,6 @@ public class AnalyticsService {
 		if (!value.isEmpty() && "=+-@".indexOf(value.charAt(0)) >= 0) {
 			value = "'" + value;
 		}
-		return """ + value.replace(""", """") + """;
+		return "\"" + value.replace("\"", "\"\"") + "\"";
 	}
 }
