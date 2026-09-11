@@ -1,8 +1,8 @@
 # Google Play 출시 가이드
 
 - 기준일: 2026-09-10
-- 앱 이름: `MealBudgetDiet`
-- Android 패키지 ID: `com.powerfulhimchan.mealbudgetdiet`
+- 앱 이름: `식비(Sikbi)`
+- Android 패키지 ID: `app.sikbi`
 - 배포 방식: 운영 PWA + Trusted Web Activity(TWA)
 - 생성 도구: GoogleChromeLabs Bubblewrap
 - 목표 API: Android 16, API 36 이상
@@ -23,29 +23,29 @@
 
 | 항목 | 상태 | 반영 위치 |
 |---|---|---|
-| 운영 HTTPS 도메인 | 미정 | DNS, reverse proxy, `PUBLIC_BASE_URL`, TWA `host` |
+| 운영 HTTPS 도메인 | 확정: `https://sikbi.app` | Cloudflare DNS, `PUBLIC_BASE_URL`, TWA `host` |
 | 개인정보 문의 이메일 | 미정 | `/privacy`, Play Console |
-| 호스팅·DB·Object Storage·SMTP 사업자 | 미정 | 개인정보처리방침, Data safety |
-| 백업 보존 기간 | 미정 | 개인정보처리방침, 운영 정책 |
+| 호스팅·DB 사업자 | 확정: Cloudflare DNS + Railway App/PostgreSQL | 개인정보처리방침, Data safety |
+| Object Storage·SMTP·백업 보존 기간 | 미정 | 개인정보처리방침, 운영 정책 |
 | Play App Signing SHA-256 지문 | 첫 AAB 등록 후 확인 | `/.well-known/assetlinks.json` |
 | Play 개인 계정 생성일 | 확인 필요 | 12명·14일 비공개 테스트 의무 판단 |
 
-운영 정보가 확정되기 전의 개인정보처리방침은 개발 초안이다. Play 심사에는 실제 사업자, 이전 여부, 연락 이메일과 보존 기간을 반영한 버전을 사용한다.
+연락 이메일, Object Storage·SMTP 사업자와 백업 정책이 확정되기 전의 개인정보처리방침은 개발 초안이다. Play 심사에는 실제 사업자, 이전 여부, 연락 이메일과 보존 기간을 반영한 버전을 사용한다.
 
 ## 3. 운영 PWA 배포
 
-1. 고정 도메인을 구매하거나 보유 도메인의 하위 도메인을 정한다.
+1. 운영 웹은 `sikbi.app`, 운영 API는 `api.sikbi.app`을 사용한다.
 2. 프론트엔드, 백엔드, PostgreSQL, S3 호환 Object Storage와 SMTP를 운영 환경에 배포한다.
 3. TLS 인증서를 적용하고 HTTP 요청을 HTTPS로 리다이렉트한다.
-4. `PUBLIC_BASE_URL=https://<운영-호스트>`를 설정한다.
+4. `PUBLIC_BASE_URL=https://sikbi.app`를 설정한다.
 5. 아래 URL이 인증 없이 정상 응답하는지 확인한다.
 
 ```text
-https://<운영-호스트>/manifest.webmanifest
-https://<운영-호스트>/privacy
-https://<운영-호스트>/account-deletion
-https://<운영-호스트>/icons/icon-512.png
-https://<운영-호스트>/icons/icon-maskable-512.png
+https://sikbi.app/manifest.webmanifest
+https://sikbi.app/privacy
+https://sikbi.app/account-deletion
+https://sikbi.app/icons/icon-512.png
+https://sikbi.app/icons/icon-maskable-512.png
 ```
 
 6. Chrome DevTools의 Application 탭과 Lighthouse로 manifest, service worker, HTTPS, 설치 가능성을 확인한다.
@@ -56,7 +56,7 @@ Bubblewrap는 Google의 TWA용 CLI다. 운영 manifest가 외부에서 접근 �
 
 ```bash
 npx --yes @bubblewrap/cli@latest init \
-  --manifest="https://<운영-호스트>/manifest.webmanifest" \
+  --manifest="https://sikbi.app/manifest.webmanifest" \
   --directory="android"
 ```
 
@@ -64,9 +64,9 @@ npx --yes @bubblewrap/cli@latest init \
 
 | 질문 | 값 |
 |---|---|
-| Application name | `MealBudgetDiet` |
-| Launcher name | `MealBudgetDiet` |
-| Package ID | `com.powerfulhimchan.mealbudgetdiet` |
+| Application name | `식비` |
+| Launcher name | `식비` |
+| Package ID | `app.sikbi` |
 | Start URL | `/` |
 | Display mode | `standalone` |
 | Orientation | `any` |
@@ -113,7 +113,7 @@ bubblewrap build
 Bubblewrap는 서명된 `app-release-bundle.aab`을 생성한다. 제출 전 다음을 확인한다.
 
 - target API 36 이상
-- package ID `com.powerfulhimchan.mealbudgetdiet`
+- package ID `app.sikbi`
 - version code 증가
 - Android 13 이상에서 알림 권한 허용·거부 흐름
 - 로그인, 이미지 업로드, Push, 오프라인 안내, 뒤로 가기
@@ -125,8 +125,8 @@ Bubblewrap는 서명된 `app-release-bundle.aab`을 생성한다. 제출 전 다
 
 ### 앱 콘텐츠
 
-- 개인정보처리방침 URL: `https://<운영-호스트>/privacy`
-- 계정 삭제 URL: `https://<운영-호스트>/account-deletion`
+- 개인정보처리방침 URL: `https://sikbi.app/privacy`
+- 계정 삭제 URL: `https://sikbi.app/account-deletion`
 - App access: 심사 전용 관리자 또는 참여자 계정과 로그인 절차 제공
 - Ads: 광고 없음
 - Target audience: 실제 배포 연령을 선택하고, 어린이 대상이 아니라면 스토어 설명과 설정을 일치시킴
@@ -160,7 +160,7 @@ Bubblewrap는 서명된 `app-release-bundle.aab`을 생성한다. 제출 전 다
 
 전체 설명:
 
-> MealBudgetDiet은 가족이나 가까운 사람과 하나의 식비 장부를 함께 관리하는 앱입니다. 식비를 빠르게 등록하고 최대 3장의 이미지를 첨부할 수 있습니다. 월 예산과 원하는 예산 시작일을 설정하고, 현재 소비 속도로 예산을 초과할 위험이 있을 때 알림을 받을 수 있습니다. 기간별 지출 추이와 카테고리 통계로 소비 흐름을 한눈에 확인하세요. 초대 코드, 참여자 역할, 카테고리와 Push 기준도 설정할 수 있습니다.
+> 식비(Sikbi)는 가족이나 가까운 사람과 하나의 식비 장부를 함께 관리하는 앱입니다. 식비를 빠르게 등록하고 최대 3장의 이미지를 첨부할 수 있습니다. 월 예산과 원하는 예산 시작일을 설정하고, 현재 소비 속도로 예산을 초과할 위험이 있을 때 알림을 받을 수 있습니다. 기간별 지출 추이와 카테고리 통계로 소비 흐름을 한눈에 확인하세요. 초대 코드, 참여자 역할, 카테고리와 Push 기준도 설정할 수 있습니다.
 
 그래픽 산출물:
 
