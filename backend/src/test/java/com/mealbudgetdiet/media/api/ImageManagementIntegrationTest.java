@@ -1,6 +1,7 @@
 package com.mealbudgetdiet.media.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -87,6 +89,9 @@ class ImageManagementIntegrationTest {
 		byte[] webp = mockMvc.perform(get(contentUrl).cookie(session))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("image/webp"))
+			.andExpect(header().string("Cache-Control", containsString("max-age=600")))
+			.andExpect(header().string("Cache-Control", containsString("private")))
+			.andExpect(header().string("Vary", containsString("Cookie")))
 			.andReturn().getResponse().getContentAsByteArray();
 		assertThat(new String(webp, 0, 4, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("RIFF");
 		assertThat(new String(webp, 8, 4, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("WEBP");
