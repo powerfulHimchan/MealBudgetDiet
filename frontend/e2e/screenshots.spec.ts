@@ -27,7 +27,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
     { route: "/login", file: "login-mobile.png", heading: "로그인" },
     { route: "/signup", file: "signup-mobile.png", heading: "새 장부 만들기" },
     { route: "/join?code=MBD-TEST-7K2P", file: "join-mobile.png", heading: "초대받은 장부에 참여" },
-    { route: "/setup", file: "setup-mobile.png", heading: "첫 장부 만들기" },
+    { route: "/setup", file: "setup-mobile.png", heading: "서비스 관리자 설정" },
     { route: "/forgot-password", file: "forgot-password-mobile.png", heading: "비밀번호 찾기" },
     { route: "/reset-password?token=test-reset-token", file: "reset-password-mobile.png", heading: "새 비밀번호 설정" },
   ];
@@ -297,7 +297,7 @@ test("joins a shared ledger with the invitation code from the URL", async ({ pag
   await expect(page).toHaveURL("/");
 });
 
-test("creates the first administrator and ledger", async ({ page }) => {
+test("creates the first service administrator and ledger", async ({ page }) => {
   await mockExpenseApis(page, false);
   await page.goto("/setup");
 
