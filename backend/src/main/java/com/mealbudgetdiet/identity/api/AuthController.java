@@ -83,6 +83,24 @@ public class AuthController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(response(principal));
 	}
 
+	@PostMapping("/register-ledger")
+	ResponseEntity<AuthUserResponse> registerLedger(
+		@Valid @RequestBody LedgerRegistrationRequest requestBody,
+		HttpServletRequest request,
+		HttpServletResponse response
+	) {
+		onboardingService.registerLedgerAdmin(
+			requestBody.email(),
+			requestBody.password(),
+			requestBody.displayName(),
+			requestBody.ledgerName(),
+			requestBody.defaultMonthlyBudget()
+		);
+		var principal = sessionAuthenticationService.login(
+			requestBody.email(), requestBody.password(), request, response);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response(principal));
+	}
+
 	@PostMapping("/login")
 	AuthUserResponse login(
 		@Valid @RequestBody LoginRequest requestBody,

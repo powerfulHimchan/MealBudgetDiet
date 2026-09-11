@@ -1,6 +1,6 @@
 # Sikbi REST API 설계
 
-- 문서 버전: 1.2
+- 문서 버전: 1.3
 - Base path: `/api/v1`
 - Content-Type: 기본 `application/json`, 이미지 업로드 `multipart/form-data`
 - 오류 Content-Type: `application/problem+json`
@@ -95,10 +95,11 @@ CSRF 토큰이 없거나 올바르지 않으면 HTTP 403을 반환한다.
 
 | Method | Path | 인증 | 설명 |
 |---|---|:---:|---|
-| GET | `/bootstrap/status` | X | 최초 관리자 생성 가능 여부 |
-| POST | `/bootstrap/admin` | bootstrap token | 최초 관리자와 장부 생성 |
+| GET | `/bootstrap/status` | X | 최초 서비스 관리자 생성 가능 여부 |
+| POST | `/bootstrap/admin` | bootstrap token | 최초 서비스 관리자와 첫 장부 생성 |
 | GET | `/auth/csrf` | X | CSRF 토큰 발급 |
-| POST | `/auth/register` | X | 초대 코드 기반 회원가입 |
+| POST | `/auth/register-ledger` | X | 새 장부와 장부 관리자 계정 생성 |
+| POST | `/auth/register` | X | 초대 코드 기반 장부 멤버 가입 |
 | POST | `/auth/login` | X | 로그인 |
 | POST | `/auth/logout` | O | 로그아웃 |
 | GET | `/auth/me` | O | 현재 사용자 조회 |
@@ -175,9 +176,9 @@ GET /api/v1/bootstrap/status
 }
 ```
 
-사용자가 한 명이라도 생성되면 `available`은 false가 된다.
+활성 서비스 관리자가 한 명이라도 존재하면 `available`은 false가 된다.
 
-### 3.2 최초 관리자 생성
+### 3.2 최초 서비스 관리자 생성
 
 ```http
 POST /api/v1/bootstrap/admin
@@ -196,16 +197,67 @@ X-Bootstrap-Token: <one-time-token>
 }
 ```
 
-성공: HTTP 201
+성공: HTTP 201과 로그인 세션 생성
+
+```json
+{
+  "id": "user-uuid",
+  "email": "owner@example.com",
+  "displayName": "힘찬",
+  "serviceRole": "SERVICE_ADMIN",
+  "ledgerRole": "ADMIN",
+  "profileImageUrl": null
+}
+```
+
+서비스 관리자는 동시에 자신이 만든 첫 장부의 장부 관리자이므로 일반 사용자와 동일하게 장부를 사용할 수 있다.
 
 보안 규칙:
 
-- 사용자가 없는 경우에만 허용
+- 활성 서비스 관리자가 없는 경우에만 허용
 - bootstrap token 불일치 시 404와 동일한 일반 응답 사용
 - 성공 후 bootstrap 기능 비활성화
 - 동시에 두 요청이 들어와도 한 명만 생성되도록 DB에서 직렬화
 
-### 3.3 회원가입
+### 3.3 새 장부와 장부 관리자 가입
+
+```http
+POST /api/v1/auth/register-ledger
+```
+
+요청:
+
+```json
+{
+  "email": "owner2@example.com",
+  "password": "password",
+  "displayName": "사용자",
+  "ledgerName": "우리집 식비",
+  "defaultMonthlyBudget": 800000
+}
+```
+
+성공: HTTP 201과 로그인 세션 생성
+
+```json
+{
+  "id": "user-uuid",
+  "email": "owner2@example.com",
+  "displayName": "사용자",
+  "serviceRole": "USER",
+  "ledgerRole": "ADMIN",
+  "profileImageUrl": null
+}
+```
+
+활성 서비스 관리자가 생성된 이후부터 사용할 수 있다. 가입과 동시에 새 장부, 기본 카테고리, 장부 관리자 멤버십을 생성한다.
+
+오류:
+
+- `SERVICE_SETUP_REQUIRED`
+- `EMAIL_ALREADY_EXISTS`
+
+### 3.4 초대 코드 기반 장부 멤버 가입
 
 ```http
 POST /api/v1/auth/register
@@ -229,8 +281,9 @@ POST /api/v1/auth/register
   "id": "user-uuid",
   "email": "member@example.com",
   "displayName": "사용자",
-  "profileImageUrl": null,
-  "role": "MEMBER"
+  "serviceRole": "USER",
+  "ledgerRole": "MEMBER",
+  "profileImageUrl": null
 }
 ```
 
@@ -240,7 +293,7 @@ POST /api/v1/auth/register
 - `INVITATION_REVOKED`
 - `EMAIL_ALREADY_EXISTS`
 
-### 3.4 로그인
+### 3.5 로그인
 
 ```http
 POST /api/v1/auth/login
@@ -262,8 +315,9 @@ POST /api/v1/auth/login
   "id": "user-uuid",
   "email": "member@example.com",
   "displayName": "사용자",
-  "profileImageUrl": null,
-  "role": "MEMBER"
+  "serviceRole": "USER",
+  "ledgerRole": "MEMBER",
+  "profileImageUrl": null
 }
 ```
 
@@ -271,7 +325,7 @@ POST /api/v1/auth/login
 
 같은 이메일과 클라이언트 조합에서 기본 15분 동안 실패가 5회를 넘으면 `AUTH_RATE_LIMITED`와 HTTP 429를 반환한다. 응답의 `Retry-After` 헤더는 다시 시도할 수 있을 때까지 남은 초 단위 시간이다. 로그인에 성공하면 해당 조합의 실패 횟수를 초기화한다.
 
-### 3.5 로그아웃
+### 3.6 로그아웃
 
 ```http
 POST /api/v1/auth/logout
@@ -281,7 +335,7 @@ POST /api/v1/auth/logout
 
 현재 세션과 쿠키를 무효화한다.
 
-### 3.6 현재 사용자
+### 3.7 현재 사용자
 
 ```http
 GET /api/v1/auth/me
@@ -294,12 +348,13 @@ GET /api/v1/auth/me
   "id": "user-uuid",
   "email": "member@example.com",
   "displayName": "사용자",
-  "profileImageUrl": "/api/v1/images/profile-image-uuid/content",
-  "role": "MEMBER"
+  "serviceRole": "USER",
+  "ledgerRole": "MEMBER",
+  "profileImageUrl": "/api/v1/images/profile-image-uuid/content"
 }
 ```
 
-### 3.7 비밀번호 재설정 요청
+### 3.8 비밀번호 재설정 요청
 
 ```http
 POST /api/v1/auth/password-reset-requests
@@ -319,7 +374,7 @@ POST /api/v1/auth/password-reset-requests
 
 기본 1시간 동안 이메일당 3회, 클라이언트당 10회로 제한하지만 제한된 요청도 HTTP 202를 반환하며 이메일은 발송하지 않는다.
 
-### 3.8 비밀번호 재설정
+### 3.9 비밀번호 재설정
 
 ```http
 POST /api/v1/auth/password-resets

@@ -10,7 +10,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mealbudgetdiet.identity.domain.ServiceRole;
 import com.mealbudgetdiet.identity.domain.User;
+import com.mealbudgetdiet.identity.domain.UserStatus;
 import com.mealbudgetdiet.identity.infrastructure.PasswordResetTokenRepository;
 import com.mealbudgetdiet.identity.infrastructure.UserRepository;
 import com.mealbudgetdiet.notification.infrastructure.PushSubscriptionRepository;
@@ -37,24 +39,29 @@ public class IdentityService {
 	}
 
 	public User createUser(String email, String password, String displayName) {
+		return createUser(email, password, displayName, ServiceRole.USER);
+	}
+
+	public User createUser(String email, String password, String displayName, ServiceRole serviceRole) {
 		String normalizedEmail = normalizeEmail(email);
 		var existingUser = userRepository.findByEmail(normalizedEmail);
 		if (existingUser.isPresent()) {
-			if (existingUser.get().getStatus() == com.mealbudgetdiet.identity.domain.UserStatus.ACTIVE) {
+			if (existingUser.get().getStatus() == UserStatus.ACTIVE) {
 				throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "이미 가입된 이메일입니다.");
 			}
-			existingUser.get().reactivate(passwordEncoder.encode(password), displayName.trim());
+			existingUser.get().reactivate(passwordEncoder.encode(password), displayName.trim(), serviceRole);
 			return userRepository.saveAndFlush(existingUser.get());
 		}
 		return userRepository.saveAndFlush(new User(
 			normalizedEmail,
 			passwordEncoder.encode(password),
-			displayName.trim()
+			displayName.trim(),
+			serviceRole
 		));
 	}
 
-	public long countUsers() {
-		return userRepository.count();
+	public boolean hasActiveServiceAdmin() {
+		return userRepository.existsByServiceRoleAndStatus(ServiceRole.SERVICE_ADMIN, UserStatus.ACTIVE);
 	}
 
 	public User getUser(UUID userId) {

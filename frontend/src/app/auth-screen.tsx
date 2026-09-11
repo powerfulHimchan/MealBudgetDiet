@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { mutation, request } from "../lib/api";
 
-type AuthMode = "login" | "join" | "setup" | "forgot" | "reset";
+type AuthMode = "login" | "signup" | "join" | "setup" | "forgot" | "reset";
 type AuthScreenProps = {
   mode: AuthMode;
   initialInviteCode?: string;
@@ -32,6 +32,12 @@ const content = {
     description: "한 번 로그인하면 직접 로그아웃할 때까지 안전하게 유지됩니다.",
     submit: "로그인",
   },
+  signup: {
+    eyebrow: "CREATE YOUR LEDGER",
+    title: "새 장부 만들기",
+    description: "계정을 만들고 나만의 식비 장부 관리자로 시작하세요.",
+    submit: "장부 관리자 계정 만들기",
+  },
   join: {
     eyebrow: "JOIN SHARED LEDGER",
     title: "초대받은 장부에 참여",
@@ -39,10 +45,10 @@ const content = {
     submit: "가입하고 시작하기",
   },
   setup: {
-    eyebrow: "FIRST ADMIN SETUP",
-    title: "첫 장부 만들기",
-    description: "배포 시 설정한 Bootstrap 토큰으로 최초 관리자와 공유 장부를 만듭니다.",
-    submit: "관리자 계정 만들기",
+    eyebrow: "SERVICE ADMIN SETUP",
+    title: "서비스 관리자 설정",
+    description: "Bootstrap 토큰으로 최초 서비스 관리자 계정과 사용할 첫 장부를 만듭니다.",
+    submit: "서비스 관리자 계정 만들기",
   },
   forgot: {
     eyebrow: "PASSWORD RECOVERY",
@@ -93,11 +99,11 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if ((mode === "join" || mode === "setup" || mode === "reset") && password !== passwordConfirmation) {
+    if ((mode === "signup" || mode === "join" || mode === "setup" || mode === "reset") && password !== passwordConfirmation) {
       setError("비밀번호 확인이 일치하지 않습니다.");
       return;
     }
-    if (mode === "setup" && Number(monthlyBudget) <= 0) {
+    if ((mode === "signup" || mode === "setup") && Number(monthlyBudget) <= 0) {
       setError("월 예산은 0원보다 크게 입력해 주세요.");
       return;
     }
@@ -107,6 +113,13 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
       if (mode === "login") {
         await mutation("/api/v1/auth/login", "POST", { email, password });
         router.replace(safeDestination(nextPath));
+      } else if (mode === "signup") {
+        await mutation(
+          "/api/v1/auth/register-ledger",
+          "POST",
+          { email, password, displayName, ledgerName, defaultMonthlyBudget: Number(monthlyBudget) },
+        );
+        router.replace("/");
       } else if (mode === "join") {
         await mutation("/api/v1/auth/register", "POST", { inviteCode, email, password, displayName });
         router.replace("/");
@@ -128,7 +141,7 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
         });
         setResetComplete(true);
       }
-      if (mode === "login" || mode === "join" || mode === "setup") router.refresh();
+      if (mode === "login" || mode === "signup" || mode === "join" || mode === "setup") router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "요청을 처리하지 못했습니다.");
       setIsSubmitting(false);
@@ -137,12 +150,13 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
 
   const current = content[mode];
   const submitDisabled = isSubmitting
-    || ((mode === "login" || mode === "join" || mode === "setup" || mode === "forgot") && !email)
-    || ((mode === "login" || mode === "join" || mode === "setup" || mode === "reset") && !password)
-    || ((mode === "join" || mode === "setup") && !displayName)
-    || ((mode === "join" || mode === "setup" || mode === "reset") && !passwordConfirmation)
+    || ((mode === "login" || mode === "signup" || mode === "join" || mode === "setup" || mode === "forgot") && !email)
+    || ((mode === "login" || mode === "signup" || mode === "join" || mode === "setup" || mode === "reset") && !password)
+    || ((mode === "signup" || mode === "join" || mode === "setup") && !displayName)
+    || ((mode === "signup" || mode === "join" || mode === "setup" || mode === "reset") && !passwordConfirmation)
     || (mode === "join" && !inviteCode)
-    || (mode === "setup" && (!bootstrapToken || !ledgerName || !monthlyBudget || bootstrapAvailable === false))
+    || ((mode === "signup" || mode === "setup") && (!ledgerName || !monthlyBudget))
+    || (mode === "setup" && (!bootstrapToken || bootstrapAvailable === false))
     || (mode === "reset" && !initialResetToken);
 
   return (
@@ -167,7 +181,7 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
       <section className="auth-form-side">
         <div className="auth-card">
           <span className="auth-card-icon">
-            {mode === "login" ? <LogIn size={25} /> : mode === "join" ? <UserPlus size={25} /> : mode === "forgot" ? <Mail size={25} /> : <KeyRound size={25} />}
+            {mode === "login" ? <LogIn size={25} /> : (mode === "signup" || mode === "join") ? <UserPlus size={25} /> : mode === "forgot" ? <Mail size={25} /> : <KeyRound size={25} />}
           </span>
           <p className="eyebrow">{current.eyebrow}</p>
           <h2>{current.title}</h2>
@@ -190,8 +204,8 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
           ) : mode === "setup" && bootstrapAvailable === false ? (
             <div className="auth-complete-panel">
               <CircleDollarSign size={25} />
-              <strong>첫 장부 설정이 완료되어 있습니다.</strong>
-              <span>기존 계정으로 로그인해 주세요.</span>
+              <strong>서비스 관리자 설정이 완료되어 있습니다.</strong>
+              <span>기존 계정으로 로그인하거나 새 장부를 만들어 주세요.</span>
               <Link className="auth-primary-link" href="/login">로그인으로 이동</Link>
             </div>
           ) : (
@@ -216,6 +230,10 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
                     <input autoComplete="off" maxLength={200} onChange={(event) => setBootstrapToken(event.target.value)} required type="password" value={bootstrapToken} />
                     <small>서버 배포 환경 변수에 설정한 일회용 토큰입니다.</small>
                   </label>
+                </>
+              )}
+              {(mode === "signup" || mode === "setup") && (
+                <>
                   <div className="auth-form-row">
                     <label>
                       <span>장부 이름</span>
@@ -228,7 +246,7 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
                   </div>
                 </>
               )}
-              {(mode === "join" || mode === "setup") && (
+              {(mode === "signup" || mode === "join" || mode === "setup") && (
                 <label>
                   <span>표시 이름</span>
                   <input autoComplete="name" maxLength={50} onChange={(event) => setDisplayName(event.target.value)} placeholder="장부에 표시할 이름" required value={displayName} />
@@ -246,7 +264,7 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
                   <input autoComplete={mode === "login" ? "current-password" : "new-password"} maxLength={72} minLength={mode === "login" ? undefined : 8} onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
                 </label>
               )}
-              {(mode === "join" || mode === "setup" || mode === "reset") && (
+              {(mode === "signup" || mode === "join" || mode === "setup" || mode === "reset") && (
                 <label>
                   <span>{mode === "reset" ? "새 비밀번호 확인" : "비밀번호 확인"}</span>
                   <input autoComplete="new-password" maxLength={72} minLength={8} onChange={(event) => setPasswordConfirmation(event.target.value)} required type="password" value={passwordConfirmation} />
@@ -254,7 +272,7 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
               )}
 
               <button className="auth-submit" disabled={submitDisabled} type="submit">
-                {isSubmitting ? <LoaderCircle className="spin" size={18} /> : mode === "login" ? <LogIn size={18} /> : mode === "join" ? <UserPlus size={18} /> : mode === "forgot" ? <Mail size={18} /> : <KeyRound size={18} />}
+                {isSubmitting ? <LoaderCircle className="spin" size={18} /> : mode === "login" ? <LogIn size={18} /> : (mode === "signup" || mode === "join") ? <UserPlus size={18} /> : mode === "forgot" ? <Mail size={18} /> : <KeyRound size={18} />}
                 {current.submit}
               </button>
             </form>
@@ -265,7 +283,11 @@ export function AuthScreen({ mode, initialInviteCode = "", initialResetToken = "
               <>
                 <span>비밀번호를 잊었다면</span><Link href="/forgot-password">비밀번호 재설정</Link>
                 <span>초대 코드를 받았다면</span><Link href="/join">초대 코드로 가입</Link>
-                {bootstrapAvailable && <><span>처음 설치한 관리자라면</span><Link href="/setup">첫 장부 설정</Link></>}
+                {bootstrapAvailable
+                  ? <><span>서비스를 처음 설정한다면</span><Link href="/setup">서비스 관리자 설정</Link></>
+                  : bootstrapAvailable === false
+                    ? <><span>새 장부를 시작하려면</span><Link href="/signup">새 장부 만들기</Link></>
+                    : null}
               </>
             ) : (
               <><span>이미 계정이 있다면</span><Link href="/login">로그인</Link></>

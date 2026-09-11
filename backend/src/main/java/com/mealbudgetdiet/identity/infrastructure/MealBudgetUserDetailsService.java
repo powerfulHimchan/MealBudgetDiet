@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.mealbudgetdiet.identity.application.IdentityService;
+import com.mealbudgetdiet.identity.domain.ServiceRole;
 import com.mealbudgetdiet.ledger.domain.MemberRole;
 
 @Service
@@ -21,7 +22,7 @@ public class MealBudgetUserDetailsService implements UserDetailsService {
 	@Override
 	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 		return jdbcClient.sql("""
-			select u.id, u.email, u.password_hash, u.display_name, lm.role
+			select u.id, u.email, u.password_hash, u.display_name, u.service_role, lm.role
 			from users u
 			join ledger_members lm on lm.user_id = u.id
 			where u.email = :email
@@ -35,6 +36,7 @@ public class MealBudgetUserDetailsService implements UserDetailsService {
 				resultSet.getString("email"),
 				resultSet.getString("password_hash"),
 				resultSet.getString("display_name"),
+				ServiceRole.valueOf(resultSet.getString("service_role")),
 				MemberRole.valueOf(resultSet.getString("role"))
 			))
 			.optional()
