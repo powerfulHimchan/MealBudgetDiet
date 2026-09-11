@@ -18,7 +18,7 @@ function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
-function initialView(value: string, mode: "date" | "month") {
+function initialView(value: string) {
   const match = value.match(/^(\d{4})-(\d{2})/);
   if (match) return { year: Number(match[1]), month: Number(match[2]) - 1 };
   const now = new Date();
@@ -40,7 +40,7 @@ export function CalendarPicker({
   placeholder = mode === "date" ? "날짜 선택" : "월 선택",
 }: CalendarPickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const initial = initialView(value, mode);
+  const initial = initialView(value);
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(initial.year);
   const [viewMonth, setViewMonth] = useState(initial.month);
@@ -52,13 +52,6 @@ export function CalendarPicker({
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const next = initialView(value, mode);
-    setViewYear(next.year);
-    setViewMonth(next.month);
-  }, [open, value, mode]);
 
   const days = useMemo(() => {
     const firstWeekday = new Date(Date.UTC(viewYear, viewMonth, 1)).getUTCDay();
@@ -83,7 +76,14 @@ export function CalendarPicker({
         aria-label={ariaLabel}
         className="calendar-picker__trigger"
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (!open) {
+            const next = initialView(value);
+            setViewYear(next.year);
+            setViewMonth(next.month);
+          }
+          setOpen((current) => !current);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Escape") setOpen(false);
         }}
