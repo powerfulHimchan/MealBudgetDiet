@@ -6,7 +6,7 @@
 - API origin: `https://api.sikbi.app`
 - Android package ID: `app.sikbi`
 - DNS: Cloudflare
-- Application / PostgreSQL: Railway
+- Application / PostgreSQL / Object Storage: Railway
 - 배포 리전: Singapore 권장
 
 애플리케이션은 브라우저에서 same-origin `/api`를 호출하고, `sikbi-web`이 Railway private network의 `sikbi-api`로 전달한다. `api.sikbi.app`은 운영 확인과 API 직접 접근에 사용하되 PWA의 기본 호출 경로는 계속 `sikbi.app/api/*`로 유지한다.
@@ -20,7 +20,7 @@
 | `sikbi-web` | GitHub / Dockerfile | `/frontend` | `/frontend/railway.toml` |
 | `sikbi-api` | GitHub / Dockerfile | `/backend` | `/backend/railway.toml` |
 | `Postgres` | Railway PostgreSQL | 해당 없음 | Railway 관리 |
-| Object Storage | 비공개 S3 호환 스토리지 | 해당 없음 | 사업자 확정 후 연결 |
+| `sikbi-media` | Railway Bucket (비공개 S3 호환) | 해당 없음 | Singapore |
 
 두 애플리케이션 서비스는 모두 `powerfulHimchan/MealBudgetDiet`의 `main` 브랜치를 연결한다. Railway 서비스 설정에서 Root Directory와 Config File Path를 표의 값으로 지정한다.
 
@@ -45,11 +45,17 @@ PROBLEM_BASE_URL=https://sikbi.app/problems
 SESSION_COOKIE_SECURE=true
 BOOTSTRAP_TOKEN=<long-random-secret>
 AUTH_RATE_LIMIT_SECRET=<at-least-32-random-characters>
+MEDIA_BUCKET=${{sikbi-media.BUCKET}}
+MEDIA_ENDPOINT=${{sikbi-media.ENDPOINT}}
+MEDIA_REGION=${{sikbi-media.REGION}}
+MEDIA_ACCESS_KEY=${{sikbi-media.ACCESS_KEY_ID}}
+MEDIA_SECRET_KEY=${{sikbi-media.SECRET_ACCESS_KEY}}
+MEDIA_PATH_STYLE_ACCESS=false
 ```
 
-나머지 SMTP, VAPID, Object Storage 값은 [운영 환경 변수 예시](../.env.production.example)를 기준으로 Railway Variables에 등록한다. 비밀번호와 비공개 키는 저장소에 커밋하지 않는다.
+나머지 SMTP와 VAPID 값은 [운영 환경 변수 예시](../.env.production.example)를 기준으로 Railway Variables에 등록한다. 비밀번호와 비공개 키는 저장소에 커밋하지 않는다.
 
-PostgreSQL은 외부 Public Access를 켜지 않고 같은 Railway 프로젝트의 private network로만 연결한다. 정기 백업과 보존 기간은 프로덕션 오픈 전에 Railway에서 활성화하고 개인정보처리방침에 동일하게 반영한다.
+PostgreSQL은 외부 Public Access를 켜지 않고 같은 Railway 프로젝트의 private network로만 연결한다. `sikbi-media`는 공개 버킷이나 공개 URL을 만들지 않고 `sikbi-api`만 참조 변수로 접근한다. 정기 백업과 보존 기간은 프로덕션 오픈 전에 Railway에서 활성화하고 개인정보처리방침에 동일하게 반영한다.
 
 ## 3. Cloudflare DNS
 
