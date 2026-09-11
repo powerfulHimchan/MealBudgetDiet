@@ -97,6 +97,7 @@ export function PushThresholdSettings() {
   }
 
   const isAdmin = ledger?.currentUserRole === "ADMIN";
+  const thresholdChanged = !!ledger && threshold !== String(ledger.pushUsageThreshold);
   const previewThreshold = Math.min(100, Math.max(1, Number(threshold) || 1));
 
   return (
@@ -139,9 +140,23 @@ export function PushThresholdSettings() {
             <small>두 조건을 모두 만족해도 같은 예산 주기에는 한 번만 발송합니다.</small>
           </div>
           {isAdmin ? (
-            <button className="dark-button" disabled={isSaving} type="submit">
-              {isSaving && <LoaderCircle className="spin" size={16} />}Push 기준 저장
-            </button>
+            <div className="setting-form-actions">
+              <button
+                className="secondary-button"
+                disabled={isSaving || !thresholdChanged}
+                onClick={() => {
+                  setThreshold(String(ledger.pushUsageThreshold));
+                  setError(null);
+                  setNotice(null);
+                }}
+                type="button"
+              >
+                취소
+              </button>
+              <button className="dark-button" disabled={isSaving || !thresholdChanged} type="submit">
+                {isSaving && <LoaderCircle className="spin" size={16} />}Push 기준 저장
+              </button>
+            </div>
           ) : (
             <p className="read-only-note">Push 기준은 장부 관리자만 변경할 수 있습니다.</p>
           )}

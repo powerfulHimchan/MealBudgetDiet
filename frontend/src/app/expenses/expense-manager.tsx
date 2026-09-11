@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Camera,
-  ChevronDown,
   House,
   LoaderCircle,
   Pencil,
@@ -22,7 +21,11 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { mutation, multipartMutation, request } from "../../lib/api";
 import { CurrentUserAvatar } from "../current-user-avatar";
+import { CalendarPicker } from "../ui/date-picker";
+import { CustomSelect } from "../ui/custom-select";
+import { ImageCropDialog } from "../ui/image-crop-dialog";
 
 type Category = { id: string; name: string; sortOrder: number; version: number };
 type Expense = {
@@ -57,37 +60,10 @@ function todayInSeoul() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { credentials: "include", ...init });
-  if (!response.ok) {
-    const problem = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(problem?.detail ?? "요청을 처리하지 못했습니다.");
-  }
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
-}
-
-async function mutation<T>(url: string, method: string, body?: unknown): Promise<T> {
-  const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
-  return request<T>(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      [csrf.headerName]: csrf.token,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-
 async function uploadExpenseImage(file: File): Promise<UploadedImage> {
-  const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
   const body = new FormData();
   body.append("file", file);
-  return request<UploadedImage>("/api/v1/uploads/images?purpose=EXPENSE", {
-    method: "POST",
-    headers: { [csrf.headerName]: csrf.token },
-    body,
-  });
+  return multipartMutation<UploadedImage>("/api/v1/uploads/images?purpose=EXPENSE", body);
 }
 
 function expenseQuery(filters: Filters, cursor?: string) {
@@ -116,6 +92,7 @@ export function ExpenseManager() {
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
+  const [pendingCropFiles, setPendingCropFiles] = useState<File[]>([]);
   const [draft, setDraft] = useState<ExpenseDraft>({
     amount: "",
     spentOn: todayInSeoul(),
@@ -229,7 +206,7 @@ export function ExpenseManager() {
     }
   }
 
-  async function selectImages(files: FileList | null) {
+  function selectImages(files: FileList | null) {
     if (!files?.length) return;
     const selected = Array.from(files);
     if (draftImages.length + selected.length > 3) {
@@ -245,17 +222,23 @@ export function ExpenseManager() {
       setError("이미지는 파일당 5MB 이하여야 합니다.");
       return;
     }
+    setError(null);
+    setPendingCropFiles(selected);
+  }
+
+  async function uploadCroppedImage(file: File) {
     setIsUploading(true);
     setError(null);
     try {
-      const uploaded: DraftImage[] = [];
-      for (const file of selected) {
-        const image = await uploadExpenseImage(file);
-        uploaded.push({ ...image, sortOrder: draftImages.length + uploaded.length, temporary: true });
-      }
-      setDraftImages((current) => [...current, ...uploaded]);
+      const image = await uploadExpenseImage(file);
+      setDraftImages((current) => [
+        ...current,
+        { ...image, sortOrder: current.length, temporary: true },
+      ]);
+      setPendingCropFiles((current) => current.slice(1));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "이미지를 업로드하지 못했습니다.");
+      setPendingCropFiles([]);
     } finally {
       setIsUploading(false);
     }
@@ -288,6 +271,7 @@ export function ExpenseManager() {
       void mutation(`/api/v1/uploads/images/${image.id}`, "DELETE").catch(() => undefined);
     }
     setDraftImages([]);
+    setPendingCropFiles([]);
     setIsExpenseOpen(false);
   }
 
@@ -364,22 +348,24 @@ export function ExpenseManager() {
             <div className="filter-title"><SlidersHorizontal size={18} /><strong>검색 조건</strong></div>
             <label>
               <span>시작일</span>
-              <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
+              <CalendarPicker ariaLabel="검색 시작일" onChange={(from) => setFilters({ ...filters, from })} value={filters.from} />
             </label>
             <label>
               <span>종료일</span>
-              <input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
+              <CalendarPicker ariaLabel="검색 종료일" onChange={(to) => setFilters({ ...filters, to })} value={filters.to} />
             </label>
             <label>
               <span>카테고리</span>
-              <span className="select-wrap">
-                <select value={filters.categoryId} onChange={(event) => setFilters({ ...filters, categoryId: event.target.value })}>
-                  <option value="">전체 카테고리</option>
-                  {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
-                  <option value="uncategorized">분류 없음</option>
-                </select>
-                <ChevronDown size={16} />
-              </span>
+              <CustomSelect
+                ariaLabel="검색 카테고리"
+                onChange={(categoryId) => setFilters({ ...filters, categoryId })}
+                options={[
+                  { value: "", label: "전체 카테고리" },
+                  ...categories.map((category) => ({ value: category.id, label: category.name })),
+                  { value: "uncategorized", label: "분류 없음" },
+                ]}
+                value={filters.categoryId}
+              />
             </label>
             <label className="keyword-field">
               <span>검색어</span>
@@ -457,8 +443,17 @@ export function ExpenseManager() {
             <form onSubmit={saveExpense}>
               <label className="amount-field"><span>금액</span><span><input required min={1} inputMode="numeric" type="number" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} placeholder="0" /><b>원</b></span></label>
               <div className="form-row">
-                <label><span>사용 날짜</span><input required type="date" value={draft.spentOn} onChange={(event) => setDraft({ ...draft, spentOn: event.target.value })} /></label>
-                <label><span>카테고리</span><span className="select-wrap"><select required value={draft.categoryId} onChange={(event) => setDraft({ ...draft, categoryId: event.target.value })}><option value="" disabled>선택</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><ChevronDown size={16} /></span></label>
+                <label><span>사용 날짜</span><CalendarPicker ariaLabel="사용 날짜" onChange={(spentOn) => setDraft({ ...draft, spentOn })} value={draft.spentOn} /></label>
+                <label>
+                  <span>카테고리</span>
+                  <CustomSelect
+                    ariaLabel="식비 카테고리"
+                    onChange={(categoryId) => setDraft({ ...draft, categoryId })}
+                    options={categories.map((category) => ({ value: category.id, label: category.name }))}
+                    placeholder="선택"
+                    value={draft.categoryId}
+                  />
+                </label>
               </div>
               <label><span>상호명 <small>선택</small></span><input maxLength={100} value={draft.merchant} onChange={(event) => setDraft({ ...draft, merchant: event.target.value })} placeholder="예: 동네마트" /></label>
               <label><span>메모 <small>선택</small></span><textarea maxLength={1000} value={draft.memo} onChange={(event) => setDraft({ ...draft, memo: event.target.value })} placeholder="함께 기억할 내용을 적어두세요." /></label>
@@ -483,7 +478,7 @@ export function ExpenseManager() {
                   <label className="expense-image-picker">
                     {isUploading ? <LoaderCircle className="spin" size={20} /> : <Camera size={20} />}
                     <span>{isUploading ? "이미지 처리 중" : "이미지 추가"}</span>
-                    <input accept="image/jpeg,image/png,image/webp" disabled={isUploading} multiple onChange={(event) => { void selectImages(event.target.files); event.target.value = ""; }} type="file" />
+                    <input accept="image/jpeg,image/png,image/webp" disabled={isUploading || pendingCropFiles.length > 0} multiple onChange={(event) => { selectImages(event.target.files); event.target.value = ""; }} type="file" />
                   </label>
                 )}
               </fieldset>
@@ -491,6 +486,15 @@ export function ExpenseManager() {
             </form>
           </section>
         </div>
+      )}
+      {pendingCropFiles[0] && (
+        <ImageCropDialog
+          aspectRatio={4 / 3}
+          file={pendingCropFiles[0]}
+          onCancel={() => setPendingCropFiles([])}
+          onConfirm={uploadCroppedImage}
+          title={pendingCropFiles.length > 1 ? `사진 크롭 (${draftImages.length + 1}/${draftImages.length + pendingCropFiles.length})` : "사진 크롭"}
+        />
       )}
     </main>
   );

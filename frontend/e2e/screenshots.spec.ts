@@ -112,6 +112,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
         mimeType: "image/png",
         buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
       });
+      await mobile.getByRole("button", { name: "크롭 적용" }).click();
       await expect(mobile.getByRole("button", { name: "이미지 제거" })).toBeVisible();
       await mobile.screenshot({
         path: path.join(screenshotDirectory, "expense-image-upload-mobile.png"),
@@ -137,7 +138,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
         fullPage: true,
         animations: "disabled",
       });
-      await mobile.getByRole("button", { name: "취소" }).click();
+      await mobile.getByRole("dialog", { name: "우리집 식비 장부를 종료할까요?" }).getByRole("button", { name: "취소" }).click();
     }
   }
 
@@ -217,6 +218,7 @@ test("upload and delete a profile image", async ({ page }) => {
     mimeType: "image/png",
     buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
   });
+  await page.getByRole("button", { name: "크롭 적용" }).click();
   await expect(page.getByText("프로필 사진을 등록했습니다.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "사진 삭제" }).click();
   await expect(page.getByText("프로필 사진을 삭제했습니다.", { exact: true })).toBeVisible();
@@ -278,6 +280,26 @@ test("redirects an anonymous user to login and returns to the requested page", a
 
   await expect(page).toHaveURL("/statistics?from=2026-09-01&to=2026-09-30");
   await expect(page.getByRole("heading", { name: "기간별 통계" })).toBeVisible();
+});
+
+test("recovers from an invalidated server session", async ({ page }) => {
+  await page.context().addCookies([{ name: "MBD_SESSION", value: "expired-session", url: "http://127.0.0.1:3000" }]);
+  await page.route("**/api/v1/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/v1/dashboard") {
+      await route.fulfill({ status: 401, json: { detail: "로그인이 필요합니다." } });
+    } else if (pathname === "/api/v1/bootstrap/status") {
+      await route.fulfill({ json: { available: false } });
+    } else {
+      await route.fulfill({ json: {} });
+    }
+  });
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/login\?expired=1&next=%2F/);
+  await expect(page.getByText("로그인 세션이 초기화되었습니다. 다시 로그인해 주세요.", { exact: true })).toBeVisible();
+  const cookies = await page.context().cookies();
+  expect(cookies.some((cookie) => cookie.name === "MBD_SESSION")).toBe(false);
 });
 
 test("joins a shared ledger with the invitation code from the URL", async ({ page }) => {
@@ -478,7 +500,7 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
     } else if (pathname === "/api/v1/ledger") {
       await route.fulfill({ json: ledger });
     } else if (pathname === "/api/v1/dashboard") {
-      await route.fulfill({ json: { yearMonth: "2026-09", period: { from: "2026-09-01", to: "2026-09-30" }, budget: 800000, spent: 658800, remaining: 141200, usageRate: 82.4, pushUsageThreshold: ledger.pushUsageThreshold, status: "WARNING", recentExpenses: expenses.map((expense) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version })) } });
+      await route.fulfill({ json: { yearMonth: "2026-09", period: { from: "2026-09-01", to: "2026-09-30" }, budget: 800000, spent: 658800, remaining: 141200, projectedSpent: 718691, usageRate: 82.4, pushUsageThreshold: ledger.pushUsageThreshold, status: "WARNING", recentExpenses: expenses.map((expense) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version })) } });
     } else if (pathname === "/api/v1/statistics") {
       await route.fulfill({ json: { period: { from: "2026-09-01", to: "2026-09-30" }, totalAmount: 658800, budget: { amount: 800000, usageRate: 82.4 }, comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 592000, changeAmount: 66800, changeRate: 11.3 }, daily: [{ date: "2026-09-02", amount: 44000 }, { date: "2026-09-05", amount: 78000 }, { date: "2026-09-08", amount: 60300 }, { date: "2026-09-12", amount: 125000 }, { date: "2026-09-18", amount: 89000 }, { date: "2026-09-24", amount: 142000 }, { date: "2026-09-29", amount: 120500 }], categories: [{ categoryId: categories[0].id, categoryName: "장보기", amount: 283000, ratio: 43 }, { categoryId: categories[1].id, categoryName: "외식", amount: 197600, ratio: 30 }, { categoryId: categories[2].id, categoryName: "배달", amount: 112000, ratio: 17 }, { categoryId: categories[3].id, categoryName: "카페/간식", amount: 66200, ratio: 10 }] } });
     } else if (pathname.startsWith("/api/v1/budgets/")) {

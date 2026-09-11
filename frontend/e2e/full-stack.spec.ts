@@ -12,10 +12,6 @@ const receiptPng = Buffer.from(
   "base64",
 );
 
-function todayInSeoul() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-}
-
 async function createFirstAdmin(page: Page) {
   await page.goto("/setup");
   await expect(page.getByRole("heading", { name: "서비스 관리자 설정" })).toBeVisible();
@@ -89,8 +85,8 @@ test("two users share an expense with an image and see matching statistics", asy
   await adminPage.getByRole("button", { name: "식비 등록" }).click();
   const createDialog = adminPage.getByRole("dialog", { name: "식비 등록" });
   await createDialog.getByLabel("금액").fill("45000");
-  await createDialog.getByLabel("사용 날짜").fill(todayInSeoul());
-  await createDialog.getByLabel("카테고리").selectOption({ label: "외식" });
+  await createDialog.getByLabel("식비 카테고리").click();
+  await createDialog.getByRole("option", { name: "외식" }).click();
   await createDialog.getByLabel("상호명 선택").fill(originalMerchant);
   await createDialog.getByLabel("메모 선택").fill("두 사용자가 함께 확인하는 실제 E2E 데이터");
 
@@ -102,6 +98,7 @@ test("two users share an expense with an image and see matching statistics", asy
     mimeType: "image/png",
     buffer: receiptPng,
   });
+  await adminPage.getByRole("button", { name: "크롭 적용" }).click();
   expect((await uploadResponsePromise).status()).toBe(201);
   await expect(createDialog.getByRole("img", { name: "첨부 이미지 1" })).toBeVisible();
 

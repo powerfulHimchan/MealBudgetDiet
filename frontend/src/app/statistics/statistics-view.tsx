@@ -7,6 +7,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { AppNav } from "../app-nav";
 import { request, todayInSeoul } from "../../lib/api";
 import { addMonths, budgetCycleContaining, budgetCycleStarting } from "../../lib/budget-cycle";
+import { CalendarPicker } from "../ui/date-picker";
 
 type StatisticsData = {
   period: { from: string; to: string };
@@ -133,8 +134,8 @@ export function StatisticsView() {
           ))}
         </div>
         <form className="custom-range" onSubmit={submitCustom}>
-          <label><span>시작일</span><input type="date" value={draft.from} onChange={(event) => setDraft({ ...draft, from: event.target.value })} required /></label>
-          <label><span>종료일</span><input type="date" value={draft.to} onChange={(event) => setDraft({ ...draft, to: event.target.value })} required /></label>
+          <label><span>시작일</span><CalendarPicker ariaLabel="통계 시작일" onChange={(from) => setDraft({ ...draft, from })} value={draft.from} /></label>
+          <label><span>종료일</span><CalendarPicker ariaLabel="통계 종료일" onChange={(to) => setDraft({ ...draft, to })} value={draft.to} /></label>
           <button className="dark-button" type="submit">조회</button>
         </form>
       </section>
