@@ -6,8 +6,14 @@ export const metadata: Metadata = { title: "로그인 | Sikbi - 함께 쓰는 �
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{ expired?: string | string[]; next?: string | string[] }>;
 }) {
   const params = await searchParams;
-  return <AuthScreen mode="login" nextPath={typeof params.next === "string" ? params.next : undefined} />;
+  return (
+    <AuthScreen
+      mode="login"
+      nextPath={typeof params.next === "string" ? params.next : undefined}
+      sessionExpired={params.expired === "1"}
+    />
+  );
 }
