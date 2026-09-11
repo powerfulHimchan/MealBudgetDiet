@@ -3,9 +3,9 @@ import { PwaRegister } from "./pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "식비",
+  title: "Sikbi - 함께 쓰는 식비 관리",
   description: "공용 식비와 월 예산을 함께 관리하세요.",
-  applicationName: "Sikbi",
+  applicationName: "Sikbi - 함께 쓰는 식비 관리",
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },

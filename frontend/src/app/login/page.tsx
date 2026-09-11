@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AuthScreen } from "../auth-screen";
 
-export const metadata: Metadata = { title: "로그인 | 식비" };
+export const metadata: Metadata = { title: "로그인 | Sikbi - 함께 쓰는 식비 관리" };
 
 export default async function LoginPage({
   searchParams,

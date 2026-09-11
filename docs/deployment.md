@@ -1,7 +1,7 @@
 # Sikbi 운영 배포 가이드
 
 - 서비스명: `Sikbi`
-- 사용자 표시명: `식비`
+- 사용자 표시명: `Sikbi - 함께 쓰는 식비 관리`
 - Web origin: `https://sikbi.app`
 - API origin: `https://api.sikbi.app`
 - Android package ID: `app.sikbi`
@@ -97,7 +97,8 @@ npx --yes @bubblewrap/cli@latest init \
 
 | 항목 | 값 |
 |---|---|
-| Application / Launcher name | `식비` |
+| Application name | `Sikbi - 함께 쓰는 식비 관리` |
+| Launcher name | `Sikbi` |
 | Package ID | `app.sikbi` |
 | Host | `sikbi.app` |
 | Start URL | `/` |

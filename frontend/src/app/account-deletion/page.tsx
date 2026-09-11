@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PublicDocument } from "../public-document";
 
 export const metadata: Metadata = {
-  title: "계정 삭제 안내 | 식비",
+  title: "계정 삭제 안내 | Sikbi - 함께 쓰는 식비 관리",
   description: "웹에서 식비(Sikbi) 계정과 관련 정보를 삭제하는 방법을 안내합니다.",
 };
 
@@ -13,7 +13,7 @@ export default function AccountDeletionPage() {
     <PublicDocument
       description="앱을 설치하지 않아도 이 웹페이지에서 로그인해 계정 삭제를 직접 요청할 수 있습니다."
       eyebrow="ACCOUNT DELETION"
-      title="식비 계정 삭제"
+      title="Sikbi 계정 삭제"
     >
       <section>
         <h2>웹에서 직접 삭제하는 방법</h2>

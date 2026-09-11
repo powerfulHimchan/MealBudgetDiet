@@ -300,7 +300,7 @@ Max-Age: 2147483647초, 인증 요청마다 갱신
 
 ### 8.4 Android TWA
 
-- 앱 이름은 `식비(Sikbi)`, 패키지 ID는 `app.sikbi`로 고정한다.
+- 화면 표시명은 `Sikbi - 함께 쓰는 식비 관리`, Android 런처 이름은 `Sikbi`, 패키지 ID는 `app.sikbi`로 고정한다.
 - 운영 HTTPS origin과 Android 서명 인증서는 Digital Asset Links로 검증한다.
 - Play 제출 빌드는 Android 16(API 36) 이상을 대상으로 한다.
 - Android wrapper는 Bubblewrap으로 생성하고 Android Browser Helper 및 Bubblewrap 갱신 시 내부 테스트 트랙에서 회귀 검증한다.

@@ -36,7 +36,7 @@ self.addEventListener("push", (event) => {
     if (await cache.match(marker)) return;
     const existing = await self.registration.getNotifications({ tag });
     if (existing.length > 0) return;
-    await self.registration.showNotification(payload.title ?? "식비", {
+    await self.registration.showNotification(payload.title ?? "Sikbi", {
       body: payload.body ?? "새로운 알림이 도착했습니다.",
       icon: APP_ICON_URL,
       badge: BADGE_ICON_URL,
