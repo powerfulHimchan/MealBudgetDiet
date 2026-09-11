@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, CircleDollarSign, LoaderCircle, Plus } from "lucide-react";
+import { ChevronRight, CircleDollarSign, LoaderCircle, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppNav } from "./app-nav";
@@ -13,6 +13,7 @@ type DashboardData = {
   budget: number;
   spent: number;
   remaining: number;
+  projectedSpent: number;
   usageRate: number;
   pushUsageThreshold: number;
   status: "NORMAL" | "WARNING" | "EXCEEDED";
@@ -82,6 +83,15 @@ export function Dashboard() {
               <div><span>이번 주기 사용</span><strong>{won.format(data.spent)}원</strong></div>
               <div><span>전체 예산</span><strong>{won.format(data.budget)}원</strong></div>
               <div className="usage-stat"><span>사용률</span><strong>{Number(data.usageRate).toFixed(1)}%</strong></div>
+            </div>
+
+            <div className="projection-panel">
+              <span className="projection-icon"><TrendingUp size={19} /></span>
+              <div>
+                <span>현재 추이 기준 마지막 날 예상 소비액</span>
+                <strong>{won.format(data.projectedSpent)}원</strong>
+              </div>
+              <small>{data.projectedSpent > data.budget ? "현재 속도라면 예산을 초과할 수 있어요." : "현재 속도라면 예산 안에서 마칠 것으로 보여요."}</small>
             </div>
 
             <Link className="primary-action" href="/expenses?new=1"><Plus size={20} strokeWidth={2.5} />식비 등록</Link>
