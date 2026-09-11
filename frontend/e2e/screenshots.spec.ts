@@ -145,6 +145,32 @@ test("capture implemented frontend screens", async ({ browser }) => {
   await mobile.close();
 });
 
+test("shows a clean settings list without availability labels", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/settings");
+
+  await expect(page.getByText("사용 가능", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("MANAGEMENT", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("6개 메뉴", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("설정 메뉴", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("설정", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /예산 관리/ })).toBeVisible();
+});
+
+test("does not add a whole-chart focus target", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/statistics");
+
+  const chart = page.getByRole("img", { name: "일별 지출 추이 차트" });
+  await expect(chart).toBeVisible();
+  await expect(chart.locator('[tabindex="0"]')).toHaveCount(0);
+  const internalFocusTarget = chart.locator("[tabindex]").first();
+  if (await internalFocusTarget.count()) {
+    await internalFocusTarget.focus();
+    await expect(internalFocusTarget).toHaveCSS("outline-style", "none");
+  }
+});
+
 test("manage categories from settings", async ({ page }) => {
   await mockExpenseApis(page);
   await page.goto("/settings/categories");

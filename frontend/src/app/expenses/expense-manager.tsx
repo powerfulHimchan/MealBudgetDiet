@@ -328,7 +328,7 @@ export function ExpenseManager() {
         <div>
           <p className="eyebrow">SHARED LEDGER</p>
           <h1>식비 내역</h1>
-          <p>함께 사용한 식비를 빠르게 기록하고 필요한 내역을 찾아보세요.</p>
+          <p>함께 사용한 식비를 기록하고 필요한 내역을 찾아보세요.</p>
         </div>
         <button className="expense-add-button" type="button" onClick={openCreate}>
           <Plus size={19} /> 식비 등록
@@ -380,7 +380,7 @@ export function ExpenseManager() {
           <section className="expense-results" aria-labelledby="expense-results-title">
             <div className="results-heading">
               <div>
-                <p className="eyebrow">불러온 내역</p>
+                <p className="eyebrow">내역</p>
                 <h2 id="expense-results-title">{expenses.length}건 · {won.format(loadedTotal)}원</h2>
               </div>
               {isLoading && <LoaderCircle className="spin" aria-label="불러오는 중" size={22} />}
