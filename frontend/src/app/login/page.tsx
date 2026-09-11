@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AuthScreen } from "../auth-screen";
 
-export const metadata: Metadata = { title: "로그인 | MealBudgetDiet" };
+export const metadata: Metadata = { title: "로그인 | 식비" };
 
 export default async function LoginPage({
   searchParams,
