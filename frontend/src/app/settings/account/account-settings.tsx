@@ -19,11 +19,13 @@ import { multipartMutation, mutation, request } from "../../../lib/api";
 import { SettingsPageFrame } from "../settings-page-frame";
 
 type MemberRole = "ADMIN" | "MEMBER";
+type ServiceRole = "SERVICE_ADMIN" | "USER";
 type CurrentUser = {
   id: string;
   email: string;
   displayName: string;
-  role: MemberRole;
+  serviceRole: ServiceRole;
+  ledgerRole: MemberRole;
   profileImageUrl: string | null;
 };
 type Ledger = { name: string; currentUserRole: MemberRole };
@@ -69,8 +71,8 @@ export function AccountSettings() {
   }, []);
 
   const isLastAdmin = useMemo(
-    () => user?.role === "ADMIN" && members.filter((member) => member.role === "ADMIN").length === 1,
-    [members, user?.role],
+    () => user?.ledgerRole === "ADMIN" && members.filter((member) => member.role === "ADMIN").length === 1,
+    [members, user?.ledgerRole],
   );
   const expectedConfirmation = ledger ? `${ledger.name} 삭제` : "";
   const isBusy = isSavingImage || isChangingPassword || isLoggingOut || isWithdrawing;
@@ -189,7 +191,7 @@ export function AccountSettings() {
 
   return (
     <SettingsPageFrame
-      badge={user && <span className="page-badge"><ShieldCheck size={16} /> {user.role === "ADMIN" ? "관리자" : "멤버"}</span>}
+      badge={user && <span className="page-badge"><ShieldCheck size={16} /> {user.serviceRole === "SERVICE_ADMIN" ? "서비스 관리자" : user.ledgerRole === "ADMIN" ? "장부 관리자" : "장부 멤버"}</span>}
       description="프로필과 로그인 보안, 공유 장부 참여 상태를 관리하세요."
       eyebrow="ACCOUNT SETTINGS"
       showBackLink
@@ -216,7 +218,10 @@ export function AccountSettings() {
                 )}
               </span>
               <div>
-                <span className="account-role-label">{user.role === "ADMIN" ? "공유 장부 관리자" : "공유 장부 참여자"}</span>
+                <span className="account-role-label">
+                  {user.serviceRole === "SERVICE_ADMIN" ? "서비스 관리자 · " : ""}
+                  {user.ledgerRole === "ADMIN" ? "장부 관리자" : "장부 멤버"}
+                </span>
                 <strong>{user.displayName}</strong>
                 <span>{user.email}</span>
                 <p>JPEG, PNG, WebP · 최대 5MB<br />표시용 WebP로 안전하게 변환됩니다.</p>
