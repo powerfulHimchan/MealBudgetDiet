@@ -90,6 +90,7 @@ export function ExpenseManager() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
   const [pendingCropFiles, setPendingCropFiles] = useState<File[]>([]);
@@ -133,6 +134,28 @@ export function ExpenseManager() {
     () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
     [expenses],
   );
+  const appliedCategoryLabel = appliedFilters.categoryId === "uncategorized"
+    ? "분류 없음"
+    : categories.find((category) => category.id === appliedFilters.categoryId)?.name;
+  const activeMobileFilterCount =
+    Number(Boolean(appliedFilters.from || appliedFilters.to)) + Number(Boolean(appliedFilters.categoryId));
+
+  useEffect(() => {
+    if (!isMobileFilterOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setFilters(appliedFilters);
+        setIsMobileFilterOpen(false);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [appliedFilters, isMobileFilterOpen]);
 
   async function refreshExpenses(nextFilters: Filters = appliedFilters) {
     setIsLoading(true);
@@ -314,6 +337,48 @@ export function ExpenseManager() {
     void refreshExpenses(initialFilters);
   }
 
+  function openMobileFilters() {
+    setFilters(appliedFilters);
+    setIsMobileFilterOpen(true);
+  }
+
+  function closeMobileFilters() {
+    setFilters(appliedFilters);
+    setIsMobileFilterOpen(false);
+  }
+
+  function applyMobileFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAppliedFilters(filters);
+    setIsMobileFilterOpen(false);
+    void refreshExpenses(filters);
+  }
+
+  function clearMobileFilterFields() {
+    setFilters({ ...filters, from: "", to: "", categoryId: "" });
+  }
+
+  function removeMobileFilter(kind: "period" | "category") {
+    const nextFilters = kind === "period"
+      ? { ...appliedFilters, from: "", to: "" }
+      : { ...appliedFilters, categoryId: "" };
+    setFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    void refreshExpenses(nextFilters);
+  }
+
+  function mobilePeriodLabel() {
+    const compact = (value: string) => {
+      const [, month, day] = value.split("-");
+      return `${Number(month)}.${Number(day)}`;
+    };
+    if (appliedFilters.from && appliedFilters.to) {
+      return `${compact(appliedFilters.from)}~${compact(appliedFilters.to)}`;
+    }
+    if (appliedFilters.from) return `${compact(appliedFilters.from)}부터`;
+    return `${compact(appliedFilters.to)}까지`;
+  }
+
   return (
     <main className="app-shell expense-shell">
       <header className="topbar">
@@ -344,7 +409,46 @@ export function ExpenseManager() {
 
       <div className="expense-layout">
         <div className="expense-main-column">
-          <form className="filter-panel" onSubmit={applyFilters}>
+          <div className="mobile-filter-shell">
+            <form className="mobile-filter-toolbar" onSubmit={applyFilters}>
+              <span className="mobile-keyword-field">
+                <Search aria-hidden="true" size={17} />
+                <input
+                  aria-label="상호명 또는 메모 검색"
+                  onChange={(event) => setFilters({ ...filters, keyword: event.target.value })}
+                  placeholder="상호명 또는 메모 검색"
+                  value={filters.keyword}
+                />
+              </span>
+              <button
+                aria-expanded={isMobileFilterOpen}
+                aria-haspopup="dialog"
+                className="mobile-filter-button"
+                onClick={openMobileFilters}
+                type="button"
+              >
+                <SlidersHorizontal size={17} />
+                필터
+                {activeMobileFilterCount > 0 && <span>{activeMobileFilterCount}</span>}
+              </button>
+            </form>
+            {activeMobileFilterCount > 0 && (
+              <div aria-label="적용된 검색 조건" className="mobile-filter-chips">
+                {(appliedFilters.from || appliedFilters.to) && (
+                  <button aria-label="기간 필터 제거" onClick={() => removeMobileFilter("period")} type="button">
+                    {mobilePeriodLabel()}<X size={14} />
+                  </button>
+                )}
+                {appliedCategoryLabel && (
+                  <button aria-label="카테고리 필터 제거" onClick={() => removeMobileFilter("category")} type="button">
+                    {appliedCategoryLabel}<X size={14} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <form className="filter-panel desktop-filter-panel" onSubmit={applyFilters}>
             <div className="filter-title"><SlidersHorizontal size={18} /><strong>검색 조건</strong></div>
             <label>
               <span>시작일</span>
@@ -376,6 +480,55 @@ export function ExpenseManager() {
               <button className="dark-button" type="submit"><Search size={16} />검색</button>
             </div>
           </form>
+
+          {isMobileFilterOpen && (
+            <div
+              className="mobile-filter-backdrop"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) closeMobileFilters();
+              }}
+              role="presentation"
+            >
+              <section aria-labelledby="mobile-filter-title" aria-modal="true" className="mobile-filter-sheet" role="dialog">
+                <header>
+                  <div>
+                    <p className="eyebrow">SEARCH FILTER</p>
+                    <h2 id="mobile-filter-title">검색 조건</h2>
+                  </div>
+                  <button aria-label="검색 조건 닫기" onClick={closeMobileFilters} type="button"><X size={21} /></button>
+                </header>
+                <form onSubmit={applyMobileFilters}>
+                  <div className="mobile-filter-fields">
+                    <div className="mobile-filter-field">
+                      <span>시작일</span>
+                      <CalendarPicker ariaLabel="모바일 검색 시작일" onChange={(from) => setFilters({ ...filters, from })} value={filters.from} />
+                    </div>
+                    <div className="mobile-filter-field">
+                      <span>종료일</span>
+                      <CalendarPicker ariaLabel="모바일 검색 종료일" onChange={(to) => setFilters({ ...filters, to })} value={filters.to} />
+                    </div>
+                    <div className="mobile-filter-field">
+                      <span>카테고리</span>
+                      <CustomSelect
+                        ariaLabel="모바일 검색 카테고리"
+                        onChange={(categoryId) => setFilters({ ...filters, categoryId })}
+                        options={[
+                          { value: "", label: "전체 카테고리" },
+                          ...categories.map((category) => ({ value: category.id, label: category.name })),
+                          { value: "uncategorized", label: "분류 없음" },
+                        ]}
+                        value={filters.categoryId}
+                      />
+                    </div>
+                  </div>
+                  <footer>
+                    <button className="secondary-button" onClick={clearMobileFilterFields} type="button"><RotateCcw size={16} />초기화</button>
+                    <button className="dark-button" type="submit"><Search size={16} />적용</button>
+                  </footer>
+                </form>
+              </section>
+            </div>
+          )}
 
           <section className="expense-results" aria-labelledby="expense-results-title">
             <div className="results-heading">

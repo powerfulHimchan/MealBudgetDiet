@@ -239,6 +239,32 @@ test("issue, copy, and revoke an invitation code", async ({ page, context }) => 
   await expect(activeInvitation.getByText("취소됨", { exact: true })).toBeVisible();
 });
 
+test("uses compact expense filters on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockExpenseApis(page);
+  await page.goto("/expenses");
+
+  await expect(page.getByLabel("상호명 또는 메모 검색")).toBeVisible();
+  await expect(page.getByRole("button", { name: "필터", exact: true })).toBeVisible();
+  const resultHeading = page.getByRole("heading", { name: "3건 · 60,300원" });
+  await expect(resultHeading).toBeVisible();
+  const resultPosition = await resultHeading.boundingBox();
+  expect(resultPosition?.y).toBeLessThan(600);
+
+  await page.getByRole("button", { name: "필터", exact: true }).click();
+  const filterDialog = page.getByRole("dialog", { name: "검색 조건" });
+  await expect(filterDialog).toBeVisible();
+  await filterDialog.getByRole("button", { name: "모바일 검색 카테고리" }).click();
+  await filterDialog.getByRole("option", { name: "외식" }).click();
+  await filterDialog.getByRole("button", { name: "적용" }).click();
+
+  await expect(page.getByRole("button", { name: "필터 1" })).toBeVisible();
+  const categoryChip = page.getByRole("button", { name: "카테고리 필터 제거" });
+  await expect(categoryChip).toContainText("외식");
+  await categoryChip.click();
+  await expect(page.getByRole("button", { name: "필터", exact: true })).toBeVisible();
+});
+
 test("upload and delete a profile image", async ({ page }) => {
   await mockExpenseApis(page);
   await page.goto("/settings/account");
