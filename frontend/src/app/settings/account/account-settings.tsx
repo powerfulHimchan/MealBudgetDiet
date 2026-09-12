@@ -241,7 +241,7 @@ export function AccountSettings() {
                 </span>
                 <strong>{user.displayName}</strong>
                 <span>{user.email}</span>
-                <p>JPEG, PNG, WebP · 최대 5MB<br />업로드 전에 원하는 영역을 정사각형으로 크롭할 수 있습니다.</p>
+                <p>JPEG, PNG, WebP · 최대 5MB</p>
               </div>
             </div>
             <div className="profile-actions">
@@ -311,11 +311,10 @@ export function AccountSettings() {
             <div>
               <span className="account-danger-icon"><UserRoundX size={22} /></span>
               <div>
-                <p className="eyebrow">DANGER ZONE</p>
                 <h2>{isLastAdmin ? "공유 장부 종료" : "회원 탈퇴"}</h2>
                 <p>
                   {isLastAdmin
-                    ? `현재 ${ledger.name}의 마지막 관리자입니다. 탈퇴하면 장부와 모든 참여자의 데이터가 삭제됩니다.`
+                    ? `현재 ${ledger.name}의 마지막 관리자입니다. 탈퇴하면 장부와 모든 멤버의 데이터가 삭제됩니다.`
                     : "탈퇴하면 계정 식별정보와 프로필 사진이 삭제됩니다. 공유 식비 기록은 작성자 연결을 끊고 유지됩니다."}
                 </p>
               </div>
@@ -348,7 +347,7 @@ export function AccountSettings() {
             <h2 id="account-withdrawal-title">{isLastAdmin ? `${ledger.name} 장부를 종료할까요?` : "공유 장부에서 탈퇴할까요?"}</h2>
             <p>
               {isLastAdmin
-                ? "모든 식비, 예산, 이미지와 참여자 계정이 함께 삭제되며 복구할 수 없습니다."
+                ? "모든 식비, 예산, 이미지와 멤버 계정이 함께 삭제되며 복구할 수 없습니다."
                 : "계정 식별정보와 프로필 사진이 삭제되고 모든 기기에서 로그아웃됩니다. 공유 기록은 익명화되어 유지되며 이 작업은 되돌릴 수 없습니다."}
             </p>
             <form onSubmit={(event) => void withdraw(event)}>

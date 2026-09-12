@@ -126,7 +126,7 @@ export function InvitationSettings() {
 
   return (
     <SettingsPageFrame
-      badge={<span className="page-badge"><UsersRound size={16} /> 모든 참여자</span>}
+      badge={<span className="page-badge"><UsersRound size={16} /> 모든 멤버</span>}
       description="공유 장부에 참여할 초대 코드를 발급하고 안전하게 공유하세요."
       eyebrow="INVITATION SETTINGS"
       showBackLink
@@ -173,7 +173,7 @@ export function InvitationSettings() {
             <div>
               <p className="eyebrow">INVITATION LIST</p>
               <h2 id="invitation-list-title">발급한 초대 코드</h2>
-              <p>모든 참여자가 코드를 발급하거나 사용 가능한 코드를 취소할 수 있습니다.</p>
+              <p>모든 멤버가 코드를 발급하거나 사용 가능한 코드를 취소할 수 있습니다.</p>
             </div>
             <button className="dark-button" disabled={isCreating || createdInvitation !== null} onClick={() => void createInvitation()} title={createdInvitation ? "현재 발급한 코드를 복사한 뒤 닫아 주세요." : undefined} type="button">
               {isCreating ? <LoaderCircle className="spin" size={17} /> : <Plus size={17} />}
@@ -196,7 +196,7 @@ export function InvitationSettings() {
           </div>
 
           {filteredInvitations.length === 0 ? (
-            <div className="invitation-settings-empty"><TicketCheck size={25} /><strong>표시할 초대 코드가 없습니다.</strong><span>새 코드를 발급해 참여자에게 공유해 보세요.</span></div>
+            <div className="invitation-settings-empty"><TicketCheck size={25} /><strong>표시할 초대 코드가 없습니다.</strong><span>새 코드를 발급해 멤버에게 공유해 보세요.</span></div>
           ) : (
             <ul className="invitation-settings-list">
               {filteredInvitations.map((invitation) => (

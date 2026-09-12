@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { mutation, request } from "../lib/api";
+import { BrandLink } from "./brand-link";
 
 type AuthMode = "login" | "signup" | "join" | "setup" | "forgot" | "reset";
 type AuthScreenProps = {
@@ -169,9 +170,7 @@ export function AuthScreen({
   return (
     <main className="auth-shell">
       <aside className="auth-promo">
-        <Link aria-label="Sikbi 로그인" className="auth-brand" href="/login">
-          <span className="brand-mark">S</span><span>Sikbi - 함께 쓰는 식비 관리</span>
-        </Link>
+        <BrandLink className="auth-brand" href="/login" />
         <div className="auth-promo-copy">
           <p className="eyebrow">BUDGET WITH PEOPLE YOU TRUST</p>
           <h1>식비를 함께 기록하고<br />예산 안에서 생활하세요.</h1>
@@ -263,7 +262,7 @@ export function AuthScreen({
               {mode !== "reset" && (
                 <label>
                   <span>이메일</span>
-                  <input autoComplete="email" maxLength={320} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required type="email" value={email} />
+                  <input autoComplete="email" maxLength={320} onChange={(event) => setEmail(event.target.value)} placeholder={mode === "login" ? undefined : "name@example.com"} required type="email" value={email} />
                 </label>
               )}
               {mode !== "forgot" && (

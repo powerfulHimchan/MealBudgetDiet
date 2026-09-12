@@ -82,7 +82,7 @@ export function MemberSettings() {
       setRoleChange(null);
     } catch (reason) {
       setRoleChange(null);
-      setError(reason instanceof Error ? reason.message : "참여자 권한을 변경하지 못했습니다.");
+      setError(reason instanceof Error ? reason.message : "멤버 권한을 변경하지 못했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -94,7 +94,7 @@ export function MemberSettings() {
       description="공유 장부를 함께 사용하는 사람을 확인하고 관리자 권한을 설정하세요."
       eyebrow="MEMBER SETTINGS"
       showBackLink
-      title="참여자 관리"
+      title="멤버 관리"
     >
       {error && <div className="message-banner message-banner--error" role="alert">{error}</div>}
       {notice && (
@@ -104,22 +104,22 @@ export function MemberSettings() {
       )}
 
       {isLoading || !ledger ? (
-        <section className="page-loading"><LoaderCircle className="spin" size={28} /><strong>참여자를 불러오고 있어요</strong></section>
+        <section className="page-loading"><LoaderCircle className="spin" size={28} /><strong>멤버를 불러오고 있어요</strong></section>
       ) : (
         <section aria-labelledby="member-list-title" className="member-settings-panel">
           <div className="member-settings-toolbar">
             <div>
               <p className="eyebrow">SHARED LEDGER MEMBERS</p>
-              <h2 id="member-list-title">{ledger.name} 참여자</h2>
-              <p>관리자는 예산·카테고리·참여자 권한을 변경할 수 있습니다.</p>
+              <h2 id="member-list-title">{ledger.name} 멤버</h2>
+              <p>관리자는 예산·카테고리·멤버 권한을 변경할 수 있습니다.</p>
             </div>
-            <div className="member-summary" aria-label="참여자 요약">
+            <div className="member-summary" aria-label="멤버 요약">
               <span><Users size={17} /><strong>{members.length}</strong>명</span>
               <span><ShieldCheck size={17} /><strong>{adminCount}</strong>명 관리자</span>
             </div>
           </div>
 
-          {!isAdmin && <p className="member-permission-note"><ShieldCheck size={17} /> 참여자 조회는 가능하지만 관리자 권한 변경은 관리자만 할 수 있습니다.</p>}
+          {!isAdmin && <p className="member-permission-note"><ShieldCheck size={17} /> 멤버 조회는 가능하지만 관리자 권한 변경은 관리자만 할 수 있습니다.</p>}
 
           <ul className="member-settings-list">
             {members.map((member) => {
@@ -135,7 +135,7 @@ export function MemberSettings() {
                     <span><strong>{member.displayName}</strong>{isMe && <small>나</small>}</span>
                     <span>{joinedDate.format(new Date(member.joinedAt))} 참여</span>
                   </span>
-                  <span className={`member-role-chip member-role-chip--${member.role.toLowerCase()}`}>{member.role === "ADMIN" ? "관리자" : "일반 참여자"}</span>
+                  <span className={`member-role-chip member-role-chip--${member.role.toLowerCase()}`}>{member.role === "ADMIN" ? "관리자" : "일반 멤버"}</span>
                   {isAdmin && (
                     <button
                       className="member-role-button"
@@ -145,7 +145,7 @@ export function MemberSettings() {
                       type="button"
                     >
                       {nextRole === "ADMIN" ? <ShieldPlus size={17} /> : <ShieldMinus size={17} />}
-                      {nextRole === "ADMIN" ? "관리자로 지정" : "일반 참여자로 변경"}
+                      {nextRole === "ADMIN" ? "관리자로 지정" : "일반 멤버로 변경"}
                     </button>
                   )}
                 </li>
@@ -163,14 +163,14 @@ export function MemberSettings() {
             <span className="member-role-dialog-icon">{roleChange.nextRole === "ADMIN" ? <ShieldPlus size={27} /> : <ShieldMinus size={27} />}</span>
             <p className="eyebrow">CHANGE MEMBER ROLE</p>
             <h2 id="member-role-dialog-title">
-              {roleChange.member.displayName} 님을 {roleChange.nextRole === "ADMIN" ? "관리자로 지정할까요?" : "일반 참여자로 변경할까요?"}
+              {roleChange.member.displayName} 님을 {roleChange.nextRole === "ADMIN" ? "관리자로 지정할까요?" : "일반 멤버로 변경할까요?"}
             </h2>
             <p>
               {roleChange.nextRole === "ADMIN"
-                ? "관리자는 예산과 카테고리를 변경하고 다른 참여자의 관리자 권한도 설정할 수 있습니다."
+                ? "관리자는 예산과 카테고리를 변경하고 다른 멤버의 관리자 권한도 설정할 수 있습니다."
                 : roleChange.member.id === currentUser?.id
                   ? "본인의 관리자 권한을 해제하면 이후 이 화면에서 권한을 변경할 수 없습니다."
-                  : "변경 후 해당 참여자는 식비 조회·등록·편집은 계속할 수 있지만 관리 기능은 사용할 수 없습니다."}
+                  : "변경 후 해당 멤버는 식비 조회·등록·편집은 계속할 수 있지만 관리 기능은 사용할 수 없습니다."}
             </p>
             <div>
               <button className="secondary-button" disabled={isSaving} onClick={() => setRoleChange(null)} type="button">취소</button>

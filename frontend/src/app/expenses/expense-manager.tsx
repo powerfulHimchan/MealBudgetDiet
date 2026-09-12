@@ -23,6 +23,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { mutation, multipartMutation, request } from "../../lib/api";
+import { BrandLink } from "../brand-link";
 import { CurrentUserAvatar } from "../current-user-avatar";
 import { CalendarPicker } from "../ui/date-picker";
 import { CustomSelect } from "../ui/custom-select";
@@ -388,10 +389,7 @@ export function ExpenseManager() {
   return (
     <main className="app-shell expense-shell">
       <header className="topbar">
-        <Link className="brand" href="/" aria-label="MealBudgetDiet 홈">
-          <span className="brand-mark">M</span>
-          <span>MealBudgetDiet</span>
-        </Link>
+        <BrandLink />
         <CurrentUserAvatar />
       </header>
 

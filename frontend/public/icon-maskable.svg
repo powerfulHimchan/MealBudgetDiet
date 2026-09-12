@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sikbi">
-  <rect width="512" height="512" fill="#080d18"/>
-  <path d="M128 168h256v54c0 89-55 150-128 150s-128-61-128-150v-54Z" fill="#3b82f6"/>
-  <path d="M168 128v83M256 112v99M344 128v83" fill="none" stroke="#eaf2ff" stroke-width="28" stroke-linecap="round"/>
-  <path d="M168 396h176" fill="none" stroke="#eaf2ff" stroke-width="28" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="sikbi 영수증과 숟가락, 포크">
+  <rect width="96" height="96" fill="#0b1730"/>
+  <g transform="translate(12 12) scale(.75)">
+    <path d="M16 18h40v62l-8-5-8 5-8-5-8 5-8-5V18Z" fill="#fff"/>
+    <path d="M25 32h22m-22 10h22m-22 10h14" stroke="#3b82f6" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="66" cy="33" rx="6" ry="10" fill="#60a5fa"/>
+    <path d="M66 43v28M76 24v17m5-17v17m5-17v17m-10 0c0 5 2 8 5 8s5-3 5-8m-5 8v22" fill="none" stroke="#60a5fa" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

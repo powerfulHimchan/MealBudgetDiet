@@ -24,9 +24,11 @@ button { font: inherit; }
 a { color: inherit; text-decoration: none; }
 
 .app-shell { width: min(100%, 1120px); min-height: 100vh; margin: 0 auto; padding: 0 20px 104px; }
-.topbar { display: flex; min-height: 78px; align-items: center; justify-content: space-between; }
-.brand { display: inline-flex; align-items: center; gap: 10px; font-size: 1rem; font-weight: 800; letter-spacing: -.03em; }
-.brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px 7px 7px 2px; background: var(--ink); color: var(--brand); font-size: .95rem; font-weight: 900; }
+.topbar { display: flex; min-height: 78px; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: inline-flex; min-width: 0; align-items: center; gap: 10px; font-size: 1rem; font-weight: 800; letter-spacing: -.03em; }
+.brand-name { min-width: 0; overflow-wrap: break-word; line-height: 1.25; }
+.brand-mark { display: grid; width: 34px; height: 34px; flex: none; place-items: center; }
+.brand-mark img { display: block; width: 34px; height: 34px; }
 .avatar { position: relative; display: grid; width: 38px; height: 38px; overflow: hidden; place-items: center; border: 1px solid rgb(8 13 24 / 14%); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; font-weight: 800; }
 .avatar img { object-fit: cover; }
 .dashboard-grid { display: grid; gap: 18px; }
@@ -496,7 +498,6 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .account-danger-panel { display: flex; align-items: center; justify-content: space-between; gap: 22px; border-color: #e2b3b9; border-left: 5px solid #a72a3b; background: #fffafb; }
 .account-danger-panel > div { display: flex; align-items: flex-start; gap: 14px; }
 .account-danger-icon { display: grid; width: 46px; height: 46px; flex: none; place-items: center; background: #fff0f2; color: #a72a3b; }
-.account-danger-panel .eyebrow { margin-bottom: 4px; color: #a72a3b; }
 .account-danger-panel h2 { font-size: 1.1rem; }
 .account-danger-panel > div p:last-child { max-width: 670px; margin: 8px 0 0; color: #72555a; font-size: .78rem; line-height: 1.55; }
 .account-withdrawal-button { flex: none; border-color: #cb8f98; color: #9f1239; }
@@ -512,8 +513,8 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .auth-shell { display: grid; min-height: 100vh; background: #080d18; }
 .auth-promo { position: relative; display: flex; min-height: 100%; justify-content: space-between; flex-direction: column; overflow: hidden; padding: 42px; background: linear-gradient(145deg, #050810 0%, #0b1427 67%, #102c5d 100%); color: white; }
 .auth-promo::after { position: absolute; right: -90px; bottom: -155px; width: 320px; height: 320px; border: 50px solid rgb(59 130 246 / 14%); content: ""; transform: rotate(15deg); }
-.auth-brand { position: relative; z-index: 1; display: inline-flex; align-items: center; align-self: flex-start; gap: 11px; font-size: 1.05rem; font-weight: 900; letter-spacing: -.03em; }
-.auth-brand .brand-mark { border: 1px solid #314b73; background: #071020; }
+.auth-brand { position: relative; z-index: 1; display: inline-flex; min-width: 0; align-items: center; align-self: flex-start; gap: 11px; font-size: 1.05rem; font-weight: 900; letter-spacing: -.03em; }
+.auth-brand .brand-mark { border: 0; background: transparent; }
 .auth-promo-copy { position: relative; z-index: 1; max-width: 600px; margin: 70px 0 32px; }
 .auth-promo-copy .eyebrow { color: #75aaff; letter-spacing: .08em; }
 .auth-promo-copy h1 { font-size: clamp(2.15rem, 4.2vw, 4.15rem); line-height: 1.08; }
@@ -627,6 +628,8 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 }
 
 @media (max-width: 520px) {
+  .topbar .brand, .auth-brand { font-size: .82rem; }
+  .public-document-header .auth-brand { max-width: calc(100% - 74px); }
   .auth-promo { min-height: auto; padding: 24px 20px 28px; }
   .auth-promo-copy { margin: 42px 0 10px; }
   .auth-promo-copy h1 { font-size: 2rem; }

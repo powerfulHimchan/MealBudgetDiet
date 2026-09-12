@@ -30,10 +30,10 @@ const menuItems = [
     label: "카테고리 관리",
   },
   {
-    description: "공유 장부의 참여자와 관리자 권한을 확인하고 관리합니다.",
+    description: "공유 장부의 멤버와 관리자 권한을 확인하고 관리합니다.",
     href: "/settings/members",
     icon: Users,
-    label: "참여자 관리",
+    label: "멤버 관리",
   },
   {
     description: "가족이나 동료를 공유 장부로 초대할 코드를 관리합니다.",

@@ -281,7 +281,7 @@ export function PushNotificationSettings() {
 
       {state === "checking" && <div className="push-support-note"><LoaderCircle className="spin" size={18} />기기 지원 여부를 확인하고 있어요.</div>}
       {state === "unsupported" && <div className="push-support-note"><Smartphone size={18} />이 브라우저에서는 Web Push를 지원하지 않습니다.</div>}
-      {state === "denied" && <div className="push-support-note push-support-note--warning"><BellOff size={18} />브라우저 설정에서 MealBudgetDiet 알림 권한을 허용해 주세요.</div>}
+      {state === "denied" && <div className="push-support-note push-support-note--warning"><BellOff size={18} />브라우저 설정에서 sikbi 알림 권한을 허용해 주세요.</div>}
       {isIOSInstallRequired && <div className="push-support-note"><Smartphone size={18} />iPhone에서는 홈 화면에 앱을 추가한 뒤 푸시를 활성화할 수 있습니다.</div>}
       {message && <p className="push-message" role="status">{message}</p>}
 
