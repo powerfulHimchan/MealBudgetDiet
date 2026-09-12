@@ -445,7 +445,7 @@ test("change the shared budget cycle start day", async ({ page }) => {
   await page.getByLabel("예산 주기 시작일").fill("25");
   await page.getByRole("button", { name: "예산 주기 저장" }).click();
 
-  await expect(page.getByRole("button", { name: /예산 주기 시작일을 변경했습니다/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /예산 주기를 변경했습니다/ })).toBeVisible();
   await expect(page.getByLabel("예산 주기 시작일")).toHaveValue("25");
 });
 

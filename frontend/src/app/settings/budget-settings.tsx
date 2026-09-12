@@ -228,7 +228,7 @@ export function BudgetSettings() {
             </div>
             <p className="setting-description">월간 또는 주간 주기와 시작일을 정하세요. 모든 참여자에게 동일하게 적용됩니다.</p>
             <form className="budget-form" onSubmit={saveBudgetCycle}>
-              <label><span>주기 단위</span><CustomSelect ariaLabel="예산 주기 단위" disabled={!isAdmin} onChange={(value) => setUnit(value as BudgetCycleUnit)} options={[{ value: "MONTHLY", label: "월" }, { value: "WEEKLY", label: "주" }]} value={unit} /></label>
+              <div className="budget-field"><span>주기 단위</span><CustomSelect ariaLabel="예산 주기 단위" disabled={!isAdmin} onChange={(value) => setUnit(value as BudgetCycleUnit)} options={[{ value: "MONTHLY", label: "월" }, { value: "WEEKLY", label: "주" }]} value={unit} /></div>
               {unit === "MONTHLY" ? (
                 <label>
                   <span>매월 시작일</span>
@@ -236,7 +236,7 @@ export function BudgetSettings() {
                 </label>
               ) : (
                 <>
-                  <label><span>매주 시작 요일</span><CustomSelect ariaLabel="예산 주기 시작 요일" disabled={!isAdmin} onChange={setWeekStartDay} options={["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"].map((label, index) => ({ value: String(index + 1), label }))} value={weekStartDay} /></label>
+                  <div className="budget-field"><span>매주 시작 요일</span><CustomSelect ariaLabel="예산 주기 시작 요일" disabled={!isAdmin} onChange={setWeekStartDay} options={["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"].map((label, index) => ({ value: String(index + 1), label }))} value={weekStartDay} /></div>
                   <label><span>기본 주 예산</span><span className="money-input"><input aria-label="기본 주 예산" min="1" onChange={(event) => setWeeklyAmount(event.target.value)} readOnly={!isAdmin} required type="number" value={weeklyAmount} /><b>원</b></span></label>
                   <p className="setting-description">월 예산과 주 예산은 별도로 저장됩니다. 주간으로 전환할 때 금액을 직접 입력해 주세요.</p>
                 </>
