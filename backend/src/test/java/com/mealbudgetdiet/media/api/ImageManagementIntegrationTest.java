@@ -85,6 +85,9 @@ class ImageManagementIntegrationTest {
 			.andExpect(jsonPath("$.images[0].sortOrder").value(0))
 			.andReturn();
 		String contentUrl = JsonPath.read(created.getResponse().getContentAsString(), "$.images[0].contentUrl");
+		mockMvc.perform(get("/api/v1/dashboard").cookie(session).param("yearMonth", "2026-09"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.recentExpenses[0].imageUrl").value(contentUrl));
 
 		byte[] webp = mockMvc.perform(get(contentUrl).cookie(session))
 			.andExpect(status().isOk())

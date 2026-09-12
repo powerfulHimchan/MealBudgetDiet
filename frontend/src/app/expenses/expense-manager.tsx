@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Camera,
+  Check,
   House,
   LoaderCircle,
   Pencil,
@@ -91,6 +92,7 @@ export function ExpenseManager() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isMobileCategoryOpen, setIsMobileCategoryOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
   const [pendingCropFiles, setPendingCropFiles] = useState<File[]>([]);
@@ -147,6 +149,7 @@ export function ExpenseManager() {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setFilters(appliedFilters);
+        setIsMobileCategoryOpen(false);
         setIsMobileFilterOpen(false);
       }
     };
@@ -339,17 +342,20 @@ export function ExpenseManager() {
 
   function openMobileFilters() {
     setFilters(appliedFilters);
+    setIsMobileCategoryOpen(false);
     setIsMobileFilterOpen(true);
   }
 
   function closeMobileFilters() {
     setFilters(appliedFilters);
+    setIsMobileCategoryOpen(false);
     setIsMobileFilterOpen(false);
   }
 
   function applyMobileFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAppliedFilters(filters);
+    setIsMobileCategoryOpen(false);
     setIsMobileFilterOpen(false);
     void refreshExpenses(filters);
   }
@@ -489,15 +495,28 @@ export function ExpenseManager() {
               }}
               role="presentation"
             >
-              <section aria-labelledby="mobile-filter-title" aria-modal="true" className="mobile-filter-sheet" role="dialog">
+              <section aria-labelledby="mobile-filter-title" aria-modal="true" className={`mobile-filter-sheet${isMobileCategoryOpen ? " mobile-filter-sheet--category" : ""}`} role="dialog">
                 <header>
                   <div>
                     <p className="eyebrow">SEARCH FILTER</p>
-                    <h2 id="mobile-filter-title">검색 조건</h2>
+                    <h2 id="mobile-filter-title">{isMobileCategoryOpen ? "카테고리 선택" : "검색 조건"}</h2>
                   </div>
-                  <button aria-label="검색 조건 닫기" onClick={closeMobileFilters} type="button"><X size={21} /></button>
+                  <button aria-label={isMobileCategoryOpen ? "검색 조건으로 돌아가기" : "검색 조건 닫기"} onClick={isMobileCategoryOpen ? () => setIsMobileCategoryOpen(false) : closeMobileFilters} type="button">{isMobileCategoryOpen ? <ArrowLeft size={21} /> : <X size={21} />}</button>
                 </header>
                 <form onSubmit={applyMobileFilters}>
+                  {isMobileCategoryOpen ? (
+                    <div aria-label="모바일 검색 카테고리" className="mobile-category-options" role="listbox">
+                      {[
+                        { value: "", label: "전체 카테고리" },
+                        ...categories.map((category) => ({ value: category.id, label: category.name })),
+                        { value: "uncategorized", label: "분류 없음" },
+                      ].map((option) => (
+                        <button aria-selected={filters.categoryId === option.value} className={filters.categoryId === option.value ? "is-selected" : undefined} key={option.value || "all"} onClick={() => { setFilters({ ...filters, categoryId: option.value }); setIsMobileCategoryOpen(false); }} role="option" type="button">
+                          <span>{option.label}</span>{filters.categoryId === option.value && <Check size={18} />}
+                        </button>
+                      ))}
+                    </div>
+                  ) : <>
                   <div className="mobile-filter-fields">
                     <div className="mobile-filter-field">
                       <span>시작일</span>
@@ -509,22 +528,16 @@ export function ExpenseManager() {
                     </div>
                     <div className="mobile-filter-field">
                       <span>카테고리</span>
-                      <CustomSelect
-                        ariaLabel="모바일 검색 카테고리"
-                        onChange={(categoryId) => setFilters({ ...filters, categoryId })}
-                        options={[
-                          { value: "", label: "전체 카테고리" },
-                          ...categories.map((category) => ({ value: category.id, label: category.name })),
-                          { value: "uncategorized", label: "분류 없음" },
-                        ]}
-                        value={filters.categoryId}
-                      />
+                      <button aria-label="모바일 검색 카테고리" className="custom-select__trigger" onClick={() => setIsMobileCategoryOpen(true)} type="button">
+                        <span>{filters.categoryId === "uncategorized" ? "분류 없음" : categories.find((category) => category.id === filters.categoryId)?.name ?? "전체 카테고리"}</span><ArrowRight size={17} />
+                      </button>
                     </div>
                   </div>
                   <footer>
                     <button className="secondary-button" onClick={clearMobileFilterFields} type="button"><RotateCcw size={16} />초기화</button>
                     <button className="dark-button" type="submit"><Search size={16} />적용</button>
                   </footer>
+                  </>}
                 </form>
               </section>
             </div>

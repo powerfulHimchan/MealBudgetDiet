@@ -97,4 +97,5 @@ STRUCTURED_LOG_FORMAT=ecs
 - [ERD 및 데이터 모델](docs/erd.md)
 - [REST API 설계](docs/api.md)
 - [운영 배포 가이드](docs/deployment.md)
+- [Android 홈 화면 위젯 준비](docs/android-widget.md)
 - [Google Play 출시 가이드](docs/play-store-release.md)

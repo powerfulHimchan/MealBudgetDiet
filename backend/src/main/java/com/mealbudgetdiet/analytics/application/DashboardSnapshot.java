@@ -29,7 +29,8 @@ public record DashboardSnapshot(
 		LocalDate spentOn,
 		String categoryName,
 		String merchant,
-		int version
+		int version,
+		String imageUrl
 	) {
 	}
 }

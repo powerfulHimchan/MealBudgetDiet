@@ -160,6 +160,16 @@ test("shows a clean settings list without availability labels", async ({ page })
   await expect(page.getByRole("link", { name: /예산 관리/ })).toBeVisible();
 });
 
+test("uses the same image thumbnail and date tile as the expense list on home", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.goto("/");
+  const recent = page.locator(".expense-list");
+  await expect(recent.locator("li").first().locator(".expense-thumbnail"))
+    .toHaveAttribute("src", /\/api\/v1\/images\/.*\/content/);
+  await expect(recent.locator("li").nth(1).locator(".expense-date-box"))
+    .toContainText("07");
+});
+
 test("switches the shared budget from a monthly start date to a weekly start weekday", async ({ page }) => {
   await mockExpenseApis(page);
   await page.goto("/settings/budget");
@@ -278,6 +288,7 @@ test("uses compact expense filters on mobile", async ({ page }) => {
   const filterDialog = page.getByRole("dialog", { name: "검색 조건" });
   await expect(filterDialog).toBeVisible();
   await filterDialog.getByRole("button", { name: "모바일 검색 카테고리" }).click();
+  await expect(filterDialog.getByRole("heading", { name: "카테고리 선택" })).toBeVisible();
   await filterDialog.getByRole("option", { name: "외식" }).click();
   await filterDialog.getByRole("button", { name: "적용" }).click();
 
@@ -286,6 +297,20 @@ test("uses compact expense filters on mobile", async ({ page }) => {
   await expect(categoryChip).toContainText("외식");
   await categoryChip.click();
   await expect(page.getByRole("button", { name: "필터", exact: true })).toBeVisible();
+});
+
+test("keeps every mobile category reachable on a short screen", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 480 });
+  await mockExpenseApis(page);
+  await page.goto("/expenses");
+  await page.getByRole("button", { name: "필터", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "검색 조건" });
+  await dialog.getByRole("button", { name: "모바일 검색 카테고리" }).click();
+  const options = page.getByRole("listbox", { name: "모바일 검색 카테고리" });
+  await expect(options).toBeVisible();
+  await expect(options).toHaveCSS("overflow-y", "auto");
+  await options.getByRole("option", { name: "분류 없음" }).click();
+  await expect(page.getByRole("dialog", { name: "검색 조건" }).getByRole("button", { name: "모바일 검색 카테고리" })).toContainText("분류 없음");
 });
 
 test("upload and delete a profile image", async ({ page }) => {
@@ -581,7 +606,7 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
     } else if (pathname === "/api/v1/ledger") {
       await route.fulfill({ json: ledger });
     } else if (pathname === "/api/v1/dashboard") {
-      await route.fulfill({ json: { yearMonth: "2026-09", cycleUnit: ledger.budgetCycleUnit, period: { from: "2026-09-01", to: "2026-09-30" }, budget: 800000, spent: 658800, remaining: 141200, projectedSpent: 718691, usageRate: 82.4, pushUsageThreshold: ledger.pushUsageThreshold, status: "WARNING", recentExpenses: expenses.map((expense) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version })) } });
+      await route.fulfill({ json: { yearMonth: "2026-09", cycleUnit: ledger.budgetCycleUnit, period: { from: "2026-09-01", to: "2026-09-30" }, budget: 800000, spent: 658800, remaining: 141200, projectedSpent: 718691, usageRate: 82.4, pushUsageThreshold: ledger.pushUsageThreshold, status: "WARNING", recentExpenses: expenses.map((expense, index) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version, imageUrl: index === 0 ? "/api/v1/images/15151515-1515-1515-1515-151515151515/content" : null })) } });
     } else if (pathname === "/api/v1/statistics") {
       await route.fulfill({ json: { period: { from: "2026-09-01", to: "2026-09-30" }, totalAmount: 658800, budget: { amount: 800000, usageRate: 82.4 }, comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 592000, changeAmount: 66800, changeRate: 11.3 }, daily: [{ date: "2026-09-02", amount: 44000 }, { date: "2026-09-05", amount: 78000 }, { date: "2026-09-08", amount: 60300 }, { date: "2026-09-12", amount: 125000 }, { date: "2026-09-18", amount: 89000 }, { date: "2026-09-24", amount: 142000 }, { date: "2026-09-29", amount: 120500 }], categories: [{ categoryId: categories[0].id, categoryName: "장보기", amount: 283000, ratio: 43 }, { categoryId: categories[1].id, categoryName: "외식", amount: 197600, ratio: 30 }, { categoryId: categories[2].id, categoryName: "배달", amount: 112000, ratio: 17 }, { categoryId: categories[3].id, categoryName: "카페/간식", amount: 66200, ratio: 10 }] } });
     } else if (pathname.startsWith("/api/v1/budgets/")) {

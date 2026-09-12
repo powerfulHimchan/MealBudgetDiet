@@ -382,7 +382,7 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
   font-size: .73rem;
   font-weight: 800;
 }
-.mobile-filter-sheet { width: 100%; border: 1px solid #263650; border-bottom: 0; border-radius: 12px 12px 0 0; background: white; box-shadow: 0 -20px 60px rgb(2 8 23 / 30%); }
+.mobile-filter-sheet { width: 100%; max-height: calc(100dvh - 8px); overflow-y: auto; border: 1px solid #263650; border-bottom: 0; border-radius: 12px 12px 0 0; background: white; box-shadow: 0 -20px 60px rgb(2 8 23 / 30%); }
 .mobile-filter-sheet > header { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 18px 16px; border-bottom: 1px solid var(--line); }
 .mobile-filter-sheet > header .eyebrow { margin-bottom: 4px; }
 .mobile-filter-sheet > header h2 { margin: 0; font-size: 1.12rem; }
@@ -392,6 +392,12 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .mobile-filter-field { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #46566f; font-size: .76rem; font-weight: 800; }
 .mobile-filter-sheet footer { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 20px; }
 .mobile-filter-sheet footer button { min-height: 46px; justify-content: center; }
+.mobile-filter-sheet--category { display: flex; height: min(76dvh, 620px); flex-direction: column; overflow: hidden; }
+.mobile-filter-sheet--category > form { display: flex; min-height: 0; flex: 1; flex-direction: column; padding-top: 8px; }
+.mobile-category-options { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.mobile-category-options button { display: flex; width: 100%; min-height: 54px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px; border: 0; border-bottom: 1px solid var(--line); background: white; color: #34445b; cursor: pointer; font-size: .88rem; font-weight: 750; text-align: left; }
+.mobile-category-options button:last-child { border-bottom: 0; }
+.mobile-category-options button:hover, .mobile-category-options button:focus-visible, .mobile-category-options button.is-selected { background: #eaf2ff; color: var(--brand-strong); outline: none; }
 .secondary-button, .dark-button { padding: 0 14px; border: 1px solid #cbd6e4; background: white; color: #25334b; }
 .dark-button { border-color: var(--ink); background: var(--ink); color: white; }
 .secondary-button:hover { background: #f4f7fb; }

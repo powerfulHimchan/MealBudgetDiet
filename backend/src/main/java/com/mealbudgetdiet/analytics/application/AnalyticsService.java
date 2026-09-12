@@ -29,6 +29,7 @@ import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
 import com.mealbudgetdiet.expense.infrastructure.CategoryRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
 import com.mealbudgetdiet.ledger.domain.Ledger;
+import com.mealbudgetdiet.media.application.ImageService;
 import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
@@ -82,20 +83,24 @@ public class AnalyticsService {
 
 		List<RecentExpense> recent = jdbcTemplate.query("""
 			select e.id, e.amount, e.spent_on, coalesce(c.name, '분류 없음') category_name,
-			       e.merchant, e.version
+			       e.merchant, e.version, cover.image_id cover_image_id
 			from expenses e
 			left join categories c on c.id = e.category_id
+			left join lateral (
+			  select ei.image_id from expense_images ei
+			  where ei.expense_id = e.id order by ei.sort_order limit 1
+			) cover on true
 			where e.ledger_id = ? and e.spent_on between ? and ?
 			order by e.spent_on desc, e.created_at desc, e.id desc
 			limit ?
-			""", (resultSet, rowNumber) -> new RecentExpense(
-				resultSet.getObject("id", UUID.class),
-				resultSet.getLong("amount"),
-				resultSet.getObject("spent_on", LocalDate.class),
-				resultSet.getString("category_name"),
-				resultSet.getString("merchant"),
-				resultSet.getInt("version")
-			), ledgerId, from, to, recentSize);
+		""", (resultSet, rowNumber) -> {
+			UUID imageId = resultSet.getObject("cover_image_id", UUID.class);
+			return new RecentExpense(
+				resultSet.getObject("id", UUID.class), resultSet.getLong("amount"),
+				resultSet.getObject("spent_on", LocalDate.class), resultSet.getString("category_name"),
+				resultSet.getString("merchant"), resultSet.getInt("version"),
+				imageId == null ? null : ImageService.contentUrl(imageId));
+		}, ledgerId, from, to, recentSize);
 
 		return new DashboardSnapshot(
 			cycle.yearMonth(), ledger.getBudgetCycleUnit(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
