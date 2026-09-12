@@ -288,8 +288,9 @@ test("uses compact expense filters on mobile", async ({ page }) => {
   const filterDialog = page.getByRole("dialog", { name: "검색 조건" });
   await expect(filterDialog).toBeVisible();
   await filterDialog.getByRole("button", { name: "모바일 검색 카테고리" }).click();
-  await expect(filterDialog.getByRole("heading", { name: "카테고리 선택" })).toBeVisible();
-  await filterDialog.getByRole("option", { name: "외식" }).click();
+  const categoryDialog = page.getByRole("dialog", { name: "카테고리 선택" });
+  await expect(categoryDialog).toBeVisible();
+  await categoryDialog.getByRole("option", { name: "외식" }).click();
   await filterDialog.getByRole("button", { name: "적용" }).click();
 
   await expect(page.getByRole("button", { name: "필터 1" })).toBeVisible();
