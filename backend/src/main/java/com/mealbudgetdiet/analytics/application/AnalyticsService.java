@@ -267,6 +267,11 @@ public class AnalyticsService {
 
 	private StatisticsSnapshot.Period comparisonPeriod(Ledger ledger, LocalDate from, LocalDate to) {
 		if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
+			if (from.getMonthValue() == 1 && from.getDayOfMonth() == 1
+				&& to.getMonthValue() == 12 && to.getDayOfMonth() == 31
+				&& from.getYear() == to.getYear()) {
+				return new StatisticsSnapshot.Period(from.minusYears(1), to.minusYears(1));
+			}
 			long days = ChronoUnit.DAYS.between(from, to) + 1;
 			return new StatisticsSnapshot.Period(from.minusDays(days), from.minusDays(1));
 		}
