@@ -1,4 +1,4 @@
-const CACHE_NAME = "sikbi-shell-v6";
+const CACHE_NAME = "sikbi-shell-v7";
 const OFFLINE_URL = "/offline";
 const APP_ICON_URL = "/icons/icon-192.png";
 const BADGE_ICON_URL = "/icons/icon-badge-96.png";

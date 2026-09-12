@@ -9,6 +9,9 @@ test("capture implemented frontend screens", async ({ browser }) => {
   await mockExpenseApis(desktop);
   await desktop.goto("/");
   await expect(desktop.getByRole("heading", { name: "141,200원 남았어요" })).toBeVisible();
+  await expect(desktop.getByRole("link", { name: "sikbi 홈" })).toBeVisible();
+  await expect(desktop.getByRole("link", { name: "sikbi 홈" }).locator("img")).toHaveAttribute("src", "/icon.svg");
+  await expect(desktop.getByText("sikbi - 함께 쓰는 식비 관리")).toBeVisible();
   await desktop.screenshot({
     path: path.join(screenshotDirectory, "dashboard-desktop.png"),
     fullPage: true,
@@ -34,6 +37,9 @@ test("capture implemented frontend screens", async ({ browser }) => {
   for (const screen of authScreens) {
     await authMobile.goto(screen.route);
     await expect(authMobile.getByRole("heading", { name: screen.heading })).toBeVisible();
+    if (screen.route === "/login") {
+      await expect(authMobile.getByRole("textbox", { name: "이메일" })).not.toHaveAttribute("placeholder");
+    }
     await authMobile.screenshot({
       path: path.join(screenshotDirectory, screen.file),
       fullPage: true,
@@ -58,7 +64,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
     { route: "/settings/budget", file: "budget-settings-mobile.png", heading: "예산 관리" },
     { route: "/settings/notifications", file: "notification-settings-mobile.png", heading: "푸시 알림" },
     { route: "/settings/categories", file: "category-settings-mobile.png", heading: "카테고리 관리" },
-    { route: "/settings/members", file: "member-settings-mobile.png", heading: "참여자 관리" },
+    { route: "/settings/members", file: "member-settings-mobile.png", heading: "멤버 관리" },
     { route: "/settings/invitations", file: "invitation-settings-mobile.png", heading: "초대 코드" },
     { route: "/settings/account", file: "account-settings-mobile.png", heading: "계정 설정" },
     { route: "/offline", file: "offline-mobile.png", heading: "인터넷 연결이 필요해요" },
@@ -76,6 +82,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByText("658,800원", { exact: true })).toBeVisible();
     } else if (screen.route === "/settings") {
       await expect(mobile.getByRole("link", { name: /예산 관리/ })).toBeVisible();
+      await expect(mobile.getByRole("link", { name: /멤버 관리/ })).toBeVisible();
       await expect(mobile.getByRole("link", { name: /푸시 알림/ })).toBeVisible();
       await expect(mobile.getByRole("link", { name: /계정 설정/ })).toBeVisible();
     } else if (screen.route === "/settings/budget") {
@@ -89,7 +96,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByRole("button", { name: "새 카테고리 추가" })).toBeVisible();
       await expect(mobile.getByText("장보기", { exact: true })).toBeVisible();
     } else if (screen.route === "/settings/members") {
-      await expect(mobile.getByRole("heading", { name: "우리집 식비 참여자" })).toBeVisible();
+      await expect(mobile.getByRole("heading", { name: "우리집 식비 멤버" })).toBeVisible();
       await expect(mobile.getByText("힘찬", { exact: true })).toBeVisible();
       await expect(mobile.getByText("가족", { exact: true })).toBeVisible();
     } else if (screen.route === "/settings/invitations") {
@@ -98,6 +105,8 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByText("MBD-****7K2P", { exact: true })).toBeVisible();
     } else if (screen.route === "/settings/account") {
       await expect(mobile.getByRole("heading", { name: "프로필 사진" })).toBeVisible();
+      await expect(mobile.getByText("DANGER ZONE")).toHaveCount(0);
+      await expect(mobile.getByText(/업로드 전에 원하는 영역/)).toHaveCount(0);
       await expect(mobile.getByRole("heading", { name: "비밀번호 변경" })).toBeVisible();
       await expect(mobile.getByRole("heading", { name: "공유 장부 종료" })).toBeVisible();
       await expect(mobile.getByText("himchan@example.com", { exact: true })).toBeVisible();
@@ -240,13 +249,13 @@ test("manage administrator role from settings", async ({ page }) => {
   await dialog.getByRole("button", { name: "권한 변경" }).click();
   await expect(familyRow.getByText("관리자", { exact: true })).toBeVisible();
 
-  await familyRow.getByRole("button", { name: "일반 참여자로 변경" }).click();
-  dialog = page.getByRole("dialog", { name: "가족 님을 일반 참여자로 변경할까요?" });
+  await familyRow.getByRole("button", { name: "일반 멤버로 변경" }).click();
+  dialog = page.getByRole("dialog", { name: "가족 님을 일반 멤버로 변경할까요?" });
   await dialog.getByRole("button", { name: "권한 변경" }).click();
-  await expect(familyRow.getByText("일반 참여자", { exact: true })).toBeVisible();
+  await expect(familyRow.getByText("일반 멤버", { exact: true })).toBeVisible();
 
   const currentUserRow = page.getByRole("listitem").filter({ hasText: "힘찬" });
-  await expect(currentUserRow.getByRole("button", { name: "일반 참여자로 변경" })).toBeDisabled();
+  await expect(currentUserRow.getByRole("button", { name: "일반 멤버로 변경" })).toBeDisabled();
 });
 
 test("issue, copy, and revoke an invitation code", async ({ page, context }) => {
@@ -352,7 +361,7 @@ test("requires explicit confirmation before the last administrator deletes the l
   await page.getByRole("button", { name: "장부 종료" }).click();
   const dialog = page.getByRole("dialog", { name: "우리집 식비 장부를 종료할까요?" });
   const confirmButton = dialog.getByRole("button", { name: "장부와 계정 삭제" });
-  await expect(dialog.getByText(/모든 식비, 예산, 이미지와 참여자 계정/)).toBeVisible();
+  await expect(dialog.getByText(/모든 식비, 예산, 이미지와 멤버 계정/)).toBeVisible();
   await dialog.getByLabel("현재 비밀번호").fill("password123!");
   await expect(confirmButton).toBeDisabled();
   await dialog.getByLabel(/확인을 위해/).fill("우리집 식비 삭제");

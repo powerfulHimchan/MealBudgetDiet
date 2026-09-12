@@ -1,10 +1,10 @@
 "use client";
 
 import { CalendarRange, Download, LoaderCircle, TrendingDown, TrendingUp } from "lucide-react";
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AppNav } from "../app-nav";
+import { BrandLink } from "../brand-link";
 import { request, todayInSeoul } from "../../lib/api";
 import { addMonths, budgetCycleContaining, budgetCycleStarting, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { CalendarPicker } from "../ui/date-picker";
@@ -126,7 +126,7 @@ export function StatisticsView() {
   return (
     <main className="app-shell analytics-shell">
       <header className="topbar">
-        <Link className="brand" href="/"><span className="brand-mark">M</span><span>MealBudgetDiet</span></Link>
+        <BrandLink />
         <span className="page-badge"><CalendarRange size={16} /> 분석</span>
       </header>
 

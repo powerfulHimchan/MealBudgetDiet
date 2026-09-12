@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { AppNav } from "./app-nav";
 import { request } from "../lib/api";
 import { CurrentUserAvatar } from "./current-user-avatar";
+import { BrandLink } from "./brand-link";
 
 type DashboardData = {
   yearMonth: string;
@@ -51,9 +52,7 @@ export function Dashboard() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <Link className="brand" href="/" aria-label="MealBudgetDiet 홈">
-          <span className="brand-mark">M</span><span>MealBudgetDiet</span>
-        </Link>
+        <BrandLink />
         <CurrentUserAvatar />
       </header>
 

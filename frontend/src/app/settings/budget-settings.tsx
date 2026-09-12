@@ -226,7 +226,7 @@ export function BudgetSettings() {
               <span className="panel-icon"><CalendarRange size={21} /></span>
               <div><p className="eyebrow">BUDGET CYCLE</p><h2>예산 주기</h2></div>
             </div>
-            <p className="setting-description">월간 또는 주간 주기와 시작일을 정하세요. 모든 참여자에게 동일하게 적용됩니다.</p>
+            <p className="setting-description">월간 또는 주간 주기와 시작일을 정하세요. 모든 멤버에게 동일하게 적용됩니다.</p>
             <form className="budget-form" onSubmit={saveBudgetCycle}>
               <div className="budget-field"><span>주기 단위</span><CustomSelect ariaLabel="예산 주기 단위" disabled={!isAdmin} onChange={(value) => setUnit(value as BudgetCycleUnit)} options={[{ value: "MONTHLY", label: "월" }, { value: "WEEKLY", label: "주" }]} value={unit} /></div>
               {unit === "MONTHLY" ? (

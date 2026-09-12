@@ -2,6 +2,7 @@ import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AppNav } from "../app-nav";
+import { BrandLink } from "../brand-link";
 
 type SettingsPageFrameProps = {
   badge?: ReactNode;
@@ -23,7 +24,7 @@ export function SettingsPageFrame({
   return (
     <main className="app-shell settings-shell">
       <header className="topbar">
-        <Link className="brand" href="/"><span className="brand-mark">M</span><span>MealBudgetDiet</span></Link>
+        <BrandLink />
         {badge ?? <span className="page-badge"><SlidersHorizontal size={16} /> 설정</span>}
       </header>
 

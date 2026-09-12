@@ -17,6 +17,10 @@ test.describe("Google Play 공개 표면", () => {
   });
 
   test("TWA가 사용할 PWA manifest와 PNG 아이콘을 제공한다", async ({ request }) => {
+    const logoResponse = await request.get("/icon.svg");
+    expect(logoResponse.ok()).toBeTruthy();
+    expect(await logoResponse.text()).toContain("영수증과 숟가락, 포크");
+
     const manifestResponse = await request.get("/manifest.webmanifest");
     expect(manifestResponse.ok()).toBeTruthy();
     const manifest = await manifestResponse.json();
