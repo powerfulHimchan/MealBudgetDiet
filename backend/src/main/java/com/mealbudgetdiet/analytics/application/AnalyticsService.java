@@ -25,6 +25,7 @@ import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.Comparison;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.DailyAmount;
 import com.mealbudgetdiet.budget.application.BudgetService;
 import com.mealbudgetdiet.budget.domain.BudgetCycle;
+import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
 import com.mealbudgetdiet.expense.infrastructure.CategoryRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
 import com.mealbudgetdiet.ledger.domain.Ledger;
@@ -59,11 +60,15 @@ public class AnalyticsService {
 	public DashboardSnapshot dashboard(UUID userId, YearMonth requestedMonth, int recentSize) {
 		Ledger ledger = ledger(userId);
 		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
+		if (requestedMonth != null && ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "MONTHLY_CYCLE_ONLY", "월 기준 주기는 월간 설정에서만 조회할 수 있습니다.");
+		}
 		BudgetCycle cycle = requestedMonth == null
-			? BudgetCycle.containing(today, ledger.getBudgetCycleStartDay())
+			? BudgetCycle.containing(today, ledger.getBudgetCycleUnit(),
+				ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay())
 			: BudgetCycle.starting(requestedMonth, ledger.getBudgetCycleStartDay());
 		UUID ledgerId = ledger.getId();
-		var budget = budgetService.getAppliedBudget(userId, cycle.yearMonth());
+		var budget = budgetService.budgetForCycle(ledger, cycle);
 		LocalDate from = cycle.from();
 		LocalDate to = cycle.to();
 		long spent = totalAmount(ledgerId, from, to);
@@ -93,7 +98,7 @@ public class AnalyticsService {
 			), ledgerId, from, to, recentSize);
 
 		return new DashboardSnapshot(
-			cycle.yearMonth(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
+			cycle.yearMonth(), ledger.getBudgetCycleUnit(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
 			budget.amount() - spent, projectedSpent, usageRate, ledger.getPushUsageThreshold(), status, recent);
 	}
 
@@ -108,6 +113,9 @@ public class AnalyticsService {
 		LocalDate from;
 		LocalDate to;
 		if (requestedCycle != null) {
+			if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
+				throw new ApiException(HttpStatus.BAD_REQUEST, "MONTHLY_CYCLE_ONLY", "월 기준 주기는 월간 설정에서만 조회할 수 있습니다.");
+			}
 			if (requestedFrom != null || requestedTo != null) {
 				throw new ApiException(
 					HttpStatus.BAD_REQUEST, "STATISTICS_PERIOD_CONFLICT",
@@ -258,6 +266,15 @@ public class AnalyticsService {
 	}
 
 	private StatisticsSnapshot.Period comparisonPeriod(Ledger ledger, LocalDate from, LocalDate to) {
+		if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
+			if (from.getMonthValue() == 1 && from.getDayOfMonth() == 1
+				&& to.getMonthValue() == 12 && to.getDayOfMonth() == 31
+				&& from.getYear() == to.getYear()) {
+				return new StatisticsSnapshot.Period(from.minusYears(1), to.minusYears(1));
+			}
+			long days = ChronoUnit.DAYS.between(from, to) + 1;
+			return new StatisticsSnapshot.Period(from.minusDays(days), from.minusDays(1));
+		}
 		int startDay = ledger.getBudgetCycleStartDay();
 		BudgetCycle firstCycle = BudgetCycle.containing(from, startDay);
 		BudgetCycle lastCycle = BudgetCycle.containing(to, startDay);

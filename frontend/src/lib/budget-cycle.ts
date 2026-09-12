@@ -1,4 +1,5 @@
 export type BudgetCycleRange = { yearMonth: string; from: string; to: string };
+export type BudgetCycleUnit = "MONTHLY" | "WEEKLY";
 
 function parseYearMonth(yearMonth: string) {
   const [year, month] = yearMonth.split("-").map(Number);
@@ -34,4 +35,17 @@ export function budgetCycleContaining(date: string, startDay: number): BudgetCyc
   const candidate = date.slice(0, 7);
   const cycle = budgetCycleStarting(candidate, startDay);
   return date < cycle.from ? budgetCycleStarting(addMonths(candidate, -1), startDay) : cycle;
+}
+
+export function weeklyCycleContaining(date: string, startWeekDay: number): BudgetCycleRange {
+  const day = new Date(`${date}T00:00:00Z`);
+  const weekday = day.getUTCDay() || 7;
+  day.setUTCDate(day.getUTCDate() - (weekday - startWeekDay + 7) % 7);
+  const from = dateText(day);
+  day.setUTCDate(day.getUTCDate() + 6);
+  return { yearMonth: from.slice(0, 7), from, to: dateText(day) };
+}
+
+export function cycleForDate(date: string, unit: BudgetCycleUnit, startDay: number, weekStartDay: number) {
+  return unit === "WEEKLY" ? weeklyCycleContaining(date, weekStartDay) : budgetCycleContaining(date, startDay);
 }

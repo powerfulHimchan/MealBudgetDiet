@@ -90,7 +90,7 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .range-presets button { min-height: 38px; padding: 0 13px; border: 1px solid #c9d5e5; border-radius: 3px; background: #f8faff; color: #45566f; cursor: pointer; font-weight: 750; }
 .range-presets button.is-active { border-color: var(--brand-strong); background: #e8f0ff; color: var(--brand-strong); }
 .custom-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: 9px; }
-.custom-range label, .budget-form label { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #45566f; font-size: .75rem; font-weight: 800; }
+.custom-range label, .budget-form label, .budget-form .budget-field { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #45566f; font-size: .75rem; font-weight: 800; }
 .custom-range input, .budget-form input { width: 100%; min-height: 42px; padding: 0 11px; border: 1px solid #c8d5e5; border-radius: 3px; outline: none; background: white; color: var(--ink); font: inherit; }
 .custom-range input:focus, .budget-form input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgb(59 130 246 / 12%); }
 .summary-grid { display: grid; gap: 10px; margin-top: 18px; }

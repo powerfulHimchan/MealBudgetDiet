@@ -37,4 +37,12 @@ class BudgetCycleTest {
 		assertThat(february.from()).isEqualTo(LocalDate.of(2026, 2, 28));
 		assertThat(february.to()).isEqualTo(LocalDate.of(2026, 3, 30));
 	}
+
+	@Test
+	void startsWeeklyCycleOnSelectedWeekdayAcrossMonthAndYear() {
+		var cycle = BudgetCycle.weeklyContaining(LocalDate.of(2027, 1, 1), 4);
+		assertThat(cycle.from()).isEqualTo(LocalDate.of(2026, 12, 31));
+		assertThat(cycle.to()).isEqualTo(LocalDate.of(2027, 1, 6));
+		assertThat(cycle.days()).isEqualTo(7);
+	}
 }

@@ -36,6 +36,11 @@ public class BudgetController {
 		this.budgetService = budgetService;
 	}
 
+	@GetMapping("/current")
+	BudgetResponse current(@AuthenticationPrincipal MealBudgetPrincipal principal) {
+		return BudgetResponse.from(budgetService.getCurrentBudget(principal.id()));
+	}
+
 	@GetMapping("/{yearMonth}")
 	BudgetResponse budget(
 		@AuthenticationPrincipal MealBudgetPrincipal principal,

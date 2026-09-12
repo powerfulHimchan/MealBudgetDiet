@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.budget.domain.BudgetCycle;
+import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
 import com.mealbudgetdiet.budget.domain.MonthlyBudget;
 import com.mealbudgetdiet.budget.infrastructure.MonthlyBudgetRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
@@ -28,15 +31,34 @@ public class BudgetService {
 	private final LedgerAccessService ledgerAccessService;
 	private final LedgerRepository ledgerRepository;
 	private final MonthlyBudgetRepository monthlyBudgetRepository;
+	private final Clock clock;
 
 	public BudgetService(
 		LedgerAccessService ledgerAccessService,
 		LedgerRepository ledgerRepository,
-		MonthlyBudgetRepository monthlyBudgetRepository
+		MonthlyBudgetRepository monthlyBudgetRepository,
+		Clock clock
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.ledgerRepository = ledgerRepository;
 		this.monthlyBudgetRepository = monthlyBudgetRepository;
+		this.clock = clock;
+	}
+
+	@Transactional(readOnly = true)
+	public BudgetSnapshot getCurrentBudget(UUID userId) {
+		var ledger = ledgerAccessService.requireLedger(ledgerId(userId));
+		var cycle = BudgetCycle.containing(LocalDate.now(clock.withZone(ZoneId.of("Asia/Seoul"))),
+			ledger.getBudgetCycleUnit(), ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
+		return budgetForCycle(ledger, cycle);
+	}
+
+	public BudgetSnapshot budgetForCycle(Ledger ledger, BudgetCycle cycle) {
+		if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
+			return new BudgetSnapshot(cycle.yearMonth(), cycle, ledger.getDefaultWeeklyBudget(),
+				BudgetSource.WEEKLY_DEFAULT, ledger.getVersion());
+		}
+		return appliedBudget(ledger, cycle);
 	}
 
 	@Transactional(readOnly = true)
@@ -96,6 +118,19 @@ public class BudgetService {
 	@Transactional(readOnly = true)
 	public long proratedBudget(UUID ledgerId, LocalDate from, LocalDate to) {
 		Ledger ledger = ledgerAccessService.requireLedger(ledgerId);
+		if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
+			BigDecimal total = BigDecimal.ZERO;
+			for (BudgetCycle cycle = BudgetCycle.weeklyContaining(from, ledger.getBudgetWeekStartDay());
+				!cycle.from().isAfter(to);
+				cycle = BudgetCycle.weeklyContaining(cycle.to().plusDays(1), ledger.getBudgetWeekStartDay())) {
+				LocalDate start = from.isAfter(cycle.from()) ? from : cycle.from();
+				LocalDate end = to.isBefore(cycle.to()) ? to : cycle.to();
+				long days = ChronoUnit.DAYS.between(start, end) + 1;
+				total = total.add(BigDecimal.valueOf(ledger.getDefaultWeeklyBudget())
+					.multiply(BigDecimal.valueOf(days)).divide(BigDecimal.valueOf(7), 8, RoundingMode.HALF_UP));
+			}
+			return total.setScale(0, RoundingMode.HALF_UP).longValueExact();
+		}
 		int startDay = ledger.getBudgetCycleStartDay();
 		BudgetCycle firstCycle = BudgetCycle.containing(from, startDay);
 		BudgetCycle lastCycle = BudgetCycle.containing(to, startDay);

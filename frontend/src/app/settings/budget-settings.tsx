@@ -3,8 +3,9 @@
 import { CalendarRange, CircleDollarSign, LoaderCircle, ShieldCheck, Trash2 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { currentYearMonthInSeoul, mutation, request } from "../../lib/api";
-import { budgetCycleContaining } from "../../lib/budget-cycle";
+import { budgetCycleContaining, cycleForDate, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { CalendarPicker } from "../ui/date-picker";
+import { CustomSelect } from "../ui/custom-select";
 import { SettingsPageFrame } from "./settings-page-frame";
 
 type Ledger = {
@@ -12,6 +13,9 @@ type Ledger = {
   name: string;
   defaultMonthlyBudget: number;
   budgetCycleStartDay: number;
+  budgetCycleUnit: BudgetCycleUnit;
+  budgetWeekStartDay: number;
+  defaultWeeklyBudget: number | null;
   memberCount: number;
   currentUserRole: "ADMIN" | "MEMBER";
   version: number;
@@ -20,10 +24,10 @@ type Budget = {
   yearMonth: string;
   period: { from: string; to: string };
   amount: number;
-  source: "DEFAULT" | "MONTHLY_OVERRIDE";
+  source: "DEFAULT" | "MONTHLY_OVERRIDE" | "WEEKLY_DEFAULT";
   version: number;
 };
-type BudgetCycleSettings = { budgetCycleStartDay: number; version: number };
+type BudgetCycleSettings = Pick<Ledger, "budgetCycleUnit" | "budgetCycleStartDay" | "budgetWeekStartDay" | "defaultWeeklyBudget" | "version">;
 
 const won = new Intl.NumberFormat("ko-KR");
 
@@ -34,6 +38,9 @@ export function BudgetSettings() {
   const [defaultAmount, setDefaultAmount] = useState("");
   const [monthlyAmount, setMonthlyAmount] = useState("");
   const [startDay, setStartDay] = useState("1");
+  const [unit, setUnit] = useState<BudgetCycleUnit>("MONTHLY");
+  const [weekStartDay, setWeekStartDay] = useState("1");
+  const [weeklyAmount, setWeeklyAmount] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +60,14 @@ export function BudgetSettings() {
       setLedger(nextLedger);
       setDefaultAmount(String(nextLedger.defaultMonthlyBudget));
       setStartDay(String(nextLedger.budgetCycleStartDay));
-      await loadBudget(month);
+      setUnit(nextLedger.budgetCycleUnit);
+      setWeekStartDay(String(nextLedger.budgetWeekStartDay));
+      setWeeklyAmount(nextLedger.defaultWeeklyBudget == null ? "" : String(nextLedger.defaultWeeklyBudget));
+      if (nextLedger.budgetCycleUnit === "WEEKLY") {
+        setBudget(await request<Budget>("/api/v1/budgets/current"));
+      } else {
+        await loadBudget(month);
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "예산 설정을 불러오지 못했습니다.");
     } finally {
@@ -69,11 +83,15 @@ export function BudgetSettings() {
           new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()),
           nextLedger.budgetCycleStartDay,
         );
-        const nextBudget = await request<Budget>(`/api/v1/budgets/${currentCycle.yearMonth}`);
+        const nextBudget = await request<Budget>(nextLedger.budgetCycleUnit === "WEEKLY"
+          ? "/api/v1/budgets/current" : `/api/v1/budgets/${currentCycle.yearMonth}`);
         if (!active) return;
         setLedger(nextLedger);
         setDefaultAmount(String(nextLedger.defaultMonthlyBudget));
         setStartDay(String(nextLedger.budgetCycleStartDay));
+        setUnit(nextLedger.budgetCycleUnit);
+        setWeekStartDay(String(nextLedger.budgetWeekStartDay));
+        setWeeklyAmount(nextLedger.defaultWeeklyBudget == null ? "" : String(nextLedger.defaultWeeklyBudget));
         setYearMonth(currentCycle.yearMonth);
         setBudget(nextBudget);
         setMonthlyAmount(String(nextBudget.amount));
@@ -111,18 +129,28 @@ export function BudgetSettings() {
     setError(null);
     try {
       const settings = await mutation<BudgetCycleSettings>("/api/v1/ledger/settings/budget-cycle", "PUT", {
+        unit,
         startDay: Number(startDay),
+        weekStartDay: Number(weekStartDay),
+        weeklyBudget: weeklyAmount ? Number(weeklyAmount) : null,
         version: ledger.version,
       });
       const currentCycle = budgetCycleContaining(
         new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()),
         settings.budgetCycleStartDay,
       );
-      setLedger({ ...ledger, budgetCycleStartDay: settings.budgetCycleStartDay, version: settings.version });
+      setLedger({ ...ledger, ...settings });
       setStartDay(String(settings.budgetCycleStartDay));
+      setUnit(settings.budgetCycleUnit);
+      setWeekStartDay(String(settings.budgetWeekStartDay));
+      setWeeklyAmount(settings.defaultWeeklyBudget == null ? "" : String(settings.defaultWeeklyBudget));
       setYearMonth(currentCycle.yearMonth);
-      await loadBudget(currentCycle.yearMonth);
-      setNotice("예산 주기 시작일을 변경했습니다.");
+      if (settings.budgetCycleUnit === "WEEKLY") {
+        setBudget(await request<Budget>("/api/v1/budgets/current"));
+      } else {
+        await loadBudget(currentCycle.yearMonth);
+      }
+      setNotice("예산 주기를 변경했습니다.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "예산 주기를 저장하지 못했습니다.");
     } finally {
@@ -166,19 +194,22 @@ export function BudgetSettings() {
   }
 
   const isAdmin = ledger?.currentUserRole === "ADMIN";
-  const startDayChanged = !!ledger && startDay !== String(ledger.budgetCycleStartDay);
+  const startDayChanged = !!ledger && (unit !== ledger.budgetCycleUnit
+    || (unit === "MONTHLY" && startDay !== String(ledger.budgetCycleStartDay))
+    || (unit === "WEEKLY" && (weekStartDay !== String(ledger.budgetWeekStartDay)
+      || weeklyAmount !== (ledger.defaultWeeklyBudget == null ? "" : String(ledger.defaultWeeklyBudget)))));
   const defaultChanged = !!ledger && defaultAmount !== String(ledger.defaultMonthlyBudget);
   const monthlyChanged = !!budget && monthlyAmount !== String(budget.amount);
   const previewDay = Math.min(31, Math.max(1, Number(startDay) || 1));
-  const previewCycle = budgetCycleContaining(
+  const previewCycle = cycleForDate(
     new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()),
-    previewDay,
+    unit, previewDay, Number(weekStartDay),
   );
 
   return (
     <SettingsPageFrame
       badge={ledger && <span className="page-badge"><ShieldCheck size={16} /> {isAdmin ? "관리자" : "멤버"}</span>}
-      description="공유 장부에 적용할 기본 예산과 월별 예외 예산을 관리하세요."
+      description="공유 장부의 예산 주기와 금액을 관리하세요."
       eyebrow="BUDGET SETTINGS"
       showBackLink
       title="예산 관리"
@@ -195,23 +226,32 @@ export function BudgetSettings() {
               <span className="panel-icon"><CalendarRange size={21} /></span>
               <div><p className="eyebrow">BUDGET CYCLE</p><h2>예산 주기</h2></div>
             </div>
-            <p className="setting-description">급여일이나 카드 결제일에 맞춰 한 달의 시작일을 정하세요. 모든 참여자에게 동일하게 적용됩니다.</p>
+            <p className="setting-description">월간 또는 주간 주기와 시작일을 정하세요. 모든 참여자에게 동일하게 적용됩니다.</p>
             <form className="budget-form" onSubmit={saveBudgetCycle}>
-              <label>
-                <span>매월 시작일</span>
-                <span className="money-input"><input aria-label="예산 주기 시작일" max="31" min="1" onChange={(event) => setStartDay(event.target.value)} readOnly={!isAdmin} required type="number" value={startDay} /><b>일</b></span>
-              </label>
-              <div className="cycle-preview"><span>현재 주기 미리보기</span><strong>{previewCycle.from} ~ {previewCycle.to}</strong><small>해당 날짜가 없는 달에는 그 달의 마지막 날부터 시작합니다.</small></div>
+              <div className="budget-field"><span>주기 단위</span><CustomSelect ariaLabel="예산 주기 단위" disabled={!isAdmin} onChange={(value) => setUnit(value as BudgetCycleUnit)} options={[{ value: "MONTHLY", label: "월" }, { value: "WEEKLY", label: "주" }]} value={unit} /></div>
+              {unit === "MONTHLY" ? (
+                <label>
+                  <span>매월 시작일</span>
+                  <span className="money-input"><input aria-label="예산 주기 시작일" max="31" min="1" onChange={(event) => setStartDay(event.target.value)} readOnly={!isAdmin} required type="number" value={startDay} /><b>일</b></span>
+                </label>
+              ) : (
+                <>
+                  <div className="budget-field"><span>매주 시작 요일</span><CustomSelect ariaLabel="예산 주기 시작 요일" disabled={!isAdmin} onChange={setWeekStartDay} options={["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"].map((label, index) => ({ value: String(index + 1), label }))} value={weekStartDay} /></div>
+                  <label><span>기본 주 예산</span><span className="money-input"><input aria-label="기본 주 예산" min="1" onChange={(event) => setWeeklyAmount(event.target.value)} readOnly={!isAdmin} required type="number" value={weeklyAmount} /><b>원</b></span></label>
+                  <p className="setting-description">월 예산과 주 예산은 별도로 저장됩니다. 주간으로 전환할 때 금액을 직접 입력해 주세요.</p>
+                </>
+              )}
+              <div className="cycle-preview"><span>현재 주기 미리보기</span><strong>{previewCycle.from} ~ {previewCycle.to}</strong>{unit === "MONTHLY" && <small>해당 날짜가 없는 달에는 그 달의 마지막 날부터 시작합니다.</small>}</div>
               {isAdmin ? (
                 <div className="setting-form-actions">
-                  <button className="secondary-button" disabled={isSaving || !startDayChanged} onClick={() => { setStartDay(String(ledger.budgetCycleStartDay)); clearMessages(); }} type="button">취소</button>
+                  <button className="secondary-button" disabled={isSaving || !startDayChanged} onClick={() => { setUnit(ledger.budgetCycleUnit); setStartDay(String(ledger.budgetCycleStartDay)); setWeekStartDay(String(ledger.budgetWeekStartDay)); setWeeklyAmount(ledger.defaultWeeklyBudget == null ? "" : String(ledger.defaultWeeklyBudget)); clearMessages(); }} type="button">취소</button>
                   <button className="dark-button" disabled={isSaving || !startDayChanged} type="submit">예산 주기 저장</button>
                 </div>
               ) : <p className="read-only-note">관리자만 예산 주기를 변경할 수 있습니다.</p>}
             </form>
           </section>
 
-          <section className="setting-panel">
+          {unit === "MONTHLY" && <section className="setting-panel">
             <div className="panel-heading">
               <span className="panel-icon"><CircleDollarSign size={21} /></span>
               <div><p className="eyebrow">DEFAULT BUDGET</p><h2>기본 월 예산</h2></div>
@@ -226,9 +266,9 @@ export function BudgetSettings() {
                 </div>
               ) : <p className="read-only-note">관리자만 예산을 변경할 수 있습니다.</p>}
             </form>
-          </section>
+          </section>}
 
-          <section className="setting-panel">
+          {unit === "MONTHLY" && <section className="setting-panel">
             <div className="panel-heading">
               <span className="panel-icon"><CircleDollarSign size={21} /></span>
               <div><p className="eyebrow">MONTHLY OVERRIDE</p><h2>월별 예산</h2></div>
@@ -261,10 +301,10 @@ export function BudgetSettings() {
                 </div>
               )}
             </form>
-          </section>
+          </section>}
 
           <section className="budget-guide">
-            <strong>현재 적용 금액</strong><span>{won.format(budget.amount)}원</span><p>{budget.period.from} ~ {budget.period.to} 주기에는 {budget.source === "DEFAULT" ? "기본 월 예산" : "별도로 지정한 예산"}이 적용됩니다.</p>
+            <strong>현재 적용 금액</strong><span>{won.format(budget.amount)}원</span><p>{budget.period.from} ~ {budget.period.to} 주기에는 {budget.source === "WEEKLY_DEFAULT" ? "기본 주 예산" : budget.source === "DEFAULT" ? "기본 월 예산" : "별도로 지정한 예산"}이 적용됩니다.</p>
           </section>
         </div>
       )}

@@ -114,7 +114,7 @@ CSRF 토큰이 없거나 올바르지 않으면 HTTP 403을 반환한다.
 | Method | Path | 권한 | 설명 |
 |---|---|---|---|
 | GET | `/ledger` | MEMBER | 현재 공용 장부 조회 |
-| PUT | `/ledger/settings/budget-cycle` | ADMIN | 월 예산 시작일 변경 |
+| PUT | `/ledger/settings/budget-cycle` | ADMIN | 월간/주간 예산 주기와 시작일 또는 요일 변경 |
 | PUT | `/ledger/settings/push-threshold` | ADMIN | Push 기준 사용률 변경 |
 | GET | `/members` | MEMBER | 참여자 목록 |
 | PATCH | `/members/{memberId}/role` | ADMIN | 관리자 지정·해제 |
@@ -137,6 +137,7 @@ CSRF 토큰이 없거나 올바르지 않으면 HTTP 403을 반환한다.
 | PUT | `/categories/{categoryId}` | ADMIN | 카테고리 수정 |
 | DELETE | `/categories/{categoryId}` | ADMIN | 카테고리 삭제 |
 | GET | `/budgets/{yearMonth}` | MEMBER | 적용 예산 조회 |
+| GET | `/budgets/current` | MEMBER | 현재 월간/주간 주기의 적용 예산 조회 |
 | PUT | `/budgets/default` | ADMIN | 기본 월 예산 변경 |
 | PUT | `/budgets/{yearMonth}` | ADMIN | 특정 예산 주기 예산 설정 |
 | DELETE | `/budgets/{yearMonth}` | ADMIN | 특정 예산 주기 설정 제거 |
@@ -542,7 +543,7 @@ POST /api/v1/account/withdrawal
 
 일반 참여자 탈퇴 시 원래 이메일과 표시 이름, 비밀번호, 프로필 이미지 참조를 제거하고 계정 식별값을 익명화한다. 다른 참여자가 계속 사용하는 공유 장부 기록은 익명화된 계정과 연결된 상태로 유지할 수 있으며, 같은 이메일로 다시 가입하면 새 계정을 생성한다.
 
-### 4.5 월 예산 시작일 변경
+### 4.5 예산 주기 변경
 
 ```http
 PUT /api/v1/ledger/settings/budget-cycle
@@ -552,21 +553,27 @@ PUT /api/v1/ledger/settings/budget-cycle
 
 ```json
 {
+  "unit": "WEEKLY",
   "startDay": 25,
+  "weekStartDay": 4,
+  "weeklyBudget": 200000,
   "version": 2
 }
 ```
 
-`startDay`는 1~31의 정수다. 설정일이 없는 달에는 그 달의 마지막 날을 주기 시작일로 사용한다. 성공 응답은 증가한 장부 `version`과 새 설정을 반환한다.
+`unit`은 `MONTHLY` 또는 `WEEKLY`다. `startDay`는 월간 시작일(1~31, 없는 날짜는 그 달의 마지막 날), `weekStartDay`는 주간 시작 요일(월요일 1 ~ 일요일 7)이다. 주간 전환 시 `weeklyBudget`(양수)이 필요하며 월 예산과 따로 유지한다. 기존 클라이언트가 `unit`을 생략하면 월간으로 처리한다. 성공 응답은 증가한 장부 `version`과 새 설정을 반환한다.
 
 ```json
 {
+  "budgetCycleUnit": "WEEKLY",
   "budgetCycleStartDay": 25,
+  "budgetWeekStartDay": 4,
+  "defaultWeeklyBudget": 200000,
   "version": 3
 }
 ```
 
-변경 후 새로 조회하는 대시보드, 월 통계, 적용 예산과 Push 판정은 새 주기 경계를 사용한다. 식비 원본과 기존 월별 예산 금액은 바꾸지 않는다.
+변경 후 새로 조회하는 대시보드, 기간 통계, 적용 예산과 Push 판정은 새 주기 경계를 사용한다. 식비 원본과 기존 월별 예산 금액은 바꾸지 않는다.
 
 ### 4.6 Push 기준 사용률 변경
 
@@ -937,6 +944,8 @@ DELETE /api/v1/categories/{categoryId}?version=0
 
 ### 9.1 적용 예산 조회
 
+현재 적용 예산은 `GET /api/v1/budgets/current`로 조회한다. 주간이면 선택된 시작 요일부터 7일간의 `period`와 `source: "WEEKLY_DEFAULT"`를 반환한다. 월간 조회에는 기존 `/{yearMonth}` API를 사용한다.
+
 ```http
 GET /api/v1/budgets/2026-09
 ```
@@ -960,6 +969,7 @@ source:
 
 - `DEFAULT`
 - `MONTHLY_OVERRIDE`
+- `WEEKLY_DEFAULT` (`/budgets/current` 주간 조회)
 
 `yearMonth`는 달력 월이 아니라 예산 주기가 시작되는 날짜의 연·월이다. 예산 시작일이 25일이면 위 `period`처럼 다음 달 24일까지를 한 주기로 반환한다.
 
@@ -1106,7 +1116,7 @@ GET /api/v1/statistics?yearMonth=2026-09
 - 올해: 전년도 동일 기간
 - 직접 지정: 바로 이전의 동일 일수 기간
 
-`yearMonth`와 `from`/`to`는 함께 보낼 수 없다. `yearMonth`는 장부의 월 시작일에 따른 예산 주기를 사용하고, `from`/`to` 직접 지정은 입력한 달력 날짜를 그대로 사용한다. 여러 예산 주기에 걸친 임의 기간은 각 주기에 포함된 날짜 비율로 예산을 일할 계산한다.
+`yearMonth`와 `from`/`to`는 함께 보낼 수 없다. `yearMonth`는 월간 설정에서만 사용할 수 있다. `from`/`to` 직접 지정은 입력한 달력 날짜를 그대로 사용하고, 여러 월간/주간 예산 주기에 걸친 기간은 각 주기에 포함된 날짜 비율로 예산을 일할 계산한다.
 
 ## 12. CSV 내보내기
 

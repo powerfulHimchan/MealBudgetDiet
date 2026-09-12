@@ -9,6 +9,7 @@ import { CurrentUserAvatar } from "./current-user-avatar";
 
 type DashboardData = {
   yearMonth: string;
+  cycleUnit: "MONTHLY" | "WEEKLY";
   period: { from: string; to: string };
   budget: number;
   spent: number;
@@ -64,7 +65,7 @@ export function Dashboard() {
           <section className="budget-card" aria-labelledby="budget-title">
             <div className="budget-card__topline">
               <div>
-                <p className="eyebrow">{data.yearMonth} 예산 주기</p>
+                <p className="eyebrow">{data.cycleUnit === "WEEKLY" ? "주간" : data.yearMonth} 예산 주기</p>
                 <h1 id="budget-title">
                   {data.remaining >= 0
                     ? `${won.format(data.remaining)}원 남았어요`
