@@ -389,7 +389,7 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .mobile-filter-sheet > header > button { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 4px; background: #f0f4f9; color: #53647b; cursor: pointer; }
 .mobile-filter-sheet > form { padding: 18px 18px max(18px, env(safe-area-inset-bottom)); }
 .mobile-filter-fields { display: grid; gap: 14px; }
-.mobile-filter-fields > label { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #46566f; font-size: .76rem; font-weight: 800; }
+.mobile-filter-field { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #46566f; font-size: .76rem; font-weight: 800; }
 .mobile-filter-sheet footer { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 20px; }
 .mobile-filter-sheet footer button { min-height: 46px; justify-content: center; }
 .secondary-button, .dark-button { padding: 0 14px; border: 1px solid #cbd6e4; background: white; color: #25334b; }
