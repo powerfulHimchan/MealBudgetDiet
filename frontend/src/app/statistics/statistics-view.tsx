@@ -6,7 +6,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AppNav } from "../app-nav";
 import { request, todayInSeoul } from "../../lib/api";
-import { addMonths, budgetCycleContaining, budgetCycleStarting } from "../../lib/budget-cycle";
+import { addMonths, budgetCycleContaining, budgetCycleStarting, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { CalendarPicker } from "../ui/date-picker";
 
 type StatisticsData = {
@@ -24,8 +24,16 @@ type DateRange = { from: string; to: string };
 const won = new Intl.NumberFormat("ko-KR");
 const compactWon = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
 
-function presetRange(key: Exclude<RangeKey, "custom">, startDay: number): DateRange {
+function presetRange(key: Exclude<RangeKey, "custom">, startDay: number, unit: BudgetCycleUnit = "MONTHLY", weekStartDay = 1): DateRange {
   const today = todayInSeoul();
+  if (unit === "WEEKLY" && key !== "year") {
+    const todayDate = new Date(`${today}T00:00:00Z`);
+    if (key === "previous") todayDate.setUTCDate(todayDate.getUTCDate() - 7);
+    if (key === "threeMonths") todayDate.setUTCDate(todayDate.getUTCDate() - 14);
+    const start = weeklyCycleContaining(todayDate.toISOString().slice(0, 10), weekStartDay);
+    const end = weeklyCycleContaining(today, weekStartDay);
+    return { from: start.from, to: key === "threeMonths" ? end.to : start.to };
+  }
   const currentCycle = budgetCycleContaining(today, startDay);
   if (key === "current") {
     return { from: currentCycle.from, to: currentCycle.to };
@@ -55,6 +63,8 @@ export function StatisticsView() {
   const [draft, setDraft] = useState<DateRange>(initialRange);
   const [selectedRange, setSelectedRange] = useState<RangeKey>("current");
   const [budgetCycleStartDay, setBudgetCycleStartDay] = useState(1);
+  const [cycleUnit, setCycleUnit] = useState<BudgetCycleUnit>("MONTHLY");
+  const [weekStartDay, setWeekStartDay] = useState(1);
   const [data, setData] = useState<StatisticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,13 +85,15 @@ export function StatisticsView() {
 
   useEffect(() => {
     let active = true;
-    request<{ budgetCycleStartDay: number }>("/api/v1/ledger")
+    request<{ budgetCycleStartDay: number; budgetCycleUnit: BudgetCycleUnit; budgetWeekStartDay: number }>("/api/v1/ledger")
       .then(async (ledger) => {
-        const nextRange = presetRange("current", ledger.budgetCycleStartDay);
+        const nextRange = presetRange("current", ledger.budgetCycleStartDay, ledger.budgetCycleUnit, ledger.budgetWeekStartDay);
         const params = new URLSearchParams(nextRange);
         const statistics = await request<StatisticsData>(`/api/v1/statistics?${params}`);
         if (!active) return;
         setBudgetCycleStartDay(ledger.budgetCycleStartDay);
+        setCycleUnit(ledger.budgetCycleUnit);
+        setWeekStartDay(ledger.budgetWeekStartDay);
         setData(statistics);
         setRange(nextRange);
         setDraft(nextRange);
@@ -92,7 +104,7 @@ export function StatisticsView() {
   }, [initialRange]);
 
   function selectPreset(key: Exclude<RangeKey, "custom">) {
-    const nextRange = presetRange(key, budgetCycleStartDay);
+    const nextRange = presetRange(key, budgetCycleStartDay, cycleUnit, weekStartDay);
     setSelectedRange(key);
     setDraft(nextRange);
     void load(nextRange);

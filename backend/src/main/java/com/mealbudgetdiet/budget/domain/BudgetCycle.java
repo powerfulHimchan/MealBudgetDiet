@@ -2,9 +2,20 @@ package com.mealbudgetdiet.budget.domain;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.DayOfWeek;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 
 public record BudgetCycle(YearMonth yearMonth, LocalDate from, LocalDate to) {
+
+	public static BudgetCycle containing(LocalDate date, BudgetCycleUnit unit, int monthStartDay, int weekStartDay) {
+		return unit == BudgetCycleUnit.WEEKLY ? weeklyContaining(date, weekStartDay) : containing(date, monthStartDay);
+	}
+
+	public static BudgetCycle weeklyContaining(LocalDate date, int weekStartDay) {
+		LocalDate from = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.of(weekStartDay)));
+		return new BudgetCycle(YearMonth.from(from), from, from.plusDays(6));
+	}
 
 	public static BudgetCycle containing(LocalDate date, int startDay) {
 		validateStartDay(startDay);

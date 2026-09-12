@@ -214,6 +214,49 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.amount").value(900000))
 			.andExpect(jsonPath("$.source").value("DEFAULT"));
+
+		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
+				.with(csrf()).cookie(adminSession).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"unit\":\"WEEKLY\",\"startDay\":25,\"weekStartDay\":4,\"version\":3}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("WEEKLY_BUDGET_REQUIRED"));
+
+		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
+				.with(csrf()).cookie(adminSession).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"unit\":\"WEEKLY\",\"startDay\":25,\"weekStartDay\":4,\"weeklyBudget\":200000,\"version\":3}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.budgetCycleUnit").value("WEEKLY"))
+			.andExpect(jsonPath("$.defaultWeeklyBudget").value(200000))
+			.andExpect(jsonPath("$.version").value(4));
+
+		mockMvc.perform(get("/api/v1/budgets/current").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.amount").value(200000))
+			.andExpect(jsonPath("$.source").value("WEEKLY_DEFAULT"));
+
+		mockMvc.perform(get("/api/v1/statistics").cookie(adminSession)
+				.param("from", "2026-10-08").param("to", "2026-10-14"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalAmount").value(50000))
+			.andExpect(jsonPath("$.budget.amount").value(200000))
+			.andExpect(jsonPath("$.comparison.from").value("2026-10-01"))
+			.andExpect(jsonPath("$.comparison.to").value("2026-10-07"));
+
+		mockMvc.perform(get("/api/v1/statistics").cookie(adminSession)
+				.param("from", "2026-10-08").param("to", "2026-10-09"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.budget.amount").value(57143));
+
+		mockMvc.perform(get("/api/v1/dashboard").cookie(memberSession)
+				.param("yearMonth", "2026-09"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("MONTHLY_CYCLE_ONLY"));
+
+		mockMvc.perform(put("/api/v1/ledger/settings/budget-cycle")
+				.with(csrf()).cookie(adminSession).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"unit\":\"MONTHLY\",\"startDay\":25,\"weekStartDay\":4,\"version\":4}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.defaultWeeklyBudget").value(200000));
 	}
 
 	private Cookie bootstrapAdmin() throws Exception {

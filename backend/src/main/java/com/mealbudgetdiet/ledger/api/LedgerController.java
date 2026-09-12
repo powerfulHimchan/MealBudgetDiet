@@ -26,6 +26,7 @@ import com.mealbudgetdiet.ledger.application.LedgerSettingsService;
 import com.mealbudgetdiet.ledger.application.MemberManagementService;
 import com.mealbudgetdiet.ledger.application.MemberSnapshot;
 import com.mealbudgetdiet.ledger.domain.MemberRole;
+import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -81,8 +82,11 @@ public class LedgerController {
 		@Valid @RequestBody BudgetCycleRequest request
 	) {
 		var snapshot = ledgerSettingsService.updateBudgetCycle(
-			principal.id(), request.startDay(), request.version());
-		return new LedgerSettingsResponse(snapshot.budgetCycleStartDay(), snapshot.version());
+			principal.id(), request.unit() == null ? BudgetCycleUnit.MONTHLY : request.unit(),
+			request.startDay(), request.weekStartDay() == null ? 1 : request.weekStartDay(),
+			request.weeklyBudget(), request.version());
+		return new LedgerSettingsResponse(snapshot.budgetCycleUnit(), snapshot.budgetCycleStartDay(),
+			snapshot.budgetWeekStartDay(), snapshot.defaultWeeklyBudget(), snapshot.version());
 	}
 
 	@PutMapping("/ledger/settings/push-threshold")
@@ -123,6 +127,9 @@ public class LedgerController {
 		String name,
 		long defaultMonthlyBudget,
 		int budgetCycleStartDay,
+		BudgetCycleUnit budgetCycleUnit,
+		int budgetWeekStartDay,
+		Long defaultWeeklyBudget,
 		int pushUsageThreshold,
 		long memberCount,
 		MemberRole currentUserRole,
@@ -131,6 +138,7 @@ public class LedgerController {
 		static LedgerResponse from(LedgerSnapshot snapshot) {
 			return new LedgerResponse(
 				snapshot.id(), snapshot.name(), snapshot.defaultMonthlyBudget(), snapshot.budgetCycleStartDay(),
+				snapshot.budgetCycleUnit(), snapshot.budgetWeekStartDay(), snapshot.defaultWeeklyBudget(),
 				snapshot.pushUsageThreshold(), snapshot.memberCount(),
 				snapshot.currentUserRole(), snapshot.version());
 		}
@@ -151,17 +159,23 @@ public class LedgerController {
 	}
 
 	public record BudgetCycleRequest(
+		BudgetCycleUnit unit,
 		@NotNull(message = "예산 주기 시작일을 입력해 주세요.")
 		@Min(value = 1, message = "예산 주기 시작일은 1일 이상이어야 합니다.")
 		@Max(value = 31, message = "예산 주기 시작일은 31일 이하여야 합니다.")
 		Integer startDay,
+		@Min(value = 1, message = "시작 요일은 월요일부터 일요일 중 선택해 주세요.")
+		@Max(value = 7, message = "시작 요일은 월요일부터 일요일 중 선택해 주세요.")
+		Integer weekStartDay,
+		@Positive(message = "주간 예산은 0보다 커야 합니다.") Long weeklyBudget,
 		@NotNull(message = "버전 정보가 필요합니다.")
 		@PositiveOrZero(message = "버전 정보가 올바르지 않습니다.")
 		Integer version
 	) {
 	}
 
-	private record LedgerSettingsResponse(int budgetCycleStartDay, int version) {
+	private record LedgerSettingsResponse(BudgetCycleUnit budgetCycleUnit, int budgetCycleStartDay,
+		int budgetWeekStartDay, Long defaultWeeklyBudget, int version) {
 	}
 
 	public record PushThresholdRequest(

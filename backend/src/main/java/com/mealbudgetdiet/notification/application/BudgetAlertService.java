@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.budget.application.BudgetService;
 import com.mealbudgetdiet.budget.domain.BudgetCycle;
+import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
 import com.mealbudgetdiet.expense.domain.Expense;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
 import com.mealbudgetdiet.notification.domain.BudgetAlertType;
@@ -22,7 +23,6 @@ import com.mealbudgetdiet.notification.infrastructure.PushSubscriptionRepository
 public class BudgetAlertService {
 
 	private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
-	private static final BudgetAlertType ALERT_TYPE = BudgetAlertType.MONTHLY_BUDGET_OVERRUN_RISK;
 
 	private final BudgetService budgetService;
 	private final PushSubscriptionRepository subscriptionRepository;
@@ -48,12 +48,16 @@ public class BudgetAlertService {
 	public void evaluateNewExpense(UUID userId, Expense expense) {
 		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
 		var ledger = ledgerAccessService.requireLedger(expense.getLedgerId());
-		BudgetCycle cycle = BudgetCycle.containing(today, ledger.getBudgetCycleStartDay());
+		BudgetCycle cycle = BudgetCycle.containing(today, ledger.getBudgetCycleUnit(),
+			ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
 		if (!cycle.contains(expense.getSpentOn())) {
 			return;
 		}
 
-		long monthlyBudget = budgetService.getAppliedBudget(userId, cycle.yearMonth()).amount();
+		long monthlyBudget = budgetService.budgetForCycle(ledger, cycle).amount();
+		boolean weekly = ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY;
+		BudgetAlertType alertType = weekly ? BudgetAlertType.WEEKLY_BUDGET_OVERRUN_RISK
+			: BudgetAlertType.MONTHLY_BUDGET_OVERRUN_RISK;
 		long totalSpent = totalSpent(expense.getLedgerId(), cycle);
 		int cycleDays = cycle.days();
 		int elapsedDays = Math.toIntExact(ChronoUnit.DAYS.between(cycle.from(), today) + 1);
@@ -71,7 +75,8 @@ public class BudgetAlertService {
 			  monthly_budget, total_spent, remaining_days, cycle_days, usage_threshold
 			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			on conflict (ledger_id, alert_month, alert_type) do nothing
-			""", alertId, expense.getLedgerId(), expense.getId(), cycle.yearMonth().atDay(1), ALERT_TYPE.name(),
+			""", alertId, expense.getLedgerId(), expense.getId(),
+			weekly ? cycle.from() : cycle.yearMonth().atDay(1), alertType.name(),
 			monthlyBudget, totalSpent, remainingDays, cycleDays, usageThreshold);
 		if (inserted == 0) {
 			return;
