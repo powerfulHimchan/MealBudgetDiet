@@ -499,15 +499,15 @@ export function ExpenseManager() {
                 </header>
                 <form onSubmit={applyMobileFilters}>
                   <div className="mobile-filter-fields">
-                    <label>
+                    <div className="mobile-filter-field">
                       <span>시작일</span>
                       <CalendarPicker ariaLabel="모바일 검색 시작일" onChange={(from) => setFilters({ ...filters, from })} value={filters.from} />
-                    </label>
-                    <label>
+                    </div>
+                    <div className="mobile-filter-field">
                       <span>종료일</span>
                       <CalendarPicker ariaLabel="모바일 검색 종료일" onChange={(to) => setFilters({ ...filters, to })} value={filters.to} />
-                    </label>
-                    <label>
+                    </div>
+                    <div className="mobile-filter-field">
                       <span>카테고리</span>
                       <CustomSelect
                         ariaLabel="모바일 검색 카테고리"
@@ -518,8 +518,8 @@ export function ExpenseManager() {
                           { value: "uncategorized", label: "분류 없음" },
                         ]}
                         value={filters.categoryId}
-                                                                />
-                    </label>
+                      />
+                    </div>
                   </div>
                   <footer>
                     <button className="secondary-button" onClick={clearMobileFilterFields} type="button"><RotateCcw size={16} />초기화</button>
