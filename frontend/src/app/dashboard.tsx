@@ -2,6 +2,7 @@
 
 import { ChevronRight, CircleDollarSign, LoaderCircle, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { AppNav } from "./app-nav";
 import { request } from "../lib/api";
@@ -25,6 +26,7 @@ type DashboardData = {
     categoryName: string | null;
     merchant: string | null;
     version: number;
+    imageUrl: string | null;
   }>;
 };
 
@@ -108,11 +110,13 @@ export function Dashboard() {
               <div className="expense-empty"><CircleDollarSign size={30} /><strong>아직 식비가 없어요</strong><span>첫 식비를 등록해 보세요.</span></div>
             ) : (
               <ul className="expense-list">
-                {data.recentExpenses.map((expense, index) => (
+                {data.recentExpenses.map((expense) => (
                   <li key={expense.id}>
-                    <span className={`expense-icon expense-icon--${["mint", "orange", "blue"][index % 3]}`}>
-                      <CircleDollarSign size={20} />
-                    </span>
+                    {expense.imageUrl ? (
+                      <Image alt="" className="expense-thumbnail" height={58} src={expense.imageUrl} unoptimized width={58} />
+                    ) : (
+                      <div className="expense-date-box"><strong>{expense.spentOn.slice(8)}</strong><span>{expense.spentOn.slice(5, 7)}월</span></div>
+                    )}
                     <div className="expense-copy">
                       <strong>{expense.merchant || expense.categoryName || "식비"}</strong>
                       <span>{expense.categoryName || "미분류"} · {dateLabel.format(new Date(`${expense.spentOn}T00:00:00Z`))}</span>

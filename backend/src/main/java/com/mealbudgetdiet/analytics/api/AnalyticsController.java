@@ -6,6 +6,7 @@ import java.time.YearMonth;
 import java.util.UUID;
 
 import org.springframework.http.ContentDisposition;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mealbudgetdiet.analytics.application.AnalyticsService;
 import com.mealbudgetdiet.analytics.application.DashboardSnapshot;
+import com.mealbudgetdiet.analytics.application.DashboardStatus;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot;
+import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.shared.api.ApiException;
 
@@ -43,6 +46,19 @@ public class AnalyticsController {
 	) {
 		return analyticsService.dashboard(
 			principal.id(), yearMonth == null ? null : parseYearMonth(yearMonth), recentSize);
+	}
+
+	@GetMapping("/api/v1/widget/summary")
+	ResponseEntity<WidgetSummary> widgetSummary(@AuthenticationPrincipal MealBudgetPrincipal principal) {
+		var dashboard = analyticsService.dashboard(principal.id(), null, 1);
+		return ResponseEntity.ok()
+			.cacheControl(CacheControl.noStore())
+			.body(new WidgetSummary(dashboard.cycleUnit(), dashboard.period(), dashboard.budget(),
+				dashboard.spent(), dashboard.remaining(), dashboard.usageRate(), dashboard.status()));
+	}
+
+	private record WidgetSummary(BudgetCycleUnit cycleUnit, DashboardSnapshot.Period period,
+		long budget, long spent, long remaining, java.math.BigDecimal usageRate, DashboardStatus status) {
 	}
 
 	@GetMapping("/api/v1/statistics")

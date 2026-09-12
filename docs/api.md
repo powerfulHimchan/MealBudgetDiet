@@ -150,6 +150,7 @@ CSRF 토큰이 없거나 올바르지 않으면 HTTP 403을 반환한다.
 | Method | Path | 권한 | 설명 |
 |---|---|---|---|
 | GET | `/dashboard` | MEMBER | 현재 예산 주기 대시보드 |
+| GET | `/widget/summary` | MEMBER | Android 위젯용 현재 주기 금액 요약 (`no-store`) |
 | GET | `/statistics` | MEMBER | 선택 기간 통계 |
 | GET | `/expenses/export.csv` | MEMBER | 식비 CSV 다운로드 |
 

@@ -12,6 +12,7 @@
 ## 1. 현재 준비된 항목
 
 - Web App Manifest와 서비스 워커
+- [Android 홈 화면 위젯 연동 명세와 최소 데이터 API](android-widget.md) (네이티브 프로젝트 생성 전 준비 단계)
 - 192px, 512px, maskable, monochrome PNG 아이콘
 - 공개 개인정보처리방침: `/privacy`
 - 공개 계정 삭제 안내: `/account-deletion`

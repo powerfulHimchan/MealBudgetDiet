@@ -103,6 +103,15 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.recentExpenses.length()").value(2))
 			.andExpect(jsonPath("$.recentExpenses[0].merchant").value("동네마트"));
 
+		mockMvc.perform(get("/api/v1/widget/summary").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+			.andExpect(jsonPath("$.cycleUnit").value("MONTHLY"))
+			.andExpect(jsonPath("$.budget").isNumber())
+			.andExpect(jsonPath("$.recentExpenses").doesNotExist());
+		mockMvc.perform(get("/api/v1/widget/summary"))
+			.andExpect(status().isUnauthorized());
+
 		mockMvc.perform(put("/api/v1/ledger/settings/push-threshold")
 				.with(csrf())
 				.cookie(adminSession)
