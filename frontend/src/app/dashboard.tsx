@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, CircleDollarSign, LoaderCircle, Plus, TrendingUp } from "lucide-react";
+import { CalendarClock, ChevronRight, CircleDollarSign, LoaderCircle, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -17,6 +17,7 @@ type DashboardData = {
   spent: number;
   remaining: number;
   projectedSpent: number;
+  remainingDays: number;
   usageRate: number;
   pushUsageThreshold: number;
   status: "NORMAL" | "WARNING" | "EXCEEDED";
@@ -72,7 +73,13 @@ export function Dashboard() {
                     ? `${won.format(data.remaining)}원 남았어요`
                     : `${won.format(Math.abs(data.remaining))}원 초과했어요`}
                 </h1>
-                <p className="budget-cycle-period">{data.period.from} ~ {data.period.to}</p>
+                <div className="budget-cycle-meta">
+                  <p className="budget-cycle-period">{data.period.from} ~ {data.period.to}</p>
+                  <span className="budget-cycle-countdown">
+                    <CalendarClock size={14} />
+                    {data.remainingDays === 0 ? "오늘 종료" : `종료까지 D-${data.remainingDays}`}
+                  </span>
+                </div>
               </div>
               <span className={`status-chip status-chip--${data.status.toLowerCase()}`}>{statusLabel[data.status]}</span>
             </div>

@@ -275,7 +275,9 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .cycle-preview span { color: #53637a; font-size: .72rem; font-weight: 800; }
 .cycle-preview strong { color: #14233a; font-size: .92rem; }
 .cycle-preview small { color: #64748b; font-size: .7rem; line-height: 1.5; }
-.budget-cycle-period { margin: 7px 0 0; color: #64748b; font-size: .76rem; font-weight: 700; }
+.budget-cycle-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 10px; margin-top: 7px; }
+.budget-cycle-period { margin: 0; color: #64748b; font-size: .76rem; font-weight: 700; }
+.budget-cycle-countdown { display: inline-flex; align-items: center; gap: 4px; color: #dbeafe; font-size: .73rem; font-weight: 800; }
 .budget-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .danger-button { color: #b42335; }
 .read-only-note { margin: 0; padding: 10px 12px; border-left: 3px solid #7c8ca4; background: #f2f5f9; color: #64748b; font-size: .78rem; }

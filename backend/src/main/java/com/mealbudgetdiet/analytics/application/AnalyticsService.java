@@ -74,6 +74,7 @@ public class AnalyticsService {
 		LocalDate to = cycle.to();
 		long spent = totalAmount(ledgerId, from, to);
 		long projectedSpent = projectedAmount(spent, from, to, today);
+		long remainingDays = Math.max(0, ChronoUnit.DAYS.between(today, to));
 		BigDecimal usageRate = percentage(spent, budget.amount());
 		DashboardStatus status = usageRate.compareTo(BigDecimal.valueOf(100)) >= 0
 			? DashboardStatus.EXCEEDED
@@ -104,7 +105,8 @@ public class AnalyticsService {
 
 		return new DashboardSnapshot(
 			cycle.yearMonth(), ledger.getBudgetCycleUnit(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
-			budget.amount() - spent, projectedSpent, usageRate, ledger.getPushUsageThreshold(), status, recent);
+			budget.amount() - spent, projectedSpent, remainingDays, usageRate,
+			ledger.getPushUsageThreshold(), status, recent);
 	}
 
 	@Transactional(readOnly = true)
