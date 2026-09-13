@@ -98,6 +98,7 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.spent").value(180000))
 			.andExpect(jsonPath("$.remaining").value(120000))
 			.andExpect(jsonPath("$.projectedSpent").isNumber())
+			.andExpect(jsonPath("$.remainingDays").isNumber())
 			.andExpect(jsonPath("$.usageRate").value(60.0))
 			.andExpect(jsonPath("$.status").value("NORMAL"))
 			.andExpect(jsonPath("$.recentExpenses.length()").value(2))

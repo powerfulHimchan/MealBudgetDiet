@@ -76,6 +76,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
     if (screen.route === "/") {
       await expect(mobile.getByText("현재 사용률", { exact: true })).toBeVisible();
       await expect(mobile.getByText("82.4%", { exact: true })).toBeVisible();
+      await expect(mobile.getByText("종료까지 D-18", { exact: true })).toBeVisible();
     } else if (screen.route === "/expenses") {
       await expect(mobile.getByText("동네마트", { exact: true })).toBeVisible();
     } else if (screen.route === "/statistics") {
@@ -616,7 +617,7 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
     } else if (pathname === "/api/v1/ledger") {
       await route.fulfill({ json: ledger });
     } else if (pathname === "/api/v1/dashboard") {
-      await route.fulfill({ json: { yearMonth: "2026-09", cycleUnit: ledger.budgetCycleUnit, period: { from: "2026-09-01", to: "2026-09-30" }, budget: 800000, spent: 658800, remaining: 141200, projectedSpent: 718691, usageRate: 82.4, pushUsageThreshold: ledger.pushUsageThreshold, status: "WARNING", recentExpenses: expenses.map((expense, index) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version, imageUrl: index === 0 ? "/api/v1/images/15151515-1515-1515-1515-151515151515/content" : null })) } });
+      await route.fulfill({ json: { yearMonth: "2026-09", cycleUnit: ledger.budgetCycleUnit, period: { from: "2026-09-01", to: "2026-09-30" }, budget: 800000, spent: 658800, remaining: 141200, projectedSpent: 718691, remainingDays: 18, usageRate: 82.4, pushUsageThreshold: ledger.pushUsageThreshold, status: "WARNING", recentExpenses: expenses.map((expense, index) => ({ id: expense.id, amount: expense.amount, spentOn: expense.spentOn, categoryName: expense.category.name, merchant: expense.merchant, version: expense.version, imageUrl: index === 0 ? "/api/v1/images/15151515-1515-1515-1515-151515151515/content" : null })) } });
     } else if (pathname === "/api/v1/statistics") {
       await route.fulfill({ json: { period: { from: "2026-09-01", to: "2026-09-30" }, totalAmount: 658800, budget: { amount: 800000, usageRate: 82.4 }, comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 592000, changeAmount: 66800, changeRate: 11.3 }, daily: [{ date: "2026-09-02", amount: 44000 }, { date: "2026-09-05", amount: 78000 }, { date: "2026-09-08", amount: 60300 }, { date: "2026-09-12", amount: 125000 }, { date: "2026-09-18", amount: 89000 }, { date: "2026-09-24", amount: 142000 }, { date: "2026-09-29", amount: 120500 }], categories: [{ categoryId: categories[0].id, categoryName: "장보기", amount: 283000, ratio: 43 }, { categoryId: categories[1].id, categoryName: "외식", amount: 197600, ratio: 30 }, { categoryId: categories[2].id, categoryName: "배달", amount: 112000, ratio: 17 }, { categoryId: categories[3].id, categoryName: "카페/간식", amount: 66200, ratio: 10 }] } });
     } else if (pathname.startsWith("/api/v1/budgets/")) {
