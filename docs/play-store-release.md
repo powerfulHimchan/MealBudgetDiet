@@ -1,6 +1,6 @@
 # Google Play 출시 가이드
 
-- 기준일: 2026-09-10
+- 기준일: 2026-09-14
 - 앱 이름: `Sikbi - 함께 쓰는 식비 관리`
 - Android 패키지 ID: `app.sikbi`
 - 배포 방식: 운영 PWA + Trusted Web Activity(TWA)
@@ -25,13 +25,13 @@
 | 항목 | 상태 | 반영 위치 |
 |---|---|---|
 | 운영 HTTPS 도메인 | 확정: `https://sikbi.app` | Cloudflare DNS, `PUBLIC_BASE_URL`, TWA `host` |
-| 개인정보 문의 이메일 | 미정 | `/privacy`, Play Console |
+| 개인정보 문의 이메일 | 확정: `leehimch@gmail.com` | `/privacy`, `/account-deletion`, Play Console |
 | 호스팅·DB 사업자 | 확정: Cloudflare DNS + Railway App/PostgreSQL | 개인정보처리방침, Data safety |
 | Object Storage·SMTP·백업 보존 기간 | 미정 | 개인정보처리방침, 운영 정책 |
 | Play App Signing SHA-256 지문 | 첫 AAB 등록 후 확인 | `/.well-known/assetlinks.json` |
 | Play 개인 계정 생성일 | 확인 필요 | 12명·14일 비공개 테스트 의무 판단 |
 
-연락 이메일, Object Storage·SMTP 사업자와 백업 정책이 확정되기 전의 개인정보처리방침은 개발 초안이다. Play 심사에는 실제 사업자, 이전 여부, 연락 이메일과 보존 기간을 반영한 버전을 사용한다.
+Object Storage·SMTP 사업자와 백업 정책이 확정되기 전의 개인정보처리방침은 개발 초안이다. Play 심사에는 실제 사업자, 이전 여부, 연락 이메일과 보존 기간을 반영한 버전을 사용한다.
 
 ## 3. 운영 PWA 배포
 
