@@ -48,7 +48,7 @@ export default function AccountDeletionPage() {
 
       <aside className="public-document-danger">
         <Trash2 size={20} />
-        <div><strong>삭제 요청에 문제가 있나요?</strong><span><a href="https://github.com/powerfulHimchan/MealBudgetDiet/issues">GitHub 문의 채널</a>에서 요청해 주세요. 공개 글에는 민감한 정보를 남기지 마세요.</span></div>
+        <div><strong>삭제 요청에 문제가 있나요?</strong><span><a href="mailto:leehimch@gmail.com">leehimch@gmail.com</a>으로 요청해 주세요. 문의 메일에는 비밀번호, 초대 코드 등 계정 보안정보를 작성하지 마세요.</span></div>
       </aside>
     </PublicDocument>
   );
