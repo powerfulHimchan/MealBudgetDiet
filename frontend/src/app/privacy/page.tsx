@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       eyebrow="PRIVACY POLICY"
       title="개인정보처리방침"
     >
-      <p className="public-document-date">시행일: 2026년 9월 11일</p>
+      <p className="public-document-date">시행일: 2026년 9월 14일</p>
 
       <section>
         <h2>1. 처리하는 정보와 이용 목적</h2>
@@ -63,11 +63,11 @@ export default function PrivacyPage() {
 
       <section>
         <h2>6. 문의</h2>
-        <p>개인정보 또는 계정 삭제 문의는 <a href="https://github.com/powerfulHimchan/MealBudgetDiet/issues">Sikbi GitHub 이슈</a>를 이용해 주세요. 공개 이슈에는 비밀번호, 초대 코드, 영수증 이미지 등 민감한 정보를 작성하지 마세요.</p>
+        <p>개인정보 또는 계정 삭제 문의는 <a href="mailto:leehimch@gmail.com">leehimch@gmail.com</a>으로 보내 주세요. 문의 메일에는 비밀번호, 초대 코드 등 계정 보안정보를 작성하지 마세요.</p>
       </section>
 
       <aside className="public-document-notice">
-        운영 배포 전에 연락 이메일, 객체 저장소·이메일 발송 사업자, 국외 이전 세부사항 및 백업 보존 기간을 실제 운영 내용에 맞게 갱신합니다.
+        운영 배포 전에 객체 저장소·이메일 발송 사업자, 국외 이전 세부사항 및 백업 보존 기간을 실제 운영 내용에 맞게 갱신합니다.
       </aside>
     </PublicDocument>
   );
