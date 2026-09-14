@@ -6,10 +6,12 @@ test.describe("Google Play 공개 표면", () => {
     await expect(page).toHaveTitle("개인정보처리방침 | Sikbi - 함께 쓰는 식비 관리");
     await expect(page.getByRole("heading", { level: 1, name: "개인정보처리방침" })).toBeVisible();
     await expect(page.getByRole("link", { name: "계정 삭제 안내" }).first()).toHaveAttribute("href", "/account-deletion");
+    await expect(page.getByRole("link", { name: "leehimch@gmail.com" })).toHaveAttribute("href", "mailto:leehimch@gmail.com");
 
     await page.goto("/account-deletion");
     await expect(page).toHaveTitle("계정 삭제 안내 | Sikbi - 함께 쓰는 식비 관리");
     await expect(page.getByRole("heading", { level: 1, name: "Sikbi 계정 삭제" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "leehimch@gmail.com" })).toHaveAttribute("href", "mailto:leehimch@gmail.com");
     const deletionLink = page.getByRole("link", { name: "로그인하고 계정 삭제" });
     await expect(deletionLink).toHaveAttribute("href", "/settings/account");
     await deletionLink.click();
