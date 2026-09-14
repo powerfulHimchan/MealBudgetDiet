@@ -21,7 +21,7 @@
     "path": "./sikbi-test.keystore",
     "alias": "sikbi-test"
   },
-  "appVersionName": "0.1.0-test",
+  "appVersionName": "1.0.0",
   "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
@@ -41,5 +41,5 @@
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
   "displayOverride": [],
-  "appVersion": "0.1.0-test"
+  "appVersion": "1.0.0"
 }
