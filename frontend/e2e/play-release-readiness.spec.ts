@@ -11,6 +11,9 @@ test.describe("Google Play 공개 표면", () => {
     await page.goto("/account-deletion");
     await expect(page).toHaveTitle("계정 삭제 안내 | Sikbi - 함께 쓰는 식비 관리");
     await expect(page.getByRole("heading", { level: 1, name: "Sikbi 계정 삭제" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "보관 기간" })).toBeVisible();
+    await expect(page.getByText("별도로 추가 보관하지 않습니다", { exact: false })).toBeVisible();
+    await expect(page.getByText("마지막 관리자가 장부를 종료하면 함께 삭제됩니다", { exact: false })).toBeVisible();
     await expect(page.getByRole("link", { name: "leehimch@gmail.com" })).toHaveAttribute("href", "mailto:leehimch@gmail.com");
     const deletionLink = page.getByRole("link", { name: "로그인하고 계정 삭제" });
     await expect(deletionLink).toHaveAttribute("href", "/settings/account");
