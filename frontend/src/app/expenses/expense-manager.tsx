@@ -608,7 +608,7 @@ export function ExpenseManager() {
               <label className="amount-field"><span>금액</span><span><input required min={1} inputMode="numeric" type="number" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} placeholder="0" /><b>원</b></span></label>
               <div className="form-row">
                 <label><span>사용 날짜</span><CalendarPicker ariaLabel="사용 날짜" onChange={(spentOn) => setDraft({ ...draft, spentOn })} value={draft.spentOn} /></label>
-                <label>
+                <label onClick={(event) => event.preventDefault()}>
                   <span>카테고리</span>
                   <CustomSelect
                     ariaLabel="식비 카테고리"
