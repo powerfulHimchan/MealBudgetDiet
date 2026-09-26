@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { mutation, multipartMutation, request } from "../../lib/api";
 import { BrandLink } from "../brand-link";
 import { CurrentUserAvatar } from "../current-user-avatar";
@@ -57,9 +57,15 @@ type ExpenseDraft = {
 
 const won = new Intl.NumberFormat("ko-KR");
 const initialFilters: Filters = { from: "", to: "", categoryId: "", keyword: "" };
+const maxAmountDigits = 15;
 
 function todayInSeoul() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+}
+
+function normalizeAmountInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, maxAmountDigits);
+  return digits.replace(/^0+(?=\d)/, "");
 }
 
 async function uploadExpenseImage(file: File): Promise<UploadedImage> {
@@ -97,6 +103,7 @@ export function ExpenseManager() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
   const [pendingCropFiles, setPendingCropFiles] = useState<File[]>([]);
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<ExpenseDraft>({
     amount: "",
     spentOn: todayInSeoul(),
@@ -202,13 +209,28 @@ export function ExpenseManager() {
     setIsExpenseOpen(true);
   }
 
+  function appendAmountZeros(count: 2 | 3) {
+    setDraft((current) => {
+      const amount = normalizeAmountInput(current.amount);
+      if (!amount || amount === "0") return current;
+      return { ...current, amount: normalizeAmountInput(`${amount}${"0".repeat(count)}`) };
+    });
+    requestAnimationFrame(() => amountInputRef.current?.focus({ preventScroll: true }));
+  }
+
   async function saveExpense(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const amount = Number(draft.amount);
+    if (!Number.isSafeInteger(amount) || amount < 1) {
+      setError("금액은 1원 이상 숫자로 입력해 주세요.");
+      amountInputRef.current?.focus();
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
       const body = {
-        amount: Number(draft.amount),
+        amount,
         spentOn: draft.spentOn,
         categoryId: draft.categoryId,
         merchant: draft.merchant,
@@ -605,7 +627,31 @@ export function ExpenseManager() {
           <section className="expense-modal" role="dialog" aria-modal="true" aria-labelledby="expense-form-title">
             <div className="modal-heading"><div><p className="eyebrow">EXPENSE</p><h2 id="expense-form-title">{editingExpense ? "식비 수정" : "식비 등록"}</h2></div><button type="button" aria-label="닫기" onClick={closeExpenseModal}><X size={20} /></button></div>
             <form onSubmit={saveExpense}>
-              <label className="amount-field"><span>금액</span><span><input required min={1} inputMode="numeric" type="number" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} placeholder="0" /><b>원</b></span></label>
+              <div className="amount-field">
+                <label htmlFor="expense-amount">
+                  <span>금액</span>
+                  <span className="amount-input-wrap">
+                    <input
+                      autoComplete="off"
+                      id="expense-amount"
+                      inputMode="numeric"
+                      maxLength={maxAmountDigits}
+                      onChange={(event) => setDraft({ ...draft, amount: normalizeAmountInput(event.target.value) })}
+                      pattern="[0-9]*"
+                      placeholder="0"
+                      ref={amountInputRef}
+                      required
+                      type="text"
+                      value={draft.amount}
+                    />
+                    <b>원</b>
+                  </span>
+                </label>
+                <div aria-label="금액 빠른 입력" className="amount-quick-keys">
+                  <button aria-label="0 두 개 추가" disabled={!draft.amount || Number(draft.amount) < 1} onClick={() => appendAmountZeros(2)} type="button">00</button>
+                  <button aria-label="0 세 개 추가" disabled={!draft.amount || Number(draft.amount) < 1} onClick={() => appendAmountZeros(3)} type="button">000</button>
+                </div>
+              </div>
               <div className="form-row">
                 <label><span>사용 날짜</span><CalendarPicker ariaLabel="사용 날짜" onChange={(spentOn) => setDraft({ ...draft, spentOn })} value={draft.spentOn} /></label>
                 <label onClick={(event) => event.preventDefault()}>

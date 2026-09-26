@@ -450,9 +450,14 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .modal-heading .eyebrow { margin-bottom: 3px; }
 .expense-modal > form { display: grid; gap: 16px; padding: 20px 22px 24px; }
 .expense-modal label small { color: #92a0b2; font-size: .68rem; }
-.amount-field > span:last-child { position: relative; display: flex; align-items: center; }
+.amount-field { display: grid; gap: 8px; }
+.amount-input-wrap { position: relative; display: flex; align-items: center; }
 .amount-field input { height: 57px; padding-right: 42px; border-color: #91b5ed; background: #f7faff; font-size: 1.25rem; font-weight: 850; text-align: right; }
 .amount-field b { position: absolute; right: 13px; }
+.amount-quick-keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.amount-quick-keys button { min-height: 38px; border: 1px solid #adc5e8; border-radius: 3px; background: #edf4ff; color: #1d4ed8; cursor: pointer; font-weight: 900; }
+.amount-quick-keys button:hover, .amount-quick-keys button:focus-visible { border-color: #3b82f6; outline: none; background: #dfeaff; }
+.amount-quick-keys button:disabled { cursor: not-allowed; opacity: .45; }
 .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .expense-modal textarea { min-height: 88px; padding-top: 11px; resize: vertical; }
 .expense-image-field { min-width: 0; margin: 0; padding: 0; border: 0; }
