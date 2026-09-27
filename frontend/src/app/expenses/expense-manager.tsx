@@ -68,6 +68,10 @@ function normalizeAmountInput(value: string) {
   return digits.replace(/^0+(?=\d)/, "");
 }
 
+function formatAmountInput(value: string) {
+  return value ? won.format(Number(value)) : "";
+}
+
 async function uploadExpenseImage(file: File): Promise<UploadedImage> {
   const body = new FormData();
   body.append("file", file);
@@ -635,14 +639,13 @@ export function ExpenseManager() {
                       autoComplete="off"
                       id="expense-amount"
                       inputMode="numeric"
-                      maxLength={maxAmountDigits}
                       onChange={(event) => setDraft({ ...draft, amount: normalizeAmountInput(event.target.value) })}
-                      pattern="[0-9]*"
+                      pattern="[0-9,]*"
                       placeholder="0"
                       ref={amountInputRef}
                       required
                       type="text"
-                      value={draft.amount}
+                      value={formatAmountInput(draft.amount)}
                     />
                     <b>원</b>
                   </span>
