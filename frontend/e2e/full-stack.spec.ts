@@ -84,7 +84,7 @@ test("two users share an expense with an image and see matching statistics", asy
   await adminPage.goto("/expenses");
   await adminPage.getByRole("button", { name: "식비 등록" }).click();
   const createDialog = adminPage.getByRole("dialog", { name: "식비 등록" });
-  await createDialog.getByLabel("금액").fill("45000");
+  await createDialog.getByRole("textbox", { name: "금액 원", exact: true }).fill("45000");
   await createDialog.getByLabel("식비 카테고리").click();
   await createDialog.getByRole("option", { name: "외식" }).click();
   await createDialog.getByLabel("상호명 선택").fill(originalMerchant);
@@ -119,7 +119,7 @@ test("two users share an expense with an image and see matching statistics", asy
 
   await memberExpense.getByRole("button", { name: `${originalMerchant} 수정` }).click();
   const updateDialog = memberPage.getByRole("dialog", { name: "식비 수정" });
-  await updateDialog.getByLabel("금액").fill("54321");
+  await updateDialog.getByRole("textbox", { name: "금액 원", exact: true }).fill("54321");
   await updateDialog.getByLabel("상호명 선택").fill(updatedMerchant);
   await updateDialog.getByLabel("메모 선택").fill("참여자가 금액과 상호명을 수정함");
   const updateResponsePromise = memberPage.waitForResponse((response) =>

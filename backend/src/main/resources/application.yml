@@ -28,6 +28,14 @@ spring:
       initialize-schema: never
 
 app:
+  ai:
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-4.1-mini}
+      connect-timeout: ${OPENAI_CONNECT_TIMEOUT:5s}
+      request-timeout: ${OPENAI_REQUEST_TIMEOUT:30s}
+      max-output-tokens: ${OPENAI_MAX_OUTPUT_TOKENS:512}
   bootstrap-token: ${BOOTSTRAP_TOKEN:}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:3000}
   problem-base-url: ${PROBLEM_BASE_URL:https://sikbi.app/problems}

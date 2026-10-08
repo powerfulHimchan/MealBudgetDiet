@@ -13,6 +13,8 @@
 
 ## 1. Railway 프로젝트
 
+로컬 개발과 CI의 `docker compose`는 `infra/minio/Dockerfile`에서 고정된 공식 MinIO 소스를 빌드한다. 기존 Quay 이미지의 익명 다운로드가 막힌 문제를 해결하기 위한 설정이며, Railway의 관리형 `sikbi-media` 서비스에는 적용되지 않는다. 첫 Compose 빌드는 Go 의존성을 내려받고 컴파일하므로 시간이 더 걸릴 수 있다.
+
 같은 Railway 프로젝트에 다음 서비스를 생성한다.
 
 | 서비스 | 유형 | Root Directory | Config file |
@@ -54,6 +56,8 @@ MEDIA_PATH_STYLE_ACCESS=false
 ```
 
 나머지 SMTP와 VAPID 값은 [운영 환경 변수 예시](../.env.production.example)를 기준으로 Railway Variables에 등록한다. 비밀번호와 비공개 키는 저장소에 커밋하지 않는다.
+
+GPT 연결은 [OpenAI 연결 가이드](openai-connection.md)를 참고해 `sikbi-api`에 `OPENAI_ENABLED`, `OPENAI_API_KEY`, `OPENAI_MODEL`을 설정한다. 기본값은 비활성화이며 키 없이도 서비스가 실행된다.
 
 PostgreSQL은 외부 Public Access를 켜지 않고 같은 Railway 프로젝트의 private network로만 연결한다. `sikbi-media`는 공개 버킷이나 공개 URL을 만들지 않고 `sikbi-api`만 참조 변수로 접근한다. 정기 백업과 보존 기간은 프로덕션 오픈 전에 Railway에서 활성화하고 개인정보처리방침에 동일하게 반영한다.
 
