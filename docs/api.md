@@ -9,6 +9,8 @@
 
 이 문서는 구현 전 API 계약 초안이다. 구현 단계에서는 이 내용을 기준으로 OpenAPI 3 명세를 함께 관리한다.
 
+GPT 연결 기반: `GET /api/v1/admin/ai/status`, `POST /api/v1/admin/ai/connection-test`는 서비스 관리자 세션으로만 호출한다. 요청·응답·설정 방법은 [OpenAI 연결 가이드](openai-connection.md)를 참고한다.
+
 ## 1. 공통 규칙
 
 ### 1.1 데이터 형식

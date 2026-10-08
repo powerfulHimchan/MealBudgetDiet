@@ -45,6 +45,7 @@ public class SecurityConfig {
 					"/api/v1/auth/password-reset-requests",
 					"/api/v1/auth/password-resets"
 				).permitAll()
+				.requestMatchers("/api/v1/admin/ai/**").hasRole("SERVICE_ADMIN")
 				.anyRequest().authenticated())
 			.csrf(csrf -> csrf
 				.csrfTokenRepository(csrfRepository)
