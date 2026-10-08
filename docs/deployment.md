@@ -13,6 +13,8 @@
 
 ## 1. Railway 프로젝트
 
+로컬 개발과 CI의 `docker compose`는 `infra/minio/Dockerfile`에서 고정된 공식 MinIO 소스를 빌드한다. 기존 Quay 이미지의 익명 다운로드가 막힌 문제를 해결하기 위한 설정이며, Railway의 관리형 `sikbi-media` 서비스에는 적용되지 않는다. 첫 Compose 빌드는 Go 의존성을 내려받고 컴파일하므로 시간이 더 걸릴 수 있다.
+
 같은 Railway 프로젝트에 다음 서비스를 생성한다.
 
 | 서비스 | 유형 | Root Directory | Config file |

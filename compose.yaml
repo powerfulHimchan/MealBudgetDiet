@@ -66,7 +66,7 @@ services:
     restart: unless-stopped
 
   object-storage:
-    image: quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z
+    build: ./infra/minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MEDIA_ACCESS_KEY:-mealbudget}
@@ -77,7 +77,7 @@ services:
     volumes:
       - object-storage-data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/ready"]
       interval: 5s
       timeout: 5s
       retries: 10
