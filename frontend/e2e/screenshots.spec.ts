@@ -347,7 +347,7 @@ test("defaults to the ledger cycle and preserves search when browsing past cycle
   await cyclePanel.getByRole("button", { name: /이번 주기 2026/ }).click();
   await page.getByRole("button", { name: "2026.06.25 ~ 2026.07.24", exact: true }).click();
   await expect(cyclePanel).toContainText("2026.06.25 ~ 2026.07.24");
-  await cyclePanel.getByRole("button", { name: /선택한 주기 2026/ }).click();
+  await cyclePanel.getByRole("button", { name: "2026.06.25 ~ 2026.07.24", exact: true }).click();
   await page.getByRole("button", { name: "전체 기간 보기" }).click();
   await expect.poll(() => ranges.at(-1)?.has("from")).toBe(false);
   await expect(cyclePanel).toContainText("전체 기간");
