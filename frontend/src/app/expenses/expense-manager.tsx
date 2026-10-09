@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Camera,
+  ChevronDown,
   Check,
   House,
   LoaderCircle,
@@ -22,7 +23,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { mutation, multipartMutation, request } from "../../lib/api";
+import { mutation, multipartMutation, request, todayInSeoul } from "../../lib/api";
+import { adjacentCycle, cycleForDate, type BudgetCycleRange, type BudgetCycleUnit } from "../../lib/budget-cycle";
 import { BrandLink } from "../brand-link";
 import { CurrentUserAvatar } from "../current-user-avatar";
 import { CalendarPicker } from "../ui/date-picker";
@@ -47,6 +49,7 @@ type DraftImage = ExpenseImage & { temporary: boolean };
 type UploadedImage = { id: string; contentUrl: string; status: "TEMP"; purpose: "EXPENSE" };
 type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean };
 type Filters = { from: string; to: string; categoryId: string; keyword: string };
+type CycleSettings = { budgetCycleUnit: BudgetCycleUnit; budgetCycleStartDay: number; budgetWeekStartDay: number };
 type ExpenseDraft = {
   amount: string;
   spentOn: string;
@@ -59,8 +62,8 @@ const won = new Intl.NumberFormat("ko-KR");
 const initialFilters: Filters = { from: "", to: "", categoryId: "", keyword: "" };
 const maxAmountDigits = 15;
 
-function todayInSeoul() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+function cycleLabel(cycle: BudgetCycleRange) {
+  return `${cycle.from.replaceAll("-", ".")} ~ ${cycle.to.replaceAll("-", ".")}`;
 }
 
 function normalizeAmountInput(value: string) {
@@ -94,6 +97,9 @@ export function ExpenseManager() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [cycleSettings, setCycleSettings] = useState<CycleSettings | null>(null);
+  const [isCyclePickerOpen, setIsCyclePickerOpen] = useState(false);
+  const requestVersion = useRef(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasNext, setHasNext] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,10 +126,16 @@ export function ExpenseManager() {
     let active = true;
     Promise.all([
       request<{ items: Category[] }>("/api/v1/categories"),
-      request<ExpensePage>(expenseQuery(initialFilters)),
+      request<CycleSettings>("/api/v1/ledger"),
     ])
-      .then(([categoryData, expenseData]) => {
+      .then(async ([categoryData, ledger]) => {
+        const cycle = cycleForDate(todayInSeoul(), ledger.budgetCycleUnit, ledger.budgetCycleStartDay, ledger.budgetWeekStartDay);
+        const nextFilters = { ...initialFilters, from: cycle.from, to: cycle.to };
+        const expenseData = await request<ExpensePage>(expenseQuery(nextFilters));
         if (!active) return;
+        setCycleSettings(ledger);
+        setFilters(nextFilters);
+        setAppliedFilters(nextFilters);
         setCategories(categoryData.items);
         setExpenses(expenseData.items);
         setNextCursor(expenseData.nextCursor);
@@ -151,8 +163,21 @@ export function ExpenseManager() {
   const appliedCategoryLabel = appliedFilters.categoryId === "uncategorized"
     ? "분류 없음"
     : categories.find((category) => category.id === appliedFilters.categoryId)?.name;
-  const activeMobileFilterCount =
-    Number(Boolean(appliedFilters.from || appliedFilters.to)) + Number(Boolean(appliedFilters.categoryId));
+  const currentCycle = cycleSettings ? cycleForDate(todayInSeoul(), cycleSettings.budgetCycleUnit, cycleSettings.budgetCycleStartDay, cycleSettings.budgetWeekStartDay) : null;
+  const candidateCycle = cycleSettings && appliedFilters.from
+    ? cycleForDate(appliedFilters.from, cycleSettings.budgetCycleUnit, cycleSettings.budgetCycleStartDay, cycleSettings.budgetWeekStartDay) : null;
+  const selectedCycle = candidateCycle?.from === appliedFilters.from && candidateCycle?.to === appliedFilters.to ? candidateCycle : null;
+  const isCurrentCycle = Boolean(selectedCycle && selectedCycle.from === currentCycle?.from);
+  const isCustomPeriod = !selectedCycle && Boolean(appliedFilters.from || appliedFilters.to);
+  const activeMobileFilterCount = Number(isCustomPeriod) + Number(Boolean(appliedFilters.categoryId));
+  const recentCycles: BudgetCycleRange[] = [];
+  if (currentCycle && cycleSettings) {
+    let cycle = selectedCycle && selectedCycle.from < currentCycle.from ? selectedCycle : currentCycle;
+    for (let i = 0; i < 12; i++) {
+      recentCycles.push(cycle);
+      cycle = adjacentCycle(cycle, -1, cycleSettings.budgetCycleUnit, cycleSettings.budgetCycleStartDay, cycleSettings.budgetWeekStartDay);
+    }
+  }
 
   useEffect(() => {
     if (!isMobileFilterOpen) return;
@@ -173,17 +198,22 @@ export function ExpenseManager() {
   }, [appliedFilters, isMobileFilterOpen]);
 
   async function refreshExpenses(nextFilters: Filters = appliedFilters) {
+    const version = ++requestVersion.current;
     setIsLoading(true);
     setError(null);
+    setExpenses([]);
+    setNextCursor(null);
+    setHasNext(false);
     try {
       const page = await request<ExpensePage>(expenseQuery(nextFilters));
+      if (version !== requestVersion.current) return;
       setExpenses(page.items);
       setNextCursor(page.nextCursor);
       setHasNext(page.hasNext);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "식비를 불러오지 못했습니다.");
+      if (version === requestVersion.current) setError(reason instanceof Error ? reason.message : "식비를 불러오지 못했습니다.");
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
   }
 
@@ -342,29 +372,63 @@ export function ExpenseManager() {
 
   async function loadMore() {
     if (!nextCursor) return;
+    const version = ++requestVersion.current;
     setIsLoading(true);
     try {
       const page = await request<ExpensePage>(expenseQuery(appliedFilters, nextCursor));
+      if (version !== requestVersion.current) return;
       setExpenses((current) => [...current, ...page.items]);
       setNextCursor(page.nextCursor);
       setHasNext(page.hasNext);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "다음 식비를 불러오지 못했습니다.");
+      if (version === requestVersion.current) setError(reason instanceof Error ? reason.message : "다음 식비를 불러오지 못했습니다.");
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
+  }
+
+  function selectCycle(cycle: BudgetCycleRange) {
+    const nextFilters = { ...appliedFilters, from: cycle.from, to: cycle.to };
+    setIsCyclePickerOpen(false);
+    setFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    void refreshExpenses(nextFilters);
+  }
+
+  function moveCycle(direction: -1 | 1) {
+    if (!cycleSettings || !selectedCycle) return;
+    selectCycle(adjacentCycle(selectedCycle, direction, cycleSettings.budgetCycleUnit, cycleSettings.budgetCycleStartDay, cycleSettings.budgetWeekStartDay));
+  }
+
+  function selectAllPeriods() {
+    const nextFilters = { ...appliedFilters, from: "", to: "" };
+    setIsCyclePickerOpen(false);
+    setFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    void refreshExpenses(nextFilters);
+  }
+
+  function validFilters() {
+    if (filters.from && filters.to && filters.from > filters.to) {
+      setError("시작일은 종료일보다 늦을 수 없습니다.");
+      return false;
+    }
+    return true;
   }
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!cycleSettings || !validFilters()) return;
     setAppliedFilters(filters);
     void refreshExpenses(filters);
   }
 
   function resetFilters() {
-    setFilters(initialFilters);
-    setAppliedFilters(initialFilters);
-    void refreshExpenses(initialFilters);
+    if (!currentCycle) return;
+    const nextFilters = { ...initialFilters, from: currentCycle.from, to: currentCycle.to };
+    setFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    void refreshExpenses(nextFilters);
   }
 
   function openMobileFilters() {
@@ -381,6 +445,7 @@ export function ExpenseManager() {
 
   function applyMobileFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!cycleSettings || !validFilters()) return;
     setAppliedFilters(filters);
     setIsMobileCategoryOpen(false);
     setIsMobileFilterOpen(false);
@@ -388,12 +453,12 @@ export function ExpenseManager() {
   }
 
   function clearMobileFilterFields() {
-    setFilters({ ...filters, from: "", to: "", categoryId: "" });
+    if (currentCycle) setFilters({ ...filters, from: currentCycle.from, to: currentCycle.to, categoryId: "" });
   }
 
   function removeMobileFilter(kind: "period" | "category") {
     const nextFilters = kind === "period"
-      ? { ...appliedFilters, from: "", to: "" }
+      ? { ...appliedFilters, from: currentCycle?.from ?? "", to: currentCycle?.to ?? "" }
       : { ...appliedFilters, categoryId: "" };
     setFilters(nextFilters);
     setAppliedFilters(nextFilters);
@@ -425,7 +490,7 @@ export function ExpenseManager() {
           <h1>식비 내역</h1>
           <p>함께 사용한 식비를 기록하고 필요한 내역을 찾아보세요.</p>
         </div>
-        <button className="expense-add-button" type="button" onClick={openCreate}>
+        <button className="expense-add-button" disabled={!cycleSettings} type="button" onClick={openCreate}>
           <Plus size={19} /> 식비 등록
         </button>
       </section>
@@ -439,6 +504,25 @@ export function ExpenseManager() {
 
       <div className="expense-layout">
         <div className="expense-main-column">
+          <section aria-label="식비 주기 선택" className="expense-cycle-panel">
+            <div className="expense-cycle-toolbar">
+              <button aria-label="이전 주기" className="expense-cycle-arrow" disabled={!selectedCycle || isLoading} onClick={() => moveCycle(-1)} type="button"><ArrowLeft size={18} /></button>
+              <button aria-controls="expense-cycle-options" aria-expanded={isCyclePickerOpen} className="expense-cycle-trigger" disabled={!cycleSettings} onClick={() => setIsCyclePickerOpen(!isCyclePickerOpen)} type="button">
+                <span><strong>{!cycleSettings ? "주기 불러오는 중" : isCurrentCycle ? "이번 주기" : selectedCycle ? "선택한 주기" : isCustomPeriod ? "직접 지정한 기간" : "전체 기간"}</strong><small>{selectedCycle ? cycleLabel(selectedCycle) : isCustomPeriod ? `${appliedFilters.from || "시작일 전체"} ~ ${appliedFilters.to || "종료일 전체"}` : "주기별 내역을 선택하세요"}</small></span><ChevronDown size={18} />
+              </button>
+              <button aria-label="다음 주기" className="expense-cycle-arrow" disabled={!selectedCycle || isLoading} onClick={() => moveCycle(1)} type="button"><ArrowRight size={18} /></button>
+            </div>
+            {!isCurrentCycle && currentCycle && <button className="expense-cycle-current" disabled={isLoading} onClick={() => selectCycle(currentCycle)} type="button"><RotateCcw size={14} />이번 주기로</button>}
+            {isCyclePickerOpen && cycleSettings && (
+              <div className="expense-cycle-options" id="expense-cycle-options" onKeyDown={(event) => { if (event.key === "Escape") setIsCyclePickerOpen(false); }}>
+                <p>주기를 선택하면 해당 기간의 내역을 볼 수 있어요.</p>
+                <div aria-label="주기 목록" className="expense-cycle-list">
+                  {recentCycles.map((cycle) => <button aria-pressed={selectedCycle?.from === cycle.from} disabled={isLoading} key={cycle.from} onClick={() => selectCycle(cycle)} type="button"><span>{cycle.from === currentCycle?.from ? "이번 주기 · " : ""}{cycleLabel(cycle)}</span>{selectedCycle?.from === cycle.from && <Check size={16} />}</button>)}
+                </div>
+                <div className="expense-cycle-other"><span>다른 날짜가 포함된 주기</span><CalendarPicker ariaLabel="주기에 포함된 날짜 선택" disabled={isLoading} onChange={(date) => { if (date) selectCycle(cycleForDate(date, cycleSettings.budgetCycleUnit, cycleSettings.budgetCycleStartDay, cycleSettings.budgetWeekStartDay)); }} value={selectedCycle?.from ?? todayInSeoul()} /><button className="secondary-button" disabled={isLoading} onClick={selectAllPeriods} type="button">전체 기간 보기</button></div>
+              </div>
+            )}
+          </section>
           <div className="mobile-filter-shell">
             <form className="mobile-filter-toolbar" onSubmit={applyFilters}>
               <span className="mobile-keyword-field">
@@ -464,7 +548,7 @@ export function ExpenseManager() {
             </form>
             {activeMobileFilterCount > 0 && (
               <div aria-label="적용된 검색 조건" className="mobile-filter-chips">
-                {(appliedFilters.from || appliedFilters.to) && (
+                {isCustomPeriod && (
                   <button aria-label="기간 필터 제거" onClick={() => removeMobileFilter("period")} type="button">
                     {mobilePeriodLabel()}<X size={14} />
                   </button>
@@ -570,7 +654,7 @@ export function ExpenseManager() {
           <section className="expense-results" aria-labelledby="expense-results-title">
             <div className="results-heading">
               <div>
-                <p className="eyebrow">내역</p>
+                <p className="eyebrow">{hasNext ? "불러온 내역 · 더 보기를 눌러 확인하세요" : "내역"}</p>
                 <h2 id="expense-results-title">{expenses.length}건 · {won.format(loadedTotal)}원</h2>
               </div>
               {isLoading && <LoaderCircle className="spin" aria-label="불러오는 중" size={22} />}
