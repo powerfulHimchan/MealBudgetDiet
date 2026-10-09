@@ -49,3 +49,9 @@ export function weeklyCycleContaining(date: string, startWeekDay: number): Budge
 export function cycleForDate(date: string, unit: BudgetCycleUnit, startDay: number, weekStartDay: number) {
   return unit === "WEEKLY" ? weeklyCycleContaining(date, weekStartDay) : budgetCycleContaining(date, startDay);
 }
+
+export function adjacentCycle(cycle: BudgetCycleRange, direction: -1 | 1, unit: BudgetCycleUnit, startDay: number, weekStartDay: number) {
+  const date = new Date(`${direction === -1 ? cycle.from : cycle.to}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + direction);
+  return cycleForDate(dateText(date), unit, startDay, weekStartDay);
+}

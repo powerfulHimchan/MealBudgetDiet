@@ -109,6 +109,12 @@ test("two users share an expense with an image and see matching statistics", asy
   await expect(adminPage.getByText("식비 내역을 등록했습니다.", { exact: true })).toBeVisible();
   await expect(adminPage.getByText(originalMerchant, { exact: true })).toBeVisible();
 
+  await adminPage.getByRole("button", { name: "이전 주기", exact: true }).click();
+  await expect(adminPage.getByText("조건에 맞는 식비가 없습니다.")).toBeVisible();
+  await expect(adminPage.getByText(originalMerchant, { exact: true })).toHaveCount(0);
+  await adminPage.getByRole("button", { name: "이번 주기로", exact: true }).click();
+  await expect(adminPage.getByText(originalMerchant, { exact: true })).toBeVisible();
+
   await memberPage.goto("/expenses");
   const memberExpense = memberPage.getByRole("listitem").filter({ hasText: originalMerchant });
   await expect(memberExpense).toBeVisible();

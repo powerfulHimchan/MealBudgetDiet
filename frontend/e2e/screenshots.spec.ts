@@ -310,6 +310,81 @@ test("uses compact expense filters on mobile", async ({ page }) => {
   await expect(page.getByRole("button", { name: "필터", exact: true })).toBeVisible();
 });
 
+test("defaults to the ledger cycle and preserves search when browsing past cycles on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.setFixedTime(new Date("2026-09-12T12:00:00+09:00"));
+  await mockExpenseApis(page);
+  await page.route("**/api/v1/ledger", (route) => route.fulfill({ json: { budgetCycleUnit: "MONTHLY", budgetCycleStartDay: 25, budgetWeekStartDay: 1 } }));
+  const ranges: URLSearchParams[] = [];
+  await page.route("**/api/v1/expenses?*", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    ranges.push(params);
+    const current = !params.get("from") || params.get("from") === "2026-08-25";
+    return route.fulfill({ json: { items: [{ id: "cycle-expense", amount: 12000, spentOn: current ? "2026-09-12" : "2026-08-12", category: null, merchant: current ? "이번 주기 식당" : "이전 주기 식당", memo: null, version: 0 }], hasNext: false, nextCursor: null } });
+  });
+  await page.goto("/expenses");
+  const cyclePanel = page.getByRole("region", { name: "식비 주기 선택" });
+  await expect(cyclePanel).toContainText("2026.08.25 ~ 2026.09.24");
+  await expect(page.getByText("이번 주기 식당", { exact: true })).toBeVisible();
+  expect(ranges[0].get("from")).toBe("2026-08-25");
+  expect(ranges[0].get("to")).toBe("2026-09-24");
+  await page.getByLabel("상호명 또는 메모 검색").fill("식당");
+  await page.getByLabel("상호명 또는 메모 검색").press("Enter");
+  await expect.poll(() => ranges.at(-1)?.get("keyword")).toBe("식당");
+  await page.getByRole("button", { name: "필터", exact: true }).click();
+  await page.getByRole("button", { name: "모바일 검색 카테고리" }).click();
+  await page.getByRole("option", { name: "외식", exact: true }).click();
+  await page.getByRole("dialog", { name: "검색 조건" }).getByRole("button", { name: "적용", exact: true }).click();
+  await expect(page.getByRole("button", { name: "이전 주기", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "이전 주기", exact: true }).click();
+  await expect(page.getByText("이전 주기 식당", { exact: true })).toBeVisible();
+  await expect(page.getByText("이번 주기 식당", { exact: true })).toHaveCount(0);
+  expect(ranges.at(-1)?.get("keyword")).toBe("식당");
+  expect(ranges.at(-1)?.get("categoryId")).toBe("22222222-2222-2222-2222-222222222222");
+  expect(ranges.at(-1)?.get("from")).toBe("2026-07-25");
+  await page.getByRole("button", { name: "이번 주기로", exact: true }).click();
+  await expect(page.getByText("이번 주기 식당", { exact: true })).toBeVisible();
+  await cyclePanel.getByRole("button", { name: /이번 주기 2026/ }).click();
+  await page.getByRole("button", { name: "2026.06.25 ~ 2026.07.24", exact: true }).click();
+  await expect(cyclePanel).toContainText("2026.06.25 ~ 2026.07.24");
+  await cyclePanel.getByRole("button", { name: /선택한 주기 2026/ }).click();
+  await page.getByRole("button", { name: "전체 기간 보기" }).click();
+  await expect.poll(() => ranges.at(-1)?.has("from")).toBe(false);
+  await expect(cyclePanel).toContainText("전체 기간");
+  await page.getByRole("button", { name: "이번 주기로", exact: true }).click();
+  await expect(cyclePanel).toContainText("이번 주기");
+  await expect(page.getByRole("button", { name: "이전 주기", exact: true })).toBeEnabled();
+  await cyclePanel.getByRole("button", { name: /이번 주기 2026/ }).click();
+  await page.getByRole("button", { name: "주기에 포함된 날짜 선택" }).click();
+  await page.getByRole("button", { name: "2026년 8월 10일", exact: true }).click();
+  await expect(cyclePanel).toContainText("2026.07.25 ~ 2026.08.24");
+  await expect(page.getByRole("button", { name: "이번 주기로", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "이번 주기로", exact: true }).click();
+  await page.screenshot({ path: path.join(screenshotDirectory, "expense-current-cycle-mobile.png"), fullPage: true });
+});
+
+for (const scenario of [
+  { name: "weekly Thursday cycle", unit: "WEEKLY", startDay: 1, weekStartDay: 4, today: "2026-09-12", from: "2026-09-10", to: "2026-09-16", previousFrom: "2026-09-03", previousTo: "2026-09-09" },
+  { name: "month end across leap February", unit: "MONTHLY", startDay: 31, weekStartDay: 1, today: "2028-03-01", from: "2028-02-29", to: "2028-03-30", previousFrom: "2028-01-31", previousTo: "2028-02-28" },
+]) {
+  test(`browses ${scenario.name} without gaps`, async ({ page }) => {
+    await page.clock.setFixedTime(new Date(`${scenario.today}T12:00:00+09:00`));
+    await mockExpenseApis(page);
+    await page.route("**/api/v1/ledger", (route) => route.fulfill({ json: { budgetCycleUnit: scenario.unit, budgetCycleStartDay: scenario.startDay, budgetWeekStartDay: scenario.weekStartDay } }));
+    await page.goto("/expenses");
+    const panel = page.getByRole("region", { name: "식비 주기 선택" });
+    await expect(panel).toContainText(`${scenario.from.replaceAll("-", ".")} ~ ${scenario.to.replaceAll("-", ".")}`);
+    await expect(page.getByRole("heading", { name: "3건 · 60,300원" })).toBeVisible();
+    const response = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/expenses" && new URL(response.url()).searchParams.get("from") === scenario.previousFrom);
+    await page.getByRole("button", { name: "이전 주기", exact: true }).click();
+    expect(new URL((await response).url()).searchParams.get("to")).toBe(scenario.previousTo);
+    await expect(page.getByRole("button", { name: "다음 주기" })).toBeEnabled();
+    await page.getByRole("button", { name: "다음 주기" }).click();
+    await expect(panel).toContainText("이번 주기");
+    await expect(panel).toContainText(scenario.from.replaceAll("-", "."));
+  });
+}
+
 test("keeps every mobile category reachable on a short screen", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 480 });
   await mockExpenseApis(page);
