@@ -24,7 +24,11 @@ public record StatisticsSnapshot(
 		LocalDate to,
 		long totalAmount,
 		long changeAmount,
-		BigDecimal changeRate
+		BigDecimal changeRate,
+		Period currentPeriod,
+		long currentAmount,
+		boolean samePoint,
+		boolean available
 	) {
 	}
 

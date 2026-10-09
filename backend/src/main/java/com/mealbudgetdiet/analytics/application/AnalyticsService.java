@@ -139,11 +139,7 @@ public class AnalyticsService {
 		UUID ledgerId = ledger.getId();
 		long total = totalAmount(ledgerId, from, to);
 		long budget = budgetService.proratedBudget(ledgerId, from, to);
-		var comparisonPeriod = comparisonPeriod(ledger, from, to);
-		long previousTotal = totalAmount(ledgerId, comparisonPeriod.from(), comparisonPeriod.to());
-		BigDecimal changeRate = previousTotal == 0
-			? null
-			: percentage(total - previousTotal, previousTotal);
+		var comparison = comparison(ledger, from, to, total);
 
 		List<DailyAmount> daily = jdbcTemplate.query("""
 			select spent_on, sum(amount) total_amount
@@ -174,9 +170,7 @@ public class AnalyticsService {
 			new StatisticsSnapshot.Period(from, to),
 			total,
 			new StatisticsSnapshot.Budget(budget, percentage(total, budget)),
-			new Comparison(
-				comparisonPeriod.from(), comparisonPeriod.to(), previousTotal,
-				total - previousTotal, changeRate),
+			comparison,
 			daily,
 			categories
 		);
@@ -270,6 +264,30 @@ public class AnalyticsService {
 		if (from.isAfter(to)) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_DATE_RANGE", "시작일은 종료일보다 늦을 수 없습니다.");
 		}
+	}
+
+	private Comparison comparison(Ledger ledger, LocalDate from, LocalDate to, long total) {
+		// Resolve the full comparison window before clipping, preserving budget-cycle boundaries.
+		var previous = comparisonPeriod(ledger, from, to);
+		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
+		if (today.isBefore(from)) {
+			return new Comparison(previous.from(), previous.to(), 0, 0, null, null, 0, false, false);
+		}
+		boolean samePoint = today.isBefore(to);
+		LocalDate currentTo = samePoint ? today : to;
+		LocalDate previousTo = previous.to();
+		if (samePoint) {
+			long elapsedDays = ChronoUnit.DAYS.between(from, currentTo);
+			LocalDate samePointTo = previous.from().plusDays(elapsedDays);
+			// A shorter previous month ends at its boundary rather than spilling into the next cycle.
+			if (samePointTo.isBefore(previousTo)) previousTo = samePointTo;
+		}
+		long currentTotal = samePoint ? totalAmount(ledger.getId(), from, currentTo) : total;
+		long previousTotal = totalAmount(ledger.getId(), previous.from(), previousTo);
+		long changeAmount = currentTotal - previousTotal;
+		BigDecimal changeRate = previousTotal == 0 ? null : percentage(changeAmount, previousTotal);
+		return new Comparison(previous.from(), previousTo, previousTotal, changeAmount, changeRate,
+			new StatisticsSnapshot.Period(from, currentTo), currentTotal, samePoint, true);
 	}
 
 	private StatisticsSnapshot.Period comparisonPeriod(Ledger ledger, LocalDate from, LocalDate to) {

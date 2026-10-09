@@ -12,12 +12,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -28,7 +34,7 @@ import com.mealbudgetdiet.TestcontainersConfiguration;
 
 import jakarta.servlet.http.Cookie;
 
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, BudgetAnalyticsIntegrationTest.FixedClockConfig.class })
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = "app.bootstrap-token=analytics-bootstrap-token")
@@ -143,6 +149,8 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.comparison.totalAmount").value(60000))
 			.andExpect(jsonPath("$.comparison.changeAmount").value(120000))
 			.andExpect(jsonPath("$.comparison.changeRate").value(200.0))
+			.andExpect(jsonPath("$.comparison.samePoint").value(false))
+			.andExpect(jsonPath("$.comparison.available").value(true))
 			.andExpect(jsonPath("$.daily.length()").value(2))
 			.andExpect(jsonPath("$.categories[0].categoryName").value("장보기"))
 			.andExpect(jsonPath("$.categories[0].ratio").value(100.0));
@@ -211,8 +219,13 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.totalAmount").value(50000))
 			.andExpect(jsonPath("$.budget.amount").value(300000))
 			.andExpect(jsonPath("$.comparison.from").value("2026-08-25"))
-			.andExpect(jsonPath("$.comparison.to").value("2026-09-24"))
-			.andExpect(jsonPath("$.comparison.totalAmount").value(180000));
+			.andExpect(jsonPath("$.comparison.to").value("2026-09-08"))
+			.andExpect(jsonPath("$.comparison.totalAmount").value(180000))
+			.andExpect(jsonPath("$.comparison.currentPeriod.from").value("2026-09-25"))
+			.andExpect(jsonPath("$.comparison.currentPeriod.to").value("2026-10-09"))
+			.andExpect(jsonPath("$.comparison.currentAmount").value(50000))
+			.andExpect(jsonPath("$.comparison.changeAmount").value(-130000))
+			.andExpect(jsonPath("$.comparison.samePoint").value(true));
 
 		mockMvc.perform(delete("/api/v1/budgets/2026-09")
 				.with(csrf())
@@ -250,7 +263,9 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.totalAmount").value(50000))
 			.andExpect(jsonPath("$.budget.amount").value(200000))
 			.andExpect(jsonPath("$.comparison.from").value("2026-10-01"))
-			.andExpect(jsonPath("$.comparison.to").value("2026-10-07"));
+			.andExpect(jsonPath("$.comparison.to").value("2026-10-02"))
+			.andExpect(jsonPath("$.comparison.currentPeriod.to").value("2026-10-09"))
+			.andExpect(jsonPath("$.comparison.samePoint").value(true));
 
 		mockMvc.perform(get("/api/v1/statistics").cookie(adminSession)
 				.param("from", "2026-10-08").param("to", "2026-10-09"))
@@ -346,5 +361,14 @@ class BudgetAnalyticsIntegrationTest {
 		int valueStart = setCookieHeader.indexOf(prefix) + prefix.length();
 		int valueEnd = setCookieHeader.indexOf(';', valueStart);
 		return new Cookie("MBD_SESSION", setCookieHeader.substring(valueStart, valueEnd));
+	}
+
+	@TestConfiguration(proxyBeanMethods = false)
+	static class FixedClockConfig {
+		@Bean
+		@Primary
+		Clock analyticsClock() {
+			return Clock.fixed(Instant.parse("2026-10-08T15:30:00Z"), ZoneOffset.UTC);
+		}
 	}
 }
