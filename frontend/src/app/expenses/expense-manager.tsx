@@ -508,7 +508,12 @@ export function ExpenseManager() {
             <div className="expense-cycle-toolbar">
               <button aria-label="이전 주기" className="expense-cycle-arrow" disabled={!selectedCycle || isLoading} onClick={() => moveCycle(-1)} type="button"><ArrowLeft size={18} /></button>
               <button aria-controls="expense-cycle-options" aria-expanded={isCyclePickerOpen} className="expense-cycle-trigger" disabled={!cycleSettings} onClick={() => setIsCyclePickerOpen(!isCyclePickerOpen)} type="button">
-                <span><strong>{!cycleSettings ? "주기 불러오는 중" : isCurrentCycle ? "이번 주기" : selectedCycle ? "선택한 주기" : isCustomPeriod ? "직접 지정한 기간" : "전체 기간"}</strong><small>{selectedCycle ? cycleLabel(selectedCycle) : isCustomPeriod ? `${appliedFilters.from || "시작일 전체"} ~ ${appliedFilters.to || "종료일 전체"}` : "주기별 내역을 선택하세요"}</small></span><ChevronDown size={18} />
+                <span>
+                  {selectedCycle && !isCurrentCycle ? <strong>{cycleLabel(selectedCycle)}</strong> : <>
+                    <strong>{!cycleSettings ? "주기 불러오는 중" : isCurrentCycle ? "이번 주기" : isCustomPeriod ? "직접 지정한 기간" : "전체 기간"}</strong>
+                    <small>{selectedCycle ? cycleLabel(selectedCycle) : isCustomPeriod ? `${appliedFilters.from || "시작일 전체"} ~ ${appliedFilters.to || "종료일 전체"}` : "주기별 내역을 선택하세요"}</small>
+                  </>}
+                </span><ChevronDown size={18} />
               </button>
               <button aria-label="다음 주기" className="expense-cycle-arrow" disabled={!selectedCycle || isLoading} onClick={() => moveCycle(1)} type="button"><ArrowRight size={18} /></button>
             </div>
