@@ -13,7 +13,10 @@ type StatisticsData = {
   period: { from: string; to: string };
   totalAmount: number;
   budget: { amount: number; usageRate: number };
-  comparison: { from: string; to: string; totalAmount: number; changeAmount: number; changeRate: number | null };
+  comparison: {
+    from: string; to: string; totalAmount: number; changeAmount: number; changeRate: number | null;
+    currentPeriod?: DateRange | null; currentAmount?: number; samePoint?: boolean; available?: boolean;
+  };
   daily: Array<{ date: string; amount: number }>;
   categories: Array<{ categoryId: string | null; categoryName: string; amount: number; ratio: number }>;
 };
@@ -23,6 +26,15 @@ type DateRange = { from: string; to: string };
 
 const won = new Intl.NumberFormat("ko-KR");
 const compactWon = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
+
+function comparisonDateRange(from: string, to: string) {
+  const [year, month, day] = from.split("-").map(Number);
+  const [endYear, endMonth, endDay] = to.split("-").map(Number);
+  const start = `${year}년 ${month}월 ${day}일`;
+  const end = year !== endYear ? `${endYear}년 ${endMonth}월 ${endDay}일`
+    : month !== endMonth ? `${endMonth}월 ${endDay}일` : `${endDay}일`;
+  return from === to ? start : `${start}~${end}`;
+}
 
 function presetRange(key: Exclude<RangeKey, "custom">, startDay: number, unit: BudgetCycleUnit = "MONTHLY", weekStartDay = 1): DateRange {
   const today = todayInSeoul();
@@ -122,6 +134,13 @@ export function StatisticsView() {
 
   const csvParams = new URLSearchParams(range);
   const changeIsUp = (data?.comparison.changeAmount ?? 0) > 0;
+  const comparison = data?.comparison;
+  const comparisonAvailable = comparison?.available !== false;
+  const comparisonTitle = selectedRange === "current" || selectedRange === "previous" ? "이전 주기" : "이전 기간";
+  const comparisonRate = comparison?.changeRate == null ? null : Number(comparison.changeRate);
+  const shorterPreviousPeriod = comparison?.samePoint && comparison.currentPeriod
+    && (Date.parse(comparison.to) - Date.parse(comparison.from))
+      < (Date.parse(comparison.currentPeriod.to) - Date.parse(comparison.currentPeriod.from));
 
   return (
     <main className="app-shell analytics-shell">
@@ -161,12 +180,16 @@ export function StatisticsView() {
             <article><span>총 지출</span><strong>{won.format(data.totalAmount)}원</strong><small>{data.period.from} ~ {data.period.to}</small></article>
             <article><span>기간 예산</span><strong>{won.format(data.budget.amount)}원</strong><small>사용률 {Number(data.budget.usageRate).toFixed(1)}%</small></article>
             <article>
-              <span>이전 기간 대비</span>
-              <strong className={changeIsUp ? "amount-up" : "amount-down"}>
-                {changeIsUp ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-                {data.comparison.changeAmount > 0 ? "+" : ""}{won.format(data.comparison.changeAmount)}원
-              </strong>
-              <small>{data.comparison.changeRate == null ? "비교 기준 없음" : `${Number(data.comparison.changeRate).toFixed(1)}% 변화`}</small>
+              <span>{comparisonTitle}{data.comparison.samePoint ? " 같은 시점" : ""} 대비</span>
+              {comparisonAvailable ? <>
+                <strong className={changeIsUp ? "amount-up" : "amount-down"}>
+                  {changeIsUp ? <TrendingUp aria-hidden="true" size={20} /> : <TrendingDown aria-hidden="true" size={20} />}
+                  {won.format(Math.abs(data.comparison.changeAmount))}원
+                </strong>
+                <small>{comparisonDateRange(data.comparison.from, data.comparison.to)}보다 {data.comparison.changeAmount === 0 ? "같은 금액을 썼어요" : `${won.format(Math.abs(data.comparison.changeAmount))}원 ${changeIsUp ? "더 썼어요" : "덜 썼어요"}`}{comparisonRate == null ? " (이전 지출이 없어 증감률을 계산할 수 없어요)" : ` (${comparisonRate > 0 ? "+" : ""}${comparisonRate.toFixed(1)}%)`}</small>
+                {data.comparison.currentPeriod && <small>비교한 지출: {comparisonDateRange(data.comparison.currentPeriod.from, data.comparison.currentPeriod.to)} · {won.format(data.comparison.currentAmount ?? 0)}원</small>}
+                {shorterPreviousPeriod && <small>이전 주기가 짧아 마지막 날짜까지 비교했어요.</small>}
+              </> : <><strong>아직 비교할 수 없어요</strong><small>선택한 기간이 시작되면 비교할 수 있어요.</small></>}
             </article>
           </section>
 

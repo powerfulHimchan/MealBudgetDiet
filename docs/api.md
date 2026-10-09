@@ -1084,10 +1084,14 @@ GET /api/v1/statistics?yearMonth=2026-09
   },
   "comparison": {
     "from": "2026-08-25",
-    "to": "2026-09-24",
+    "to": "2026-09-08",
     "totalAmount": 610000,
     "changeAmount": 48800,
-    "changeRate": 8.0
+    "changeRate": 8.0,
+    "currentPeriod": { "from": "2026-09-25", "to": "2026-10-09" },
+    "currentAmount": 658800,
+    "samePoint": true,
+    "available": true
   },
   "daily": [
     {
@@ -1118,6 +1122,12 @@ GET /api/v1/statistics?yearMonth=2026-09
 - 최근 3개 예산 주기: 직전 3개 예산 주기
 - 올해: 전년도 동일 기간
 - 직접 지정: 바로 이전의 동일 일수 기간
+
+선택 기간이 진행 중이면 비교에만 서울 기준 오늘까지의 지출을 사용한다. 위 예시는 오늘이 2026-10-09일 때의 응답이다. 먼저 선택 기간 전체에 해당하는 이전 기간을 정한 뒤, 시작일부터 동일하게 경과한 일수만큼 비교한다. 이미 끝난 기간은 전체 기간을 비교한다.
+
+`comparison.currentPeriod`와 `currentAmount`는 실제 비교에 사용한 이번 기간과 금액이다. `comparison.from`, `to`, `totalAmount`는 이전 비교 기간과 금액이며, `changeAmount`와 `changeRate`는 이 두 금액의 차이와 증감률이다. 이전 지출이 0이면 증감률은 `null`이다. `samePoint`는 오늘까지 비교했음을 나타낸다.
+
+이전 주기가 더 짧으면 이전 기간의 마지막 날짜에서 끝내고 다음 주기로 넘어가지 않는다. 아직 시작하지 않은 기간은 `available: false`, `currentPeriod: null`로 반환하며 비교 금액과 차이는 0, 증감률은 `null`이다. 선택 기간 전체의 총 지출·예산·일별 추이·카테고리 비중과 CSV 범위는 그대로 유지한다.
 
 `yearMonth`와 `from`/`to`는 함께 보낼 수 없다. `yearMonth`는 월간 설정에서만 사용할 수 있다. `from`/`to` 직접 지정은 입력한 달력 날짜를 그대로 사용하고, 여러 월간/주간 예산 주기에 걸친 기간은 각 주기에 포함된 날짜 비율로 예산을 일할 계산한다.
 

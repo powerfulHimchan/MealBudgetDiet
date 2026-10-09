@@ -57,7 +57,7 @@ test("two users share an expense with an image and see matching statistics", asy
   await login(adminPage);
 
   await adminPage.goto("/settings/invitations");
-  await expect(adminPage.getByRole("heading", { name: "초대 코드" })).toBeVisible();
+  await expect(adminPage.getByRole("heading", { name: "초대 코드", exact: true })).toBeVisible();
   const invitationResponsePromise = adminPage.waitForResponse((response) =>
     response.url().endsWith("/api/v1/invitations") && response.request().method() === "POST");
   await adminPage.getByRole("button", { name: "새 초대 코드 발급" }).click();

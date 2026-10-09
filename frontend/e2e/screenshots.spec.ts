@@ -217,6 +217,58 @@ test("does not add a whole-chart focus target", async ({ page }) => {
   }
 });
 
+test("shows same-point comparison dates and amounts separately from full-period spending", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.setFixedTime(new Date("2026-10-09T12:00:00+09:00"));
+  await mockExpenseApis(page);
+  await page.route("**/api/v1/statistics?*", (route) => {
+    const previous = new URL(route.request().url()).searchParams.get("from") === "2026-09-01";
+    return route.fulfill({ json: {
+      period: { from: previous ? "2026-09-01" : "2026-10-01", to: previous ? "2026-09-30" : "2026-10-31" },
+      totalAmount: 211000, budget: { amount: 500000, usageRate: 42.2 },
+      comparison: {
+        from: previous ? "2026-08-01" : "2026-09-01", to: previous ? "2026-08-31" : "2026-09-09",
+        totalAmount: 100000, currentAmount: previous ? 88000 : 112000,
+        currentPeriod: { from: previous ? "2026-09-01" : "2026-10-01", to: previous ? "2026-09-30" : "2026-10-09" },
+        changeAmount: previous ? -12000 : 12000, changeRate: previous ? -12 : 12, samePoint: !previous, available: true,
+      }, daily: [], categories: [],
+    } });
+  });
+  await page.goto("/statistics");
+  const summary = page.getByRole("region", { name: "통계 요약" });
+  const comparison = summary.locator("article").nth(2);
+  await expect(summary.locator("article").first()).toContainText("211,000원");
+  await expect(comparison).toContainText("이전 주기 같은 시점 대비");
+  await expect(comparison).toContainText("2026년 9월 1일~9일보다 12,000원 더 썼어요 (+12.0%)");
+  await expect(comparison).toContainText("비교한 지출: 2026년 10월 1일~9일 · 112,000원");
+  await expect(comparison.getByText("12,000원", { exact: true })).toBeVisible();
+  await page.screenshot({ path: path.join(screenshotDirectory, "statistics-same-point-mobile.png"), fullPage: true });
+  await page.getByRole("button", { name: "직전 주기", exact: true }).click();
+  await expect(comparison).toContainText("이전 주기 대비");
+  await expect(comparison).not.toContainText("같은 시점");
+  await expect(comparison).toContainText("2026년 8월 1일~31일보다 12,000원 덜 썼어요 (-12.0%)");
+});
+
+test("shows an honest comparison message when the previous amount is zero or the period has not started", async ({ page }) => {
+  await mockExpenseApis(page);
+  let available = true;
+  await page.route("**/api/v1/statistics?*", (route) => route.fulfill({ json: {
+    period: { from: "2026-10-01", to: "2026-10-31" }, totalAmount: 12000,
+    budget: { amount: 500000, usageRate: 2.4 },
+    comparison: { from: "2026-09-01", to: "2026-09-09", totalAmount: 0, changeAmount: 12000, changeRate: null,
+      currentPeriod: null, currentAmount: 12000, samePoint: true, available },
+    daily: [], categories: [],
+  } }));
+  await page.goto("/statistics");
+  const comparison = page.getByRole("region", { name: "통계 요약" }).locator("article").nth(2);
+  await expect(comparison).toContainText("이전 지출이 없어 증감률을 계산할 수 없어요");
+  await expect(comparison).not.toContainText("Infinity");
+  available = false;
+  await page.getByRole("button", { name: "직전 주기", exact: true }).click();
+  await expect(comparison).toContainText("아직 비교할 수 없어요");
+  await expect(comparison).not.toContainText("12,000원");
+});
+
 test("manage categories from settings", async ({ page }) => {
   await mockExpenseApis(page);
   await page.goto("/settings/categories");
