@@ -31,7 +31,8 @@ public record DashboardSnapshot(
 		String categoryName,
 		String merchant,
 		int version,
-		String imageUrl
+		String imageUrl,
+		String thumbnailUrl
 	) {
 	}
 }

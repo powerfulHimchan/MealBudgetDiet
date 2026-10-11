@@ -17,6 +17,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,6 +49,8 @@ public class ImageService {
 	private final ImageProcessor imageProcessor;
 	private final Clock clock;
 	private final Duration tempRetention;
+	private final TransactionTemplate readTransaction;
+	private final TransactionTemplate writeTransaction;
 
 	public ImageService(
 		LedgerAccessService ledgerAccessService,
@@ -55,6 +60,7 @@ public class ImageService {
 		ImageObjectStore objectStore,
 		ImageProcessor imageProcessor,
 		Clock clock,
+		PlatformTransactionManager transactionManager,
 		@Value("${app.media.temp-retention:24h}") Duration tempRetention
 	) {
 		this.ledgerAccessService = ledgerAccessService;
@@ -65,10 +71,16 @@ public class ImageService {
 		this.imageProcessor = imageProcessor;
 		this.clock = clock;
 		this.tempRetention = tempRetention;
+		this.readTransaction = new TransactionTemplate(transactionManager);
+		this.readTransaction.setReadOnly(true);
+		this.writeTransaction = new TransactionTemplate(transactionManager);
 	}
 
-	@Transactional
+	// Run storage I/O and image processing outside image metadata transactions.
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public ImageSnapshot upload(UUID userId, ImagePurpose purpose, MultipartFile file) {
+		UUID ledgerId = readTransaction.execute(status ->
+			ledgerAccessService.requireActiveMembership(userId).getId().getLedgerId());
 		if (file.getSize() > ImageProcessor.MAX_UPLOAD_BYTES) {
 			throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "IMAGE_TOO_LARGE", "이미지는 파일당 5MB 이하여야 합니다.");
 		}
@@ -79,49 +91,114 @@ public class ImageService {
 		catch (IOException exception) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "IMAGE_READ_FAILED", "이미지 파일을 읽지 못했습니다.");
 		}
-		ProcessedImage processed = imageProcessor.process(source, purpose);
-		UUID ledgerId = ledgerAccessService.requireActiveMembership(userId).getId().getLedgerId();
+		var variants = imageProcessor.processWithThumbnail(source, purpose);
+		ProcessedImage processed = variants.original();
+		ProcessedImage thumbnail = variants.thumbnail();
 		String key = "ledgers/%s/%s.webp".formatted(ledgerId, UUID.randomUUID());
-		objectStore.put(key, processed.content(), "image/webp");
-		deleteObjectAfterRollback(key);
-		var image = imageRepository.saveAndFlush(new ImageAsset(
-			ledgerId, userId, purpose, key, processed.content().length, processed.width(), processed.height()));
-		return snapshot(image);
+		String thumbnailKey = key.replace(".webp", "-thumbnail.webp");
+		try {
+			objectStore.put(key, processed.content(), "image/webp");
+			objectStore.put(thumbnailKey, thumbnail.content(), "image/webp");
+			return writeTransaction.execute(status -> {
+				// Membership may have changed while the files were being processed.
+				UUID currentLedgerId = ledgerAccessService.requireActiveMembership(userId).getId().getLedgerId();
+				if (!ledgerId.equals(currentLedgerId)) throw notFound();
+				var image = new ImageAsset(ledgerId, userId, purpose, key,
+					processed.content().length, processed.width(), processed.height());
+				image.setThumbnailStorageKey(thumbnailKey);
+				return snapshot(imageRepository.saveAndFlush(image));
+			});
+		}
+		catch (RuntimeException | Error exception) {
+			// Includes failures committing metadata; cleanup runs after the transaction has ended.
+			safeDeleteObject(thumbnailKey);
+			safeDeleteObject(key);
+			throw exception;
+		}
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public ImageContent content(UUID userId, UUID imageId) {
-		ImageAsset image = requireImage(imageId);
+		return content(userId, imageId, false);
+	}
+
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	public ImageContent content(UUID userId, UUID imageId, boolean thumbnail) {
+		ImageAccess access = readTransaction.execute(status -> {
+			ImageAsset image = requireImage(imageId);
+			requireImageAccess(userId, image);
+			return new ImageAccess(image.getStorageKey(), image.getThumbnailStorageKey(), image.getMimeType());
+		});
+		if (thumbnail && access.thumbnailKey() == null) {
+			return createLegacyThumbnail(userId, imageId, access);
+		}
+		String key = thumbnail ? access.thumbnailKey() : access.key();
+		byte[] bytes = objectStore.get(key);
+		if (bytes == null) throw notFound();
+		return new ImageContent(bytes, access.mimeType());
+	}
+
+	private ImageContent createLegacyThumbnail(UUID userId, UUID imageId, ImageAccess access) {
+		byte[] original = objectStore.get(access.key());
+		if (original == null) throw notFound();
+		ProcessedImage thumbnail = imageProcessor.thumbnail(original);
+		String key = "ledgers/thumbnails/%s/%s.webp".formatted(imageId, UUID.randomUUID());
+		String savedKey;
+		try {
+			objectStore.put(key, thumbnail.content(), "image/webp");
+			savedKey = writeTransaction.execute(status -> {
+				ImageAsset image = imageRepository.findByIdForUpdate(imageId).orElseThrow(this::notFound);
+				requireImageAccess(userId, image);
+				// Concurrent requests/instances may already have generated the thumbnail.
+				if (image.getThumbnailStorageKey() == null) image.setThumbnailStorageKey(key);
+				return image.getThumbnailStorageKey();
+			});
+		}
+		catch (RuntimeException | Error exception) {
+			safeDeleteObject(key);
+			throw exception;
+		}
+		if (key.equals(savedKey)) return new ImageContent(thumbnail.content(), "image/webp");
+		safeDeleteObject(key);
+		byte[] bytes = objectStore.get(savedKey);
+		if (bytes == null) throw notFound();
+		return new ImageContent(bytes, "image/webp");
+	}
+
+	private void requireImageAccess(UUID userId, ImageAsset image) {
 		if (image.getStatus() == ImageStatus.TEMP) {
 			if (!userId.equals(image.getUploadedByUserId())) throw notFound();
-		}
-		else {
+		} else {
 			UUID ledgerId = ledgerAccessService.requireActiveMembership(userId).getId().getLedgerId();
 			if (!ledgerId.equals(image.getLedgerId())) throw notFound();
 		}
-		byte[] content = objectStore.get(image.getStorageKey());
-		if (content == null) throw notFound();
-		return new ImageContent(content, image.getMimeType());
 	}
+
+	private record ImageAccess(String key, String thumbnailKey, String mimeType) { }
 
 	@Transactional
 	public void cancelTemporary(UUID userId, UUID imageId) {
-		ImageAsset image = requireImage(imageId);
+		ImageAsset image = requireImageForUpdate(imageId);
 		if (image.getStatus() != ImageStatus.TEMP || !userId.equals(image.getUploadedByUserId())) throw notFound();
 		imageRepository.delete(image);
 		imageRepository.flush();
-		deleteObjectAfterCommit(image.getStorageKey());
+		deleteImageObjectsAfterCommit(image);
 	}
 
 	@Transactional(readOnly = true)
 	public List<ExpenseImageSnapshot> expenseImages(UUID expenseId) {
-		List<ExpenseImage> links = expenseImageRepository.findAllByExpenseIdOrderBySortOrder(expenseId);
-		Map<UUID, ImageAsset> images = imageRepository.findAllById(links.stream().map(ExpenseImage::getImageId).toList())
-			.stream().collect(Collectors.toMap(ImageAsset::getId, Function.identity()));
-		return links.stream().map(link -> {
-			ImageAsset image = images.get(link.getImageId());
-			return new ExpenseImageSnapshot(image.getId(), contentUrl(image.getId()), link.getSortOrder());
-		}).toList();
+		return expenseImages(List.of(expenseId)).getOrDefault(expenseId, List.of());
+	}
+
+	@Transactional(readOnly = true)
+	public Map<UUID, List<ExpenseImageSnapshot>> expenseImages(List<UUID> expenseIds) {
+		if (expenseIds.isEmpty()) return Map.of();
+		// Link rows contain everything needed by the response; no ImageAsset lookup is necessary.
+		return expenseImageRepository.findAllByExpenseIdInOrderByExpenseIdAscSortOrderAsc(expenseIds)
+			.stream().collect(Collectors.groupingBy(ExpenseImage::getExpenseId,
+				Collectors.mapping(link -> new ExpenseImageSnapshot(link.getImageId(),
+					contentUrl(link.getImageId()), thumbnailUrl(link.getImageId()), link.getSortOrder()),
+					Collectors.toList())));
 	}
 
 	@Transactional
@@ -130,7 +207,7 @@ public class ImageService {
 		validateImageIds(imageIds);
 		List<ExpenseImage> existingLinks = expenseImageRepository.findAllByExpenseIdOrderBySortOrder(expenseId);
 		var existingIds = existingLinks.stream().map(ExpenseImage::getImageId).collect(Collectors.toSet());
-		Map<UUID, ImageAsset> requested = imageRepository.findAllById(imageIds).stream()
+		Map<UUID, ImageAsset> requested = imageRepository.findAllByIdForUpdate(imageIds).stream()
 			.collect(Collectors.toMap(ImageAsset::getId, Function.identity()));
 		if (requested.size() != imageIds.size()) throw invalidExpenseImage();
 
@@ -149,11 +226,11 @@ public class ImageService {
 
 		expenseImageRepository.deleteAll(existingLinks);
 		expenseImageRepository.flush();
-		List<ImageAsset> removed = imageRepository.findAllById(existingIds.stream()
+		List<ImageAsset> removed = imageRepository.findAllByIdForUpdate(existingIds.stream()
 			.filter(id -> !requested.containsKey(id)).toList());
 		for (ImageAsset image : removed) {
 			imageRepository.delete(image);
-			deleteObjectAfterCommit(image.getStorageKey());
+			deleteImageObjectsAfterCommit(image);
 		}
 		Instant now = clock.instant();
 		List<ExpenseImage> nextLinks = new ArrayList<>();
@@ -168,18 +245,18 @@ public class ImageService {
 	@Transactional
 	public void deleteExpenseImages(UUID expenseId) {
 		List<ExpenseImage> links = expenseImageRepository.findAllByExpenseIdOrderBySortOrder(expenseId);
-		List<ImageAsset> images = imageRepository.findAllById(links.stream().map(ExpenseImage::getImageId).toList());
+		List<ImageAsset> images = imageRepository.findAllByIdForUpdate(links.stream().map(ExpenseImage::getImageId).toList());
 		expenseImageRepository.deleteAll(links);
 		expenseImageRepository.flush();
 		imageRepository.deleteAll(images);
-		for (ImageAsset image : images) deleteObjectAfterCommit(image.getStorageKey());
+		for (ImageAsset image : images) deleteImageObjectsAfterCommit(image);
 	}
 
 	@Transactional
 	public String replaceProfileImage(UUID userId, UUID imageId) {
 		UUID ledgerId = ledgerAccessService.requireActiveMembership(userId).getId().getLedgerId();
 		var user = userRepository.findById(userId).orElseThrow(this::notFound);
-		ImageAsset image = requireImage(imageId);
+		ImageAsset image = requireImageForUpdate(imageId);
 		if (!ledgerId.equals(image.getLedgerId()) || image.getPurpose() != ImagePurpose.PROFILE
 			|| image.getStatus() != ImageStatus.TEMP || !userId.equals(image.getUploadedByUserId())) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "PROFILE_IMAGE_INVALID", "프로필 사진으로 사용할 수 없는 이미지입니다.");
@@ -202,10 +279,10 @@ public class ImageService {
 		deleteReplacedProfile(previousId);
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public void deleteLedgerObjectsAfterCommit(UUID ledgerId) {
 		for (ImageAsset image : imageRepository.findAllByLedgerId(ledgerId)) {
-			deleteObjectAfterCommit(image.getStorageKey());
+			deleteImageObjectsAfterCommit(image);
 		}
 	}
 
@@ -215,18 +292,27 @@ public class ImageService {
 		List<ImageAsset> expired = imageRepository.findAllByStatusAndCreatedAtBefore(
 			ImageStatus.TEMP, clock.instant().minus(tempRetention));
 		imageRepository.deleteAll(expired);
-		for (ImageAsset image : expired) deleteObjectAfterCommit(image.getStorageKey());
+		for (ImageAsset image : expired) deleteImageObjectsAfterCommit(image);
 	}
 
 	public static String contentUrl(UUID imageId) {
 		return "/api/v1/images/" + imageId + "/content";
 	}
 
+	public static String thumbnailUrl(UUID imageId) {
+		return "/api/v1/images/" + imageId + "/thumbnail";
+	}
+
+	private void deleteImageObjectsAfterCommit(ImageAsset image) {
+		deleteObjectAfterCommit(image.getStorageKey());
+		if (image.getThumbnailStorageKey() != null) deleteObjectAfterCommit(image.getThumbnailStorageKey());
+	}
+
 	private void deleteReplacedProfile(UUID previousId) {
 		if (previousId == null) return;
-		imageRepository.findById(previousId).ifPresent(previous -> {
+		imageRepository.findByIdForUpdate(previousId).ifPresent(previous -> {
 			imageRepository.delete(previous);
-			deleteObjectAfterCommit(previous.getStorageKey());
+			deleteImageObjectsAfterCommit(previous);
 		});
 	}
 
@@ -243,9 +329,13 @@ public class ImageService {
 		return imageRepository.findById(imageId).orElseThrow(this::notFound);
 	}
 
+	private ImageAsset requireImageForUpdate(UUID imageId) {
+		return imageRepository.findByIdForUpdate(imageId).orElseThrow(this::notFound);
+	}
+
 	private static ImageSnapshot snapshot(ImageAsset image) {
 		return new ImageSnapshot(
-			image.getId(), image.getPurpose(), contentUrl(image.getId()), image.getMimeType(),
+			image.getId(), image.getPurpose(), contentUrl(image.getId()), thumbnailUrl(image.getId()), image.getMimeType(),
 			image.getWidth(), image.getHeight(), image.getStatus());
 	}
 
@@ -264,15 +354,6 @@ public class ImageService {
 		}
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 			@Override public void afterCommit() { safeDeleteObject(key); }
-		});
-	}
-
-	private void deleteObjectAfterRollback(String key) {
-		if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
-		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-			@Override public void afterCompletion(int status) {
-				if (status != TransactionSynchronization.STATUS_COMMITTED) safeDeleteObject(key);
-			}
 		});
 	}
 

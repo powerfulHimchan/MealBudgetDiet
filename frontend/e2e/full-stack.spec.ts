@@ -120,6 +120,7 @@ test("two users share an expense with an image and see matching statistics", asy
   await expect(memberExpense).toBeVisible();
   const sharedThumbnail = memberExpense.locator("img.expense-thumbnail");
   await expect(sharedThumbnail).toBeVisible();
+  await expect(sharedThumbnail).toHaveAttribute("src", /\/api\/v1\/images\/.*\/thumbnail$/);
   await expect.poll(() => sharedThumbnail.evaluate((image: HTMLImageElement) =>
     image.complete && image.naturalWidth > 0)).toBe(true);
 

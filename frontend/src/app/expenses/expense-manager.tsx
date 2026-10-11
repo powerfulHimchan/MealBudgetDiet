@@ -44,9 +44,9 @@ type Expense = {
   createdAt: string;
   updatedAt: string;
 };
-type ExpenseImage = { id: string; contentUrl: string; sortOrder: number };
+type ExpenseImage = { id: string; contentUrl: string; thumbnailUrl?: string; sortOrder: number };
 type DraftImage = ExpenseImage & { temporary: boolean };
-type UploadedImage = { id: string; contentUrl: string; status: "TEMP"; purpose: "EXPENSE" };
+type UploadedImage = { id: string; contentUrl: string; thumbnailUrl?: string; status: "TEMP"; purpose: "EXPENSE" };
 type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean };
 type Filters = { from: string; to: string; categoryId: string; keyword: string };
 type CycleSettings = { budgetCycleUnit: BudgetCycleUnit; budgetCycleStartDay: number; budgetWeekStartDay: number };
@@ -672,7 +672,7 @@ export function ExpenseManager() {
                 {expenses.map((expense) => (
                   <li key={expense.id}>
                     {expense.images?.[0] ? (
-                      <Image alt="" className="expense-thumbnail" height={58} src={expense.images[0].contentUrl} unoptimized width={58} />
+                      <Image alt="" className="expense-thumbnail" height={58} src={expense.images[0].thumbnailUrl ?? expense.images[0].contentUrl} unoptimized width={58} />
                     ) : (
                       <div className="expense-date-box"><strong>{expense.spentOn.slice(8)}</strong><span>{expense.spentOn.slice(5, 7)}월</span></div>
                     )}
@@ -765,7 +765,7 @@ export function ExpenseManager() {
                   <ul className="expense-image-previews">
                     {draftImages.map((image, index) => (
                       <li key={image.id}>
-                        <Image alt={`첨부 이미지 ${index + 1}`} fill sizes="112px" src={image.contentUrl} unoptimized />
+                        <Image alt={`첨부 이미지 ${index + 1}`} fill sizes="112px" src={image.thumbnailUrl ?? image.contentUrl} unoptimized />
                         <span className="expense-image-order">{index + 1}</span>
                         <div>
                           <button aria-label="앞으로 이동" disabled={index === 0} onClick={() => moveDraftImage(index, -1)} type="button"><ArrowLeft size={15} /></button>

@@ -32,6 +32,9 @@ public class ImageAsset {
 	@Column(name = "storage_key", nullable = false, length = 500, unique = true)
 	private String storageKey;
 
+	@Column(name = "thumbnail_storage_key", length = 500, unique = true)
+	private String thumbnailStorageKey;
+
 	@Column(name = "mime_type", nullable = false, length = 50)
 	private String mimeType;
 
@@ -78,6 +81,10 @@ public class ImageAsset {
 		this.height = height;
 		this.status = ImageStatus.TEMP;
 	}
+
+	public void setThumbnailStorageKey(String key) { this.thumbnailStorageKey = key; }
+
+	public String getThumbnailStorageKey() { return thumbnailStorageKey; }
 
 	public void activate(Instant activatedAt) {
 		this.status = ImageStatus.ACTIVE;

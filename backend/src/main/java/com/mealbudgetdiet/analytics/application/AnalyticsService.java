@@ -100,7 +100,8 @@ public class AnalyticsService {
 				resultSet.getObject("id", UUID.class), resultSet.getLong("amount"),
 				resultSet.getObject("spent_on", LocalDate.class), resultSet.getString("category_name"),
 				resultSet.getString("merchant"), resultSet.getInt("version"),
-				imageId == null ? null : ImageService.contentUrl(imageId));
+				imageId == null ? null : ImageService.contentUrl(imageId),
+				imageId == null ? null : ImageService.thumbnailUrl(imageId));
 		}, ledgerId, from, to, recentSize);
 
 		return new DashboardSnapshot(
