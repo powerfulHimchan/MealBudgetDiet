@@ -46,6 +46,8 @@ class BudgetAnalyticsIntegrationTest {
 
 	@Test
 	void managesBudgetsAndBuildsDashboardStatisticsAndSafeCsv() throws Exception {
+		mockMvc.perform(get("/api/v1/expenses/initial")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/v1/statistics/initial")).andExpect(status().isUnauthorized());
 		Cookie adminSession = bootstrapAdmin();
 		Cookie memberSession = registerMember(adminSession);
 		String categoryId = firstCategoryId(adminSession);
@@ -227,6 +229,21 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.comparison.changeAmount").value(-130000))
 			.andExpect(jsonPath("$.comparison.samePoint").value(true));
 
+		mockMvc.perform(get("/api/v1/expenses/initial").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.cycleSettings.budgetCycleStartDay").value(25))
+			.andExpect(jsonPath("$.period.from").value("2026-09-25"))
+			.andExpect(jsonPath("$.period.to").value("2026-10-24"))
+			.andExpect(jsonPath("$.categories.length()").value(5))
+			.andExpect(jsonPath("$.page.items.length()").value(1))
+			.andExpect(jsonPath("$.page.items[0].merchant").value("시장"));
+		mockMvc.perform(get("/api/v1/statistics/initial").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.cycleSettings.budgetCycleStartDay").value(25))
+			.andExpect(jsonPath("$.statistics.period.from").value("2026-09-25"))
+			.andExpect(jsonPath("$.statistics.totalAmount").value(50000))
+			.andExpect(jsonPath("$.statistics.comparison.currentAmount").value(50000));
+
 		mockMvc.perform(delete("/api/v1/budgets/2026-09")
 				.with(csrf())
 				.cookie(adminSession)
@@ -271,6 +288,35 @@ class BudgetAnalyticsIntegrationTest {
 				.param("from", "2026-10-08").param("to", "2026-10-09"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.budget.amount").value(57143));
+
+		createExpense(memberSession, categoryId, 60000, "2026-10-09", "점심", "주간 내역");
+		var initialPage = mockMvc.perform(get("/api/v1/expenses/initial").cookie(memberSession).param("size", "1"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.cycleSettings.budgetCycleUnit").value("WEEKLY"))
+			.andExpect(jsonPath("$.cycleSettings.budgetWeekStartDay").value(4))
+			.andExpect(jsonPath("$.period.from").value("2026-10-08"))
+			.andExpect(jsonPath("$.period.to").value("2026-10-14"))
+			.andExpect(jsonPath("$.page.items.length()").value(1))
+			.andExpect(jsonPath("$.page.items[0].merchant").value("점심"))
+			.andExpect(jsonPath("$.page.hasNext").value(true))
+			.andExpect(jsonPath("$.page.nextCursor").isString())
+			.andReturn();
+		String initialCursor = JsonPath.read(initialPage.getResponse().getContentAsString(), "$.page.nextCursor");
+		mockMvc.perform(get("/api/v1/expenses").cookie(memberSession)
+				.param("from", "2026-10-08").param("to", "2026-10-14").param("size", "1").param("cursor", initialCursor))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items.length()").value(1))
+			.andExpect(jsonPath("$.items[0].merchant").value("시장"))
+			.andExpect(jsonPath("$.hasNext").value(false));
+		mockMvc.perform(get("/api/v1/expenses/initial").cookie(memberSession).param("size", "0"))
+			.andExpect(status().isBadRequest());
+		mockMvc.perform(get("/api/v1/statistics/initial").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.cycleSettings.budgetCycleUnit").value("WEEKLY"))
+			.andExpect(jsonPath("$.statistics.period.from").value("2026-10-08"))
+			.andExpect(jsonPath("$.statistics.period.to").value("2026-10-14"))
+			.andExpect(jsonPath("$.statistics.totalAmount").value(110000))
+			.andExpect(jsonPath("$.statistics.comparison.currentAmount").value(110000));
 
 		mockMvc.perform(get("/api/v1/dashboard").cookie(memberSession)
 				.param("yearMonth", "2026-09"))

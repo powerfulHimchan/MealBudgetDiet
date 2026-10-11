@@ -877,6 +877,12 @@ version 충돌 시 삭제하지 않고 HTTP 409를 반환한다.
 
 삭제 성공 후 연결된 이미지 행과 Object Storage 객체도 영구 삭제한다.
 
+### 7.6 식비 화면 초기 조회
+
+`GET /api/v1/expenses/initial?size=20`은 인증된 사용자의 장부 설정과 서버의 서울 시간으로 현재 주기를 계산한다. `size`는 1~100이며 기본값은 20이다.
+
+응답의 `cycleSettings`에는 `budgetCycleUnit`, `budgetCycleStartDay`, `budgetWeekStartDay`가 포함된다. `period`에는 현재 주기의 `yearMonth`, `from`, `to`, `categories`에는 카테고리 목록, `page`에는 기존 식비 목록 응답의 `items`, `nextCursor`, `hasNext`가 포함된다. 다음 페이지와 검색은 `period.from/to` 및 커서를 기존 식비 목록 API에 전달한다.
+
 ## 8. 카테고리 API
 
 ### 8.1 목록
@@ -1130,6 +1136,12 @@ GET /api/v1/statistics?yearMonth=2026-09
 이전 주기가 더 짧으면 이전 기간의 마지막 날짜에서 끝내고 다음 주기로 넘어가지 않는다. 아직 시작하지 않은 기간은 `available: false`, `currentPeriod: null`로 반환하며 비교 금액과 차이는 0, 증감률은 `null`이다. 선택 기간 전체의 총 지출·예산·일별 추이·카테고리 비중과 CSV 범위는 그대로 유지한다.
 
 `yearMonth`와 `from`/`to`는 함께 보낼 수 없다. `yearMonth`는 월간 설정에서만 사용할 수 있다. `from`/`to` 직접 지정은 입력한 달력 날짜를 그대로 사용하고, 여러 월간/주간 예산 주기에 걸친 기간은 각 주기에 포함된 날짜 비율로 예산을 일할 계산한다.
+
+### 11.1 통계 화면 초기 조회
+
+`GET /api/v1/statistics/initial`은 인증된 사용자의 장부 설정과 서버의 서울 시간으로 현재 주기를 계산한다. 응답의 `cycleSettings`는 식비 초기 조회와 동일한 주기 설정이며, `statistics`는 현재 주기의 기존 통계 응답이다. 이후 기간 선택은 기존 `/api/v1/statistics` API를 사용한다.
+
+통계의 전체 합계와 비교 시점까지의 지출은 일별 집계 결과를 재사용한다. 미래 날짜 지출은 전체 합계에 포함되며, 날짜 대비 비교에는 오늘까지의 지출만 포함된다.
 
 ## 12. CSV 내보내기
 

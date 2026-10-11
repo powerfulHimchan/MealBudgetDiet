@@ -97,11 +97,12 @@ export function StatisticsView() {
 
   useEffect(() => {
     let active = true;
-    request<{ budgetCycleStartDay: number; budgetCycleUnit: BudgetCycleUnit; budgetWeekStartDay: number }>("/api/v1/ledger")
-      .then(async (ledger) => {
-        const nextRange = presetRange("current", ledger.budgetCycleStartDay, ledger.budgetCycleUnit, ledger.budgetWeekStartDay);
-        const params = new URLSearchParams(nextRange);
-        const statistics = await request<StatisticsData>(`/api/v1/statistics?${params}`);
+    const controller = new AbortController();
+    request<{ cycleSettings: { budgetCycleStartDay: number; budgetCycleUnit: BudgetCycleUnit; budgetWeekStartDay: number }; statistics: StatisticsData }>(
+      "/api/v1/statistics/initial", { signal: controller.signal },
+    )
+      .then(({ cycleSettings: ledger, statistics }) => {
+        const nextRange = statistics.period;
         if (!active) return;
         setBudgetCycleStartDay(ledger.budgetCycleStartDay);
         setCycleUnit(ledger.budgetCycleUnit);
@@ -112,7 +113,7 @@ export function StatisticsView() {
       })
       .catch((reason: Error) => active && setError(reason.message))
       .finally(() => active && setIsLoading(false));
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, [initialRange]);
 
   function selectPreset(key: Exclude<RangeKey, "custom">) {
@@ -159,7 +160,7 @@ export function StatisticsView() {
       <section className="range-panel" aria-label="통계 기간 선택">
         <div className="range-presets">
           {rangeButtons.map((button) => (
-            <button className={selectedRange === button.key ? "is-active" : undefined} key={button.key} onClick={() => selectPreset(button.key)} type="button">
+            <button className={selectedRange === button.key ? "is-active" : undefined} key={button.key} disabled={isLoading} onClick={() => selectPreset(button.key)} type="button">
               {button.label}
             </button>
           ))}
@@ -167,7 +168,7 @@ export function StatisticsView() {
         <form className="custom-range" onSubmit={submitCustom}>
           <label><span>시작일</span><CalendarPicker ariaLabel="통계 시작일" onChange={(from) => setDraft({ ...draft, from })} value={draft.from} /></label>
           <label><span>종료일</span><CalendarPicker ariaLabel="통계 종료일" onChange={(to) => setDraft({ ...draft, to })} value={draft.to} /></label>
-          <button className="dark-button" type="submit">조회</button>
+          <button className="dark-button" disabled={isLoading} type="submit">조회</button>
         </form>
       </section>
 

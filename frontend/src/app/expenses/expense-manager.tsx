@@ -124,19 +124,17 @@ export function ExpenseManager() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      request<{ items: Category[] }>("/api/v1/categories"),
-      request<CycleSettings>("/api/v1/ledger"),
-    ])
-      .then(async ([categoryData, ledger]) => {
-        const cycle = cycleForDate(todayInSeoul(), ledger.budgetCycleUnit, ledger.budgetCycleStartDay, ledger.budgetWeekStartDay);
+    const controller = new AbortController();
+    request<{ cycleSettings: CycleSettings; period: BudgetCycleRange; categories: Category[]; page: ExpensePage }>(
+      "/api/v1/expenses/initial?size=20", { signal: controller.signal },
+    )
+      .then(({ cycleSettings: ledger, period: cycle, categories: categoryItems, page: expenseData }) => {
         const nextFilters = { ...initialFilters, from: cycle.from, to: cycle.to };
-        const expenseData = await request<ExpensePage>(expenseQuery(nextFilters));
         if (!active) return;
         setCycleSettings(ledger);
         setFilters(nextFilters);
         setAppliedFilters(nextFilters);
-        setCategories(categoryData.items);
+        setCategories(categoryItems);
         setExpenses(expenseData.items);
         setNextCursor(expenseData.nextCursor);
         setHasNext(expenseData.hasNext);
@@ -144,7 +142,7 @@ export function ExpenseManager() {
           setDraft({
             amount: "",
             spentOn: todayInSeoul(),
-            categoryId: categoryData.items[0]?.id ?? "",
+            categoryId: categoryItems[0]?.id ?? "",
             merchant: "",
             memo: "",
           });
@@ -153,7 +151,7 @@ export function ExpenseManager() {
       })
       .catch((reason: Error) => active && setError(reason.message))
       .finally(() => active && setIsLoading(false));
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, []);
 
   const loadedTotal = useMemo(
