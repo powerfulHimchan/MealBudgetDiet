@@ -238,7 +238,7 @@ test("shows same-point comparison dates and amounts separately from full-period 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.setFixedTime(new Date("2026-10-09T12:00:00+09:00"));
   await mockExpenseApis(page);
-  await page.route("**/api/v1/statistics**", (route) => {
+  await page.route(/\/api\/v1\/statistics(?:\/initial)?(?:\?.*)?$/, (route) => {
     const previous = new URL(route.request().url()).searchParams.get("from") === "2026-09-01";
     const statistics = {
       period: { from: previous ? "2026-09-01" : "2026-10-01", to: previous ? "2026-09-30" : "2026-10-31" },
@@ -271,7 +271,7 @@ test("shows same-point comparison dates and amounts separately from full-period 
 test("shows an honest comparison message when the previous amount is zero or the period has not started", async ({ page }) => {
   await mockExpenseApis(page);
   let available = true;
-  await page.route("**/api/v1/statistics**", (route) => {
+  await page.route(/\/api\/v1\/statistics(?:\/initial)?(?:\?.*)?$/, (route) => {
     const statistics = {
       period: { from: "2026-10-01", to: "2026-10-31" }, totalAmount: 12000,
       budget: { amount: 500000, usageRate: 2.4 },

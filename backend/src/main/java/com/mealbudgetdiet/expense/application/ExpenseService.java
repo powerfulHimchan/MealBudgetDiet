@@ -78,6 +78,9 @@ public class ExpenseService {
 
 	@Transactional(readOnly = true)
 	public InitialExpenses initialExpenses(UUID userId, int size) {
+		if (size < 1 || size > 100) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PAGE_SIZE", "목록 크기는 1~100이어야 합니다.");
+		}
 		UUID ledgerId = ledgerId(userId);
 		var ledger = ledgerAccessService.requireLedger(ledgerId);
 		BudgetCycle cycle = BudgetCycle.containing(LocalDate.now(clock.withZone(ZoneId.of("Asia/Seoul"))),

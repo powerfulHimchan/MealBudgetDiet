@@ -54,7 +54,7 @@ public class ExpenseController {
 	@GetMapping("/initial")
 	InitialExpensesResponse initialExpenses(
 		@AuthenticationPrincipal MealBudgetPrincipal principal,
-		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+		@RequestParam(defaultValue = "20") int size
 	) {
 		var initial = expenseService.initialExpenses(principal.id(), size);
 		return new InitialExpensesResponse(initial.cycleSettings(), initial.period(), initial.categories(),

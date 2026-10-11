@@ -308,8 +308,11 @@ class BudgetAnalyticsIntegrationTest {
 			.andExpect(jsonPath("$.items.length()").value(1))
 			.andExpect(jsonPath("$.items[0].merchant").value("시장"))
 			.andExpect(jsonPath("$.hasNext").value(false));
-		mockMvc.perform(get("/api/v1/expenses/initial").cookie(memberSession).param("size", "0"))
-			.andExpect(status().isBadRequest());
+		for (String invalidSize : new String[] { "0", "101" }) {
+			mockMvc.perform(get("/api/v1/expenses/initial").cookie(memberSession).param("size", invalidSize))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_PAGE_SIZE"));
+		}
 		mockMvc.perform(get("/api/v1/statistics/initial").cookie(memberSession))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.cycleSettings.budgetCycleUnit").value("WEEKLY"))
