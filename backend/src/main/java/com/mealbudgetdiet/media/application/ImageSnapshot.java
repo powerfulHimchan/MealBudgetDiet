@@ -9,6 +9,7 @@ public record ImageSnapshot(
 	UUID id,
 	ImagePurpose purpose,
 	String contentUrl,
+	String thumbnailUrl,
 	String mimeType,
 	int width,
 	int height,

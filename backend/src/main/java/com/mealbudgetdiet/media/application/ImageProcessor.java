@@ -22,9 +22,22 @@ import com.mealbudgetdiet.shared.api.ApiException;
 public class ImageProcessor {
 
 	public static final long MAX_UPLOAD_BYTES = 5L * 1024 * 1024;
+	public static final int THUMBNAIL_DIMENSION = 240;
 	private static final long MAX_SOURCE_PIXELS = 40_000_000L;
 
 	public ProcessedImage process(byte[] source, ImagePurpose purpose) {
+		return render(validatedSource(source), purpose == ImagePurpose.PROFILE ? 512 : 1600);
+	}
+
+	public ImageVariants processWithThumbnail(byte[] source, ImagePurpose purpose) {
+		BufferedImage decoded = validatedSource(source);
+		return new ImageVariants(render(decoded, purpose == ImagePurpose.PROFILE ? 512 : 1600),
+			render(decoded, THUMBNAIL_DIMENSION));
+	}
+
+	public record ImageVariants(ProcessedImage original, ProcessedImage thumbnail) { }
+
+	private BufferedImage validatedSource(byte[] source) {
 		if (source.length == 0) {
 			throw unsupported();
 		}
@@ -35,11 +48,17 @@ public class ImageProcessor {
 			throw unsupported();
 		}
 
-		BufferedImage decoded = decode(source);
-		int maxDimension = purpose == ImagePurpose.PROFILE ? 512 : 1600;
+		return decode(source);
+	}
+
+	public ProcessedImage thumbnail(byte[] source) {
+		// Stored originals have already passed upload validation and may encode above 5 MB.
+		return render(decode(source), THUMBNAIL_DIMENSION);
+	}
+
+	private ProcessedImage render(BufferedImage decoded, int maxDimension) {
 		BufferedImage rendered = resizeAndStripMetadata(decoded, maxDimension);
-		byte[] encoded = encodeWebp(rendered);
-		return new ProcessedImage(encoded, rendered.getWidth(), rendered.getHeight());
+		return new ProcessedImage(encodeWebp(rendered), rendered.getWidth(), rendered.getHeight());
 	}
 
 	private BufferedImage decode(byte[] source) {

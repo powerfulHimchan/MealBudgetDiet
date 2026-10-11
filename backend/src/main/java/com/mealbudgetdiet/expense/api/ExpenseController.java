@@ -178,9 +178,9 @@ public class ExpenseController {
 		}
 	}
 
-	private record ImageResponse(UUID id, String contentUrl, int sortOrder) {
+	private record ImageResponse(UUID id, String contentUrl, String thumbnailUrl, int sortOrder) {
 		static ImageResponse from(ExpenseImageSnapshot snapshot) {
-			return new ImageResponse(snapshot.id(), snapshot.contentUrl(), snapshot.sortOrder());
+			return new ImageResponse(snapshot.id(), snapshot.contentUrl(), snapshot.thumbnailUrl(), snapshot.sortOrder());
 		}
 	}
 

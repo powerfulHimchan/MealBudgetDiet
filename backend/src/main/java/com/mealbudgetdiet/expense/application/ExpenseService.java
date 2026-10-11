@@ -20,6 +20,7 @@ import com.mealbudgetdiet.expense.infrastructure.ExpenseRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
 import com.mealbudgetdiet.notification.application.BudgetAlertService;
 import com.mealbudgetdiet.media.application.ImageService;
+import com.mealbudgetdiet.media.application.ExpenseImageSnapshot;
 import com.mealbudgetdiet.shared.api.ApiException;
 
 @Service
@@ -111,7 +112,10 @@ public class ExpenseService {
 			PageRequest.of(0, size + 1)
 		);
 		boolean hasNext = found.size() > size;
-		var items = found.stream().limit(size).map(this::snapshot).toList();
+		var pageExpenses = found.stream().limit(size).toList();
+		var images = imageService.expenseImages(pageExpenses.stream().map(Expense::getId).toList());
+		var items = pageExpenses.stream()
+			.map(expense -> snapshot(expense, images.getOrDefault(expense.getId(), List.of()))).toList();
 		String nextCursor = hasNext ? encodeCursor(found.get(size - 1)) : null;
 		return new ExpensePage(items, nextCursor, hasNext);
 	}
@@ -175,6 +179,10 @@ public class ExpenseService {
 	}
 
 	private ExpenseSnapshot snapshot(Expense expense) {
+		return snapshot(expense, imageService.expenseImages(expense.getId()));
+	}
+
+	private ExpenseSnapshot snapshot(Expense expense, List<ExpenseImageSnapshot> images) {
 		return new ExpenseSnapshot(
 			expense.getId(),
 			expense.getAmount(),
@@ -182,7 +190,7 @@ public class ExpenseService {
 			expense.getCategory() == null ? null : CategoryService.snapshot(expense.getCategory()),
 			expense.getMerchant(),
 			expense.getMemo(),
-			imageService.expenseImages(expense.getId()),
+			images,
 			expense.getVersion(),
 			expense.getCreatedAt(),
 			expense.getUpdatedAt()

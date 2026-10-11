@@ -1,5 +1,7 @@
 package com.mealbudgetdiet;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.net.URI;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -8,6 +10,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -29,10 +32,12 @@ public class TestcontainersConfiguration {
 		var objects = new ConcurrentHashMap<String, byte[]>();
 		return new ImageObjectStore() {
 			@Override public void put(String key, byte[] content, String contentType) {
+				assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
 				objects.put(key, content.clone());
 			}
 
 			@Override public byte[] get(String key) {
+				assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
 				byte[] content = objects.get(key);
 				return content == null ? null : content.clone();
 			}

@@ -29,6 +29,7 @@ type DashboardData = {
     merchant: string | null;
     version: number;
     imageUrl: string | null;
+    thumbnailUrl?: string | null;
   }>;
 };
 
@@ -119,7 +120,7 @@ export function Dashboard() {
                 {data.recentExpenses.map((expense) => (
                   <li key={expense.id}>
                     {expense.imageUrl ? (
-                      <Image alt="" className="expense-thumbnail" height={58} src={expense.imageUrl} unoptimized width={58} />
+                      <Image alt="" className="expense-thumbnail" height={58} src={expense.thumbnailUrl ?? expense.imageUrl} unoptimized width={58} />
                     ) : (
                       <div className="expense-date-box"><strong>{expense.spentOn.slice(8)}</strong><span>{expense.spentOn.slice(5, 7)}월</span></div>
                     )}

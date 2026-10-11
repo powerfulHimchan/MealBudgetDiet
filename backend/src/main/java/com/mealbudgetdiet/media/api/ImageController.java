@@ -52,7 +52,19 @@ public class ImageController {
 		@AuthenticationPrincipal MealBudgetPrincipal principal,
 		@PathVariable UUID imageId
 	) {
-		var image = imageService.content(principal.id(), imageId);
+		return imageResponse(principal, imageId, false);
+	}
+
+	@GetMapping("/images/{imageId}/thumbnail")
+	ResponseEntity<byte[]> thumbnail(
+		@AuthenticationPrincipal MealBudgetPrincipal principal,
+		@PathVariable UUID imageId
+	) {
+		return imageResponse(principal, imageId, true);
+	}
+
+	private ResponseEntity<byte[]> imageResponse(MealBudgetPrincipal principal, UUID imageId, boolean thumbnail) {
+		var image = imageService.content(principal.id(), imageId, thumbnail);
 		return ResponseEntity.ok()
 			.contentType(MediaType.parseMediaType(image.mimeType()))
 			.cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePrivate())
