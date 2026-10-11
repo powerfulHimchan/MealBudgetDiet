@@ -61,6 +61,11 @@ public class AnalyticsController {
 		long budget, long spent, long remaining, java.math.BigDecimal usageRate, DashboardStatus status) {
 	}
 
+	@GetMapping("/api/v1/statistics/initial")
+	AnalyticsService.InitialStatistics initialStatistics(@AuthenticationPrincipal MealBudgetPrincipal principal) {
+		return analyticsService.initialStatistics(principal.id());
+	}
+
 	@GetMapping("/api/v1/statistics")
 	StatisticsSnapshot statistics(
 		@AuthenticationPrincipal MealBudgetPrincipal principal,

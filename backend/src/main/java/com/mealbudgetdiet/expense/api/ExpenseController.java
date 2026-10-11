@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mealbudgetdiet.budget.domain.BudgetCycle;
+import com.mealbudgetdiet.ledger.application.BudgetCycleSettings;
 import com.mealbudgetdiet.expense.application.CategorySnapshot;
 import com.mealbudgetdiet.expense.application.ExpensePage;
 import com.mealbudgetdiet.expense.application.ExpenseService;
@@ -47,6 +49,23 @@ public class ExpenseController {
 
 	public ExpenseController(ExpenseService expenseService) {
 		this.expenseService = expenseService;
+	}
+
+	@GetMapping("/initial")
+	InitialExpensesResponse initialExpenses(
+		@AuthenticationPrincipal MealBudgetPrincipal principal,
+		@RequestParam(defaultValue = "20") int size
+	) {
+		var initial = expenseService.initialExpenses(principal.id(), size);
+		return new InitialExpensesResponse(initial.cycleSettings(), initial.period(), initial.categories(),
+			ExpensePageResponse.from(initial.page()));
+	}
+
+	private record InitialExpensesResponse(
+		BudgetCycleSettings cycleSettings,
+		BudgetCycle period,
+		List<CategorySnapshot> categories, ExpensePageResponse page
+	) {
 	}
 
 	@GetMapping

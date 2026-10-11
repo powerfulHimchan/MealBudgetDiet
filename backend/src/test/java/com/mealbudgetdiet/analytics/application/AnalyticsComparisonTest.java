@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -16,6 +18,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
 import com.mealbudgetdiet.budget.application.BudgetService;
 import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
@@ -108,6 +111,26 @@ class AnalyticsComparisonTest {
 		assertThat(result.comparison().changeRate()).isNull();
 	}
 
+	@Test
+	void resolvesInitialMonthlyPeriodAcrossLeapFebruaryUsingTheServerClock() {
+		var ledger = new Ledger("장부", 500000);
+		ledger.changeBudgetCycleStartDay(31);
+		var result = statistics(ledger, null, null, "2028-02-29T15:00:00Z", Map.of(date("2028-02-29"), 2000L));
+		assertThat(result.period().from()).isEqualTo(date("2028-02-29"));
+		assertThat(result.period().to()).isEqualTo(date("2028-03-30"));
+		assertThat(result.totalAmount()).isEqualTo(2000);
+	}
+
+	@Test
+	void resolvesInitialWeeklyPeriodAtSeoulMidnight() {
+		var ledger = new Ledger("장부", 500000);
+		ledger.changeBudgetCycle(BudgetCycleUnit.WEEKLY, 1, 4, 200000L);
+		var result = statistics(ledger, null, null, "2026-10-07T15:00:00Z", Map.of(date("2026-10-08"), 2000L));
+		assertThat(result.period().from()).isEqualTo(date("2026-10-08"));
+		assertThat(result.period().to()).isEqualTo(date("2026-10-14"));
+		assertThat(result.comparison().currentPeriod().to()).isEqualTo(date("2026-10-08"));
+	}
+
 	private StatisticsSnapshot statistics(Ledger ledger, String from, String to, String instant, Map<LocalDate, Long> expenses) {
 		var access = mock(LedgerAccessService.class);
 		var budget = mock(BudgetService.class);
@@ -123,9 +146,24 @@ class AnalyticsComparisonTest {
 				return expenses.entrySet().stream().filter(entry -> !entry.getKey().isBefore(rangeFrom) && !entry.getKey().isAfter(rangeTo))
 					.mapToLong(Map.Entry::getValue).sum();
 			});
+		when(jdbc.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<StatisticsSnapshot.DailyAmount>>any(),
+			eq(ledger.getId()), any(LocalDate.class), any(LocalDate.class))).thenAnswer(invocation -> {
+			if (!invocation.<String>getArgument(0).contains("group by spent_on")) return java.util.List.of();
+			LocalDate rangeFrom = invocation.getArgument(3);
+			LocalDate rangeTo = invocation.getArgument(4);
+			return expenses.entrySet().stream()
+				.filter(entry -> !entry.getKey().isBefore(rangeFrom) && !entry.getKey().isAfter(rangeTo))
+				.sorted(Map.Entry.comparingByKey())
+				.map(entry -> new StatisticsSnapshot.DailyAmount(entry.getKey(), entry.getValue())).toList();
+		});
 		var service = new AnalyticsService(access, budget, mock(CategoryRepository.class), jdbc,
 			Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
-		return service.statistics(userId, null, date(from), date(to));
+		var result = from == null ? service.initialStatistics(userId).statistics()
+			: service.statistics(userId, null, date(from), date(to));
+		// Only the previous period requires a SUM query; current totals reuse the daily rows.
+		verify(jdbc, times(result.comparison().available() ? 1 : 0)).queryForObject(anyString(), eq(Long.class),
+			eq(ledger.getId()), any(LocalDate.class), any(LocalDate.class));
+		return result;
 	}
 
 	private static LocalDate date(String value) {

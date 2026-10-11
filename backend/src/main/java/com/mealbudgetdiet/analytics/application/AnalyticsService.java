@@ -28,6 +28,7 @@ import com.mealbudgetdiet.budget.domain.BudgetCycle;
 import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
 import com.mealbudgetdiet.expense.infrastructure.CategoryRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
+import com.mealbudgetdiet.ledger.application.BudgetCycleSettings;
 import com.mealbudgetdiet.ledger.domain.Ledger;
 import com.mealbudgetdiet.media.application.ImageService;
 import com.mealbudgetdiet.shared.api.ApiException;
@@ -111,6 +112,17 @@ public class AnalyticsService {
 	}
 
 	@Transactional(readOnly = true)
+	public InitialStatistics initialStatistics(UUID userId) {
+		Ledger ledger = ledger(userId);
+		BudgetCycle cycle = BudgetCycle.containing(LocalDate.now(clock.withZone(SERVICE_ZONE)),
+			ledger.getBudgetCycleUnit(), ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
+		return new InitialStatistics(BudgetCycleSettings.from(ledger), statistics(ledger, cycle.from(), cycle.to()));
+	}
+
+	public record InitialStatistics(BudgetCycleSettings cycleSettings, StatisticsSnapshot statistics) {
+	}
+
+	@Transactional(readOnly = true)
 	public StatisticsSnapshot statistics(
 		UUID userId,
 		YearMonth requestedCycle,
@@ -137,10 +149,11 @@ public class AnalyticsService {
 			from = requestedFrom;
 			to = requestedTo;
 		}
+		return statistics(ledger, from, to);
+	}
+
+	private StatisticsSnapshot statistics(Ledger ledger, LocalDate from, LocalDate to) {
 		UUID ledgerId = ledger.getId();
-		long total = totalAmount(ledgerId, from, to);
-		long budget = budgetService.proratedBudget(ledgerId, from, to);
-		var comparison = comparison(ledger, from, to, total);
 
 		List<DailyAmount> daily = jdbcTemplate.query("""
 			select spent_on, sum(amount) total_amount
@@ -151,6 +164,10 @@ public class AnalyticsService {
 			""", (resultSet, rowNumber) -> new DailyAmount(
 				resultSet.getObject("spent_on", LocalDate.class), resultSet.getLong("total_amount")),
 			ledgerId, from, to);
+
+		long total = daily.stream().mapToLong(DailyAmount::amount).reduce(0, Math::addExact);
+		long budget = budgetService.proratedBudget(ledgerId, from, to);
+		var comparison = comparison(ledger, from, to, total, daily);
 
 		List<CategoryAmount> categories = jdbcTemplate.query("""
 			select e.category_id, coalesce(c.name, '분류 없음') category_name, sum(e.amount) total_amount
@@ -267,7 +284,7 @@ public class AnalyticsService {
 		}
 	}
 
-	private Comparison comparison(Ledger ledger, LocalDate from, LocalDate to, long total) {
+	private Comparison comparison(Ledger ledger, LocalDate from, LocalDate to, long total, List<DailyAmount> daily) {
 		// Resolve the full comparison window before clipping, preserving budget-cycle boundaries.
 		var previous = comparisonPeriod(ledger, from, to);
 		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
@@ -283,7 +300,9 @@ public class AnalyticsService {
 			// A shorter previous month ends at its boundary rather than spilling into the next cycle.
 			if (samePointTo.isBefore(previousTo)) previousTo = samePointTo;
 		}
-		long currentTotal = samePoint ? totalAmount(ledger.getId(), from, currentTo) : total;
+		long currentTotal = samePoint
+			? daily.stream().filter(day -> !day.date().isAfter(currentTo)).mapToLong(DailyAmount::amount).reduce(0, Math::addExact)
+			: total;
 		long previousTotal = totalAmount(ledger.getId(), previous.from(), previousTo);
 		long changeAmount = currentTotal - previousTotal;
 		BigDecimal changeRate = previousTotal == 0 ? null : percentage(changeAmount, previousTotal);

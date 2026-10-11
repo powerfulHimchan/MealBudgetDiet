@@ -2,6 +2,8 @@ package com.mealbudgetdiet.expense.application;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.time.LocalDate;
 import java.util.Base64;
 import java.util.Locale;
@@ -18,6 +20,8 @@ import com.mealbudgetdiet.expense.domain.Expense;
 import com.mealbudgetdiet.expense.infrastructure.CategoryRepository;
 import com.mealbudgetdiet.expense.infrastructure.ExpenseRepository;
 import com.mealbudgetdiet.ledger.application.LedgerAccessService;
+import com.mealbudgetdiet.ledger.application.BudgetCycleSettings;
+import com.mealbudgetdiet.budget.domain.BudgetCycle;
 import com.mealbudgetdiet.notification.application.BudgetAlertService;
 import com.mealbudgetdiet.media.application.ImageService;
 import com.mealbudgetdiet.media.application.ExpenseImageSnapshot;
@@ -35,19 +39,22 @@ public class ExpenseService {
 	private final CategoryRepository categoryRepository;
 	private final BudgetAlertService budgetAlertService;
 	private final ImageService imageService;
+	private final Clock clock;
 
 	public ExpenseService(
 		LedgerAccessService ledgerAccessService,
 		ExpenseRepository expenseRepository,
 		CategoryRepository categoryRepository,
 		BudgetAlertService budgetAlertService,
-		ImageService imageService
+		ImageService imageService,
+		Clock clock
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.expenseRepository = expenseRepository;
 		this.categoryRepository = categoryRepository;
 		this.budgetAlertService = budgetAlertService;
 		this.imageService = imageService;
+		this.clock = clock;
 	}
 
 	@Transactional
@@ -70,6 +77,25 @@ public class ExpenseService {
 	}
 
 	@Transactional(readOnly = true)
+	public InitialExpenses initialExpenses(UUID userId, int size) {
+		if (size < 1 || size > 100) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PAGE_SIZE", "목록 크기는 1~100이어야 합니다.");
+		}
+		UUID ledgerId = ledgerId(userId);
+		var ledger = ledgerAccessService.requireLedger(ledgerId);
+		BudgetCycle cycle = BudgetCycle.containing(LocalDate.now(clock.withZone(ZoneId.of("Asia/Seoul"))),
+			ledger.getBudgetCycleUnit(), ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
+		var categories = categoryRepository.findAllByLedgerIdOrderBySortOrderAscNameAsc(ledgerId).stream()
+			.map(CategoryService::snapshot).toList();
+		return new InitialExpenses(BudgetCycleSettings.from(ledger), cycle, categories,
+			searchInLedger(ledgerId, cycle.from(), cycle.to(), null, false, null, size, null));
+	}
+
+	public record InitialExpenses(BudgetCycleSettings cycleSettings, BudgetCycle period,
+		List<CategorySnapshot> categories, ExpensePage page) {
+	}
+
+	@Transactional(readOnly = true)
 	public ExpensePage search(
 		UUID userId,
 		LocalDate from,
@@ -80,6 +106,11 @@ public class ExpenseService {
 		int size,
 		String cursorValue
 	) {
+		return searchInLedger(ledgerId(userId), from, to, categoryId, uncategorized, keyword, size, cursorValue);
+	}
+
+	private ExpensePage searchInLedger(UUID ledgerId, LocalDate from, LocalDate to, UUID categoryId,
+		boolean uncategorized, String keyword, int size, String cursorValue) {
 		if (from != null && to != null && from.isAfter(to)) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_DATE_RANGE", "시작일은 종료일보다 늦을 수 없습니다.");
 		}
@@ -88,7 +119,6 @@ public class ExpenseService {
 				HttpStatus.BAD_REQUEST, "INVALID_CATEGORY_FILTER", "카테고리와 분류 없음 필터를 동시에 사용할 수 없습니다.");
 		}
 
-		UUID ledgerId = ledgerId(userId);
 		if (categoryId != null) {
 			requireCategory(categoryId, ledgerId);
 		}
