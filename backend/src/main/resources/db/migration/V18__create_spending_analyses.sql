@@ -1,0 +1,20 @@
+CREATE TABLE spending_analyses (
+    ledger_id uuid NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
+    period_from date NOT NULL,
+    period_to date NOT NULL,
+    status varchar(20) NOT NULL,
+    claim_token uuid,
+    lease_expires_at timestamptz,
+    summary varchar(120),
+    model varchar(100),
+    input_tokens integer,
+    output_tokens integer,
+    analyzed_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT current_timestamp,
+    updated_at timestamptz NOT NULL DEFAULT current_timestamp,
+    PRIMARY KEY (ledger_id, period_from, period_to),
+    CONSTRAINT ck_spending_analysis_period CHECK (period_from <= period_to),
+    CONSTRAINT ck_spending_analysis_status CHECK (status IN ('PROCESSING', 'COMPLETED', 'FAILED')),
+    CONSTRAINT ck_spending_analysis_claim CHECK (status <> 'PROCESSING' OR (claim_token IS NOT NULL AND lease_expires_at IS NOT NULL)),
+    CONSTRAINT ck_spending_analysis_result CHECK (status <> 'COMPLETED' OR (summary IS NOT NULL AND btrim(summary) <> '' AND analyzed_at IS NOT NULL))
+);

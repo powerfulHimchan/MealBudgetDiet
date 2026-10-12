@@ -11,7 +11,8 @@ public record StatisticsSnapshot(
 	Budget budget,
 	Comparison comparison,
 	List<DailyAmount> daily,
-	List<CategoryAmount> categories
+	List<CategoryAmount> categories,
+	SpendingAnalysisSnapshot spendingAnalysis
 ) {
 	public record Period(LocalDate from, LocalDate to) {
 	}

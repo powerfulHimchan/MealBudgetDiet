@@ -292,6 +292,57 @@ test("shows an honest comparison message when the previous amount is zero or the
   await expect(comparison).not.toContainText("12,000원");
 });
 
+test("saves a completed-cycle spending analysis and reloads it without another AI request", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.setFixedTime(new Date("2026-10-12T12:00:00+09:00"));
+  await mockExpenseApis(page);
+  let saved: { eligible: boolean; status: string; text: string | null; analyzedAt: string | null } | null = null;
+  let attempts = 0;
+  const summary = "외식 비중이 높고 예산 사용률은 안정적입니다. 다음 주기에는 외식 횟수를 미리 정하고 장보기 계획을 세워 예산을 유지해 보세요.";
+  await page.route(/\/api\/v1\/statistics(?:\/initial)?(?:\?.*)?$/, (route) => {
+    const url = new URL(route.request().url());
+    const previous = url.searchParams.get("from") === "2026-09-01";
+    const statistics = { period: { from: previous ? "2026-09-01" : "2026-10-01", to: previous ? "2026-09-30" : "2026-10-31" },
+      totalAmount: 120000, budget: { amount: 500000, usageRate: 24 },
+      comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 100000, changeAmount: 20000, changeRate: 20 },
+      daily: [], categories: [], spendingAnalysis: previous ? saved ?? { eligible: true, status: "NOT_ANALYZED", text: null, analyzedAt: null }
+        : { eligible: false, status: "UNAVAILABLE", text: null, analyzedAt: null } };
+    return route.fulfill({ json: url.pathname.endsWith("/initial")
+      ? { cycleSettings: { budgetCycleUnit: "MONTHLY", budgetCycleStartDay: 1, budgetWeekStartDay: 1 }, statistics } : statistics });
+  });
+  await page.route("**/api/v1/statistics/analysis", async (route) => {
+    attempts++;
+    expect(route.request().headers()["x-xsrf-token"]).toBe("screenshot-token");
+    expect(route.request().postDataJSON()).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+    if (attempts === 1) {
+      await route.fulfill({ status: 503, json: { detail: "OpenAI 사용 한도 또는 잔액을 확인해 주세요." } });
+      return;
+    }
+    saved = { eligible: true, status: "COMPLETED", text: summary, analyzedAt: "2026-10-12T03:00:00Z" };
+    await route.fulfill({ json: { period: { from: "2026-09-01", to: "2026-09-30" }, analysis: saved } });
+  });
+  await page.goto("/statistics");
+  await expect(page.getByRole("region", { name: "통계 요약" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "소비 분석", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "직전 주기", exact: true }).click();
+  const panel = page.getByRole("region", { name: "소비 분석", exact: true });
+  await expect(panel).toBeVisible();
+  expect(attempts).toBe(0);
+  await panel.getByRole("button", { name: "소비 분석", exact: true }).click();
+  await expect(panel.getByRole("alert")).toContainText("OpenAI 사용 한도 또는 잔액을 확인해 주세요.");
+  await panel.getByRole("button", { name: "소비 분석", exact: true }).click();
+  await expect(panel.getByText(summary, { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "소비 분석", exact: true })).toHaveCount(0);
+  expect(attempts).toBe(2);
+  await page.screenshot({ path: path.join(screenshotDirectory, "spending-analysis-mobile.png"), fullPage: true });
+  await page.reload();
+  await page.getByRole("button", { name: "직전 주기", exact: true }).click();
+  await expect(panel.getByText(summary, { exact: true })).toBeVisible();
+  expect(attempts).toBe(2);
+  await page.getByRole("button", { name: "현재 주기", exact: true }).click();
+  await expect(panel).toHaveCount(0);
+});
+
 test("tests OpenAI only after an administrator clicks the connection button", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockExpenseApis(page);

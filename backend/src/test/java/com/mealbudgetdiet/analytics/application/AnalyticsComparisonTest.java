@@ -157,7 +157,8 @@ class AnalyticsComparisonTest {
 				.map(entry -> new StatisticsSnapshot.DailyAmount(entry.getKey(), entry.getValue())).toList();
 		});
 		var service = new AnalyticsService(access, budget, mock(CategoryRepository.class), jdbc,
-			Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
+			Clock.fixed(Instant.parse(instant), ZoneOffset.UTC),
+			mock(com.mealbudgetdiet.analytics.infrastructure.SpendingAnalysisRepository.class));
 		var result = from == null ? service.initialStatistics(userId).statistics()
 			: service.statistics(userId, null, date(from), date(to));
 		// Only the previous period requires a SUM query; current totals reuse the daily rows.
