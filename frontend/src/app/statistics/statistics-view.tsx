@@ -179,6 +179,16 @@ export function StatisticsView() {
         <section className="page-loading"><LoaderCircle className="spin" size={28} /><strong>통계를 계산하고 있어요</strong></section>
       ) : data && (
         <>
+          <SpendingAnalysisView
+            key={`${data.period.from}/${data.period.to}`}
+            period={data.period}
+            analysis={data.spendingAnalysis}
+            disabled={isLoading}
+            onAnalyzed={(response) => setData((current) => current?.period.from === response.period.from && current.period.to === response.period.to
+              ? { ...current, spendingAnalysis: response.analysis } : current)}
+            onRefresh={() => void load(data.period)}
+          />
+
           <section className="summary-grid" aria-label="통계 요약">
             <article><span>총 지출</span><strong>{won.format(data.totalAmount)}원</strong><small>{data.period.from} ~ {data.period.to}</small></article>
             <article><span>기간 예산</span><strong>{won.format(data.budget.amount)}원</strong><small>사용률 {Number(data.budget.usageRate).toFixed(1)}%</small></article>
@@ -195,16 +205,6 @@ export function StatisticsView() {
               </> : <><strong>아직 비교할 수 없어요</strong><small>선택한 기간이 시작되면 비교할 수 있어요.</small></>}
             </article>
           </section>
-
-          <SpendingAnalysisView
-            key={`${data.period.from}/${data.period.to}`}
-            period={data.period}
-            analysis={data.spendingAnalysis}
-            disabled={isLoading}
-            onAnalyzed={(response) => setData((current) => current?.period.from === response.period.from && current.period.to === response.period.to
-              ? { ...current, spendingAnalysis: response.analysis } : current)}
-            onRefresh={() => void load(data.period)}
-          />
 
           <div className="analytics-grid">
             <section className="chart-panel">

@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -32,6 +33,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +42,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StreamUtils;
 
 import com.jayway.jsonpath.JsonPath;
 import com.mealbudgetdiet.TestcontainersConfiguration;
@@ -60,6 +64,35 @@ class SpendingAnalysisIntegrationTest {
 	@Autowired private JdbcTemplate jdbc;
 	@Autowired private SpendingAnalysisRepository repository;
 	@MockitoBean private OpenAiGateway gateway;
+
+	@Test
+	@Transactional
+	void requestedResetPreservesOtherLedgersAndNewOrInFlightAnalyses() throws Exception {
+		// Shadow the table inside this transaction to replay the one-time migration safely.
+		jdbc.execute("CREATE TEMP TABLE spending_analyses AS SELECT * FROM public.spending_analyses WITH NO DATA");
+		String ledger = "44df45be-f354-4896-bf7f-6f1ce74536ef";
+		String other = UUID.randomUUID().toString();
+		for (String owner : new String[] { ledger, other }) {
+			jdbc.update("""
+				INSERT INTO spending_analyses (ledger_id, period_from, period_to, status, summary, analyzed_at)
+				VALUES (?::uuid, '2026-08-01', '2026-08-31', 'COMPLETED', '기존 분석', '2026-10-12 09:21:45+00')
+				""", owner);
+		}
+		jdbc.update("""
+			INSERT INTO spending_analyses (ledger_id, period_from, period_to, status, summary, analyzed_at)
+			VALUES (?::uuid, '2026-09-01', '2026-09-30', 'COMPLETED', '새 분석', '2026-10-12 09:21:46+00'),
+			       (?::uuid, '2026-07-01', '2026-07-31', 'PROCESSING', NULL, NULL)
+			""", ledger, ledger);
+		var migration = new ClassPathResource("db/migration/V20__clear_requested_ledger_spending_analyses.sql");
+		try (var stream = migration.getInputStream()) {
+			jdbc.execute(StreamUtils.copyToString(stream, StandardCharsets.UTF_8));
+		}
+		assertThat(jdbc.queryForObject("SELECT count(*) FROM spending_analyses WHERE summary = '기존 분석' AND ledger_id = ?::uuid", Integer.class, ledger)).isZero();
+		assertThat(jdbc.queryForObject("SELECT count(*) FROM spending_analyses WHERE ledger_id = ?::uuid", Integer.class, other)).isEqualTo(1);
+		assertThat(jdbc.queryForObject("SELECT count(*) FROM spending_analyses WHERE ledger_id = ?::uuid", Integer.class, ledger)).isEqualTo(2);
+		assertThat(jdbc.queryForList("SELECT status FROM spending_analyses WHERE ledger_id = ?::uuid", String.class, ledger))
+			.containsExactlyInAnyOrder("COMPLETED", "PROCESSING");
+	}
 
 	@Test
 	void persistsSharedResultsAndPreventsRepeatedAndConcurrentProviderCalls() throws Exception {
