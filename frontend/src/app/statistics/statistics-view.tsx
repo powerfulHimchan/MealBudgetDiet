@@ -1,14 +1,15 @@
 "use client";
 
-import { CalendarRange, Download, LoaderCircle, TrendingDown, TrendingUp } from "lucide-react";
+import { CalendarRange, ChevronLeft, ChevronRight, Download, LoaderCircle, TrendingDown, TrendingUp } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AppNav } from "../app-nav";
 import { BrandLink } from "../brand-link";
 import { request, todayInSeoul } from "../../lib/api";
-import { addMonths, budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
+import { addMonths, adjacentCycle, budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { CalendarPicker } from "../ui/date-picker";
 import { SpendingAnalysisView, type SpendingAnalysis } from "./spending-analysis";
+import navigationStyles from "./cycle-navigation.module.css";
 
 type StatisticsData = {
   period: { from: string; to: string };
@@ -23,7 +24,8 @@ type StatisticsData = {
   categories: Array<{ categoryId: string | null; categoryName: string; amount: number; ratio: number }>;
 };
 
-type RangeKey = "current" | "previous" | "threeMonths" | "year" | "custom";
+type PresetRangeKey = "current" | "previous" | "threeMonths" | "year";
+type RangeKey = PresetRangeKey | "custom" | "cycle";
 type DateRange = { from: string; to: string };
 
 const won = new Intl.NumberFormat("ko-KR");
@@ -38,7 +40,7 @@ function comparisonDateRange(from: string, to: string) {
   return from === to ? start : `${start}~${end}`;
 }
 
-function presetRange(key: Exclude<RangeKey, "custom">, startDay: number, unit: BudgetCycleUnit = "MONTHLY", weekStartDay = 1): DateRange {
+function presetRange(key: PresetRangeKey, startDay: number, unit: BudgetCycleUnit = "MONTHLY", weekStartDay = 1): DateRange {
   const today = todayInSeoul();
   if (unit === "WEEKLY" && key !== "year") {
     const todayDate = new Date(`${today}T00:00:00Z`);
@@ -64,7 +66,7 @@ function presetRange(key: Exclude<RangeKey, "custom">, startDay: number, unit: B
   return { from: `${year}-01-01`, to: `${year}-12-31` };
 }
 
-const rangeButtons: Array<{ key: Exclude<RangeKey, "custom">; label: string }> = [
+const rangeButtons: Array<{ key: PresetRangeKey; label: string }> = [
   { key: "current", label: "현재 주기" },
   { key: "previous", label: "직전 주기" },
   { key: "threeMonths", label: "최근 3개 주기" },
@@ -118,9 +120,20 @@ export function StatisticsView() {
     return () => { active = false; controller.abort(); };
   }, [initialRange]);
 
-  function selectPreset(key: Exclude<RangeKey, "custom">) {
+  function selectPreset(key: PresetRangeKey) {
     const nextRange = presetRange(key, budgetCycleStartDay, cycleUnit, weekStartDay);
     setSelectedRange(key);
+    setDraft(nextRange);
+    void load(nextRange);
+  }
+
+  function moveCycle(direction: -1 | 1) {
+    if (isLoading || !data) return;
+    const boundary = direction === -1 ? range.from : range.to;
+    const anchor = cycleForDate(boundary, cycleUnit, budgetCycleStartDay, weekStartDay);
+    const cycle = adjacentCycle(anchor, direction, cycleUnit, budgetCycleStartDay, weekStartDay);
+    const nextRange = { from: cycle.from, to: cycle.to };
+    setSelectedRange("cycle");
     setDraft(nextRange);
     void load(nextRange);
   }
@@ -144,7 +157,7 @@ export function StatisticsView() {
   const changeIsUp = (data?.comparison.changeAmount ?? 0) > 0;
   const comparison = data?.comparison;
   const comparisonAvailable = comparison?.available !== false;
-  const comparisonTitle = selectedRange === "current" || selectedRange === "previous" ? "이전 주기" : "이전 기간";
+  const comparisonTitle = selectedRange === "current" || selectedRange === "previous" || selectedRange === "cycle" ? "이전 주기" : "이전 기간";
   const comparisonRate = comparison?.changeRate == null ? null : Number(comparison.changeRate);
   const shorterPreviousPeriod = comparison?.samePoint && comparison.currentPeriod
     && (Date.parse(comparison.to) - Date.parse(comparison.from))
@@ -173,10 +186,15 @@ export function StatisticsView() {
           ))}
         </div>
         <form className="custom-range" onSubmit={submitCustom}>
-          <label><span>시작일</span><CalendarPicker ariaLabel="통계 시작일" onChange={(from) => setDraft({ ...draft, from })} value={draft.from} /></label>
-          <label><span>종료일</span><CalendarPicker ariaLabel="통계 종료일" onChange={(to) => setDraft({ ...draft, to })} value={draft.to} /></label>
+          <div className={navigationStyles.dateField}><span>시작일</span><CalendarPicker ariaLabel="통계 시작일" onChange={(from) => setDraft({ ...draft, from })} value={draft.from} /></div>
+          <div className={navigationStyles.dateField}><span>종료일</span><CalendarPicker ariaLabel="통계 종료일" onChange={(to) => setDraft({ ...draft, to })} value={draft.to} /></div>
           <button className="dark-button" disabled={isLoading} type="submit">조회</button>
         </form>
+        <nav className={navigationStyles.navigation} aria-label="주기 이동">
+          <button disabled={isLoading || !data} onClick={() => moveCycle(-1)} type="button"><ChevronLeft aria-hidden="true" size={16} />이전 주기</button>
+          <div className={navigationStyles.period} aria-live="polite"><span>조회된 기간</span><strong>{comparisonDateRange(range.from, range.to)}</strong></div>
+          <button disabled={isLoading || !data} onClick={() => moveCycle(1)} type="button">다음 주기<ChevronRight aria-hidden="true" size={16} /></button>
+        </nav>
       </section>
 
       {error && <div className="message-banner message-banner--error">{error}</div>}

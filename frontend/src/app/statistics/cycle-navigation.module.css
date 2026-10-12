@@ -1,0 +1,9 @@
+.dateField { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #45566f; font-size: .75rem; font-weight: 800; }
+.dateField:first-child :global(.calendar-picker__popover) { right: auto; left: 0; }
+.navigation { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-column: 1 / -1; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #dbe4f0; }
+.navigation button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 4px; padding: 0 10px; border: 1px solid #c9d5e5; border-radius: 0; background: #f8faff; color: #244474; font: inherit; font-size: .8rem; font-weight: 750; cursor: pointer; }
+.navigation button:hover:not(:disabled) { border-color: var(--brand); background: #e8f0ff; }
+.navigation button:disabled { opacity: .55; cursor: default; }
+.period { display: flex; min-width: 0; align-items: center; flex-direction: column; gap: 4px; text-align: center; }
+.period span { color: var(--muted); font-size: .7rem; }
+.period strong { color: var(--ink); font-size: .8rem; line-height: 1.5; overflow-wrap: anywhere; }

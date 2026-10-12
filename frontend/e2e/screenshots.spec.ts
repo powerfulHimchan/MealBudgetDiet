@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
-import { budgetCycleContaining, budgetCycleStarting, weeklyCycleContaining } from "../src/lib/budget-cycle";
+import { budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleContaining } from "../src/lib/budget-cycle";
 
 const screenshotDirectory = path.resolve(process.cwd(), "artifacts/screenshots");
 
@@ -291,6 +291,80 @@ test("shows an honest comparison message when the previous amount is zero or the
   await expect(comparison).toContainText("아직 비교할 수 없어요");
   await expect(comparison).not.toContainText("12,000원");
 });
+
+const navigationCases = [
+  { name: "monthly partial", unit: "MONTHLY", start: 1, week: 1, today: "2026-10-12", custom: ["2026-09-10", "2026-09-20"], previous: ["2026-08-01", "2026-08-31"], next: ["2026-10-01", "2026-10-31"] },
+  { name: "monthly spanning cycles", unit: "MONTHLY", start: 1, week: 1, today: "2026-10-12", custom: ["2026-08-15", "2026-09-10"], previous: ["2026-07-01", "2026-07-31"], next: ["2026-10-01", "2026-10-31"] },
+  { name: "monthly custom start", unit: "MONTHLY", start: 25, week: 1, today: "2026-10-12", custom: ["2026-08-28", "2026-09-10"], previous: ["2026-07-25", "2026-08-24"], next: ["2026-09-25", "2026-10-24"] },
+  { name: "monthly leap year", unit: "MONTHLY", start: 31, week: 1, today: "2028-03-31", custom: ["2028-02-29", "2028-03-05"], previous: ["2028-01-31", "2028-02-28"], next: ["2028-03-31", "2028-04-29"] },
+  { name: "weekly partial", unit: "WEEKLY", start: 1, week: 4, today: "2026-10-12", custom: ["2026-10-02", "2026-10-04"], previous: ["2026-09-24", "2026-09-30"], next: ["2026-10-08", "2026-10-14"] },
+  { name: "weekly spanning cycles", unit: "WEEKLY", start: 1, week: 4, today: "2026-10-12", custom: ["2026-09-30", "2026-10-06"], previous: ["2026-09-17", "2026-09-23"], next: ["2026-10-08", "2026-10-14"] },
+] as const;
+
+for (const scenario of navigationCases) {
+  for (const direction of ["previous", "next"] as const) {
+    test(`navigates outside the queried period (${scenario.name}, ${direction})`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.clock.setFixedTime(new Date(`${scenario.today}T12:00:00+09:00`));
+      await mockExpenseApis(page);
+      const initialCycle = cycleForDate(scenario.today, scenario.unit, scenario.start, scenario.week);
+      const queries: string[] = [];
+      await page.route(/\/api\/v1\/statistics(?:\/initial)?(?:\?.*)?$/, (route) => {
+        const url = new URL(route.request().url());
+        const initial = url.pathname.endsWith("/initial");
+        const from = initial ? initialCycle.from : url.searchParams.get("from")!;
+        const to = initial ? initialCycle.to : url.searchParams.get("to")!;
+        if (!initial) queries.push(`${from}/${to}`);
+        const cycle = cycleForDate(from, scenario.unit, scenario.start, scenario.week);
+        const eligible = cycle.from === from && cycle.to === to && to < scenario.today;
+        const statistics = { period: { from, to }, totalAmount: 120000,
+          budget: { amount: 500000, usageRate: 24 },
+          comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 100000, changeAmount: 20000, changeRate: 20 },
+          daily: [], categories: [], spendingAnalysis: { eligible, status: eligible ? "NOT_ANALYZED" : "UNAVAILABLE", text: null, analyzedAt: null } };
+        return route.fulfill({ json: initial
+          ? { cycleSettings: { budgetCycleUnit: scenario.unit, budgetCycleStartDay: scenario.start, budgetWeekStartDay: scenario.week }, statistics } : statistics });
+      });
+      await page.goto("/statistics");
+      const summary = page.getByRole("region", { name: "통계 요약", exact: true });
+      await expect(summary).toContainText(`${initialCycle.from} ~ ${initialCycle.to}`);
+      async function chooseDate(label: string, current: string, target: string) {
+        await page.getByRole("button", { name: label, exact: true }).click();
+        const [year, month, day] = target.split("-").map(Number);
+        const [currentYear, currentMonth] = current.split("-").map(Number);
+        const delta = (year - currentYear) * 12 + month - currentMonth;
+        const dialog = page.getByRole("dialog", { name: label, exact: true });
+        for (let count = 0; count < Math.abs(delta); count++) {
+          await dialog.getByRole("button", { name: delta < 0 ? "이전 달" : "다음 달", exact: true }).click();
+        }
+        await dialog.getByRole("button", { name: `${year}년 ${month}월 ${day}일`, exact: true }).click();
+        await expect(dialog).toHaveCount(0);
+      }
+      await chooseDate("통계 시작일", initialCycle.from, scenario.custom[0]);
+      await chooseDate("통계 종료일", initialCycle.to, scenario.custom[1]);
+      await page.getByRole("button", { name: "조회", exact: true }).click();
+      await expect(summary).toContainText(`${scenario.custom[0]} ~ ${scenario.custom[1]}`);
+      // An unsubmitted date edit must not move the navigation's successful-query anchor.
+      if (scenario.name === "monthly partial") {
+        await chooseDate("통계 종료일", scenario.custom[1], "2026-09-21");
+      }
+      await page.getByRole("button", { name: direction === "previous" ? "이전 주기" : "다음 주기", exact: true }).click();
+      const target = scenario[direction];
+      await expect(summary).toContainText(`${target[0]} ~ ${target[1]}`);
+      expect(queries).toEqual([scenario.custom.join("/"), target.join("/")]);
+      const [startYear, startMonth, startDay] = target[0].split("-").map(Number);
+      const [endYear, endMonth, endDay] = target[1].split("-").map(Number);
+      await expect(page.getByRole("button", { name: "통계 시작일", exact: true })).toContainText(`${startYear}년 ${startMonth}월 ${startDay}일`);
+      await expect(page.getByRole("button", { name: "통계 종료일", exact: true })).toContainText(`${endYear}년 ${endMonth}월 ${endDay}일`);
+      if (scenario.name === "monthly partial" && direction === "previous") {
+        await page.getByRole("button", { name: "이전 주기", exact: true }).click();
+        await expect(summary).toContainText("2026-07-01 ~ 2026-07-31");
+        await page.getByRole("button", { name: "다음 주기", exact: true }).click();
+        await expect(summary).toContainText("2026-08-01 ~ 2026-08-31");
+        await page.screenshot({ path: path.join(screenshotDirectory, "statistics-cycle-navigation-mobile.png"), fullPage: true });
+      }
+    });
+  }
+}
 
 for (const unit of ["MONTHLY", "WEEKLY"] as const) {
   test(`hides spending analysis as soon as selected dates stop matching the loaded cycle (${unit})`, async ({ page }) => {
