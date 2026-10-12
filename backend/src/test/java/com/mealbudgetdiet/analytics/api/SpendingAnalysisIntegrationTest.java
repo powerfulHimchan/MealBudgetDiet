@@ -105,6 +105,8 @@ class SpendingAnalysisIntegrationTest {
 			.andReturn().getResponse().getContentAsString(), "$.items[0].id");
 		createExpense(owner, categoryId, "2026-09-12", 18500);
 		createExpense(member, categoryId, "2026-08-15", 9800);
+		createExpense(member, categoryId, "2026-07-12", 3200);
+		createExpense(member, categoryId, "2026-06-12", 4300);
 		String ledgerText = mvc.perform(get("/api/v1/ledger").cookie(owner)).andReturn().getResponse().getContentAsString();
 		UUID ledgerId = UUID.fromString(JsonPath.read(ledgerText, "$.id"));
 
@@ -146,8 +148,22 @@ class SpendingAnalysisIntegrationTest {
 		Cookie outsider = ownLedger();
 		changeStart(outsider);
 		mvc.perform(get("/api/v1/statistics").cookie(outsider).param("from", "2026-08-25").param("to", "2026-09-24"))
-			.andExpect(jsonPath("$.totalAmount").value(0)).andExpect(jsonPath("$.spendingAnalysis.status").value("NOT_ANALYZED"))
+			.andExpect(jsonPath("$.totalAmount").value(0)).andExpect(jsonPath("$.spendingAnalysis.status").value("NO_EXPENSES"))
+			.andExpect(jsonPath("$.spendingAnalysis.eligible").value(false))
 			.andExpect(jsonPath("$.spendingAnalysis.text").isEmpty());
+		UUID outsiderLedgerId = UUID.fromString(JsonPath.read(mvc.perform(get("/api/v1/ledger").cookie(outsider))
+			.andReturn().getResponse().getContentAsString(), "$.id"));
+		mvc.perform(post("/api/v1/statistics/analysis").with(csrf()).cookie(outsider).contentType(MediaType.APPLICATION_JSON)
+			.content(period("2026-08-25", "2026-09-24"))).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("ANALYSIS_NO_EXPENSES"));
+		verify(gateway, times(1)).generate(anyString(), anyString());
+		assertThat(jdbc.queryForObject("select count(*) from spending_analyses where ledger_id = ?", Integer.class, outsiderLedgerId)).isZero();
+		String outsiderCategoryId = JsonPath.read(mvc.perform(get("/api/v1/categories").cookie(outsider))
+			.andReturn().getResponse().getContentAsString(), "$.items[0].id");
+		createExpense(outsider, outsiderCategoryId, "2026-09-12", 12000);
+		mvc.perform(get("/api/v1/statistics").cookie(outsider).param("from", "2026-08-25").param("to", "2026-09-24"))
+			.andExpect(jsonPath("$.spendingAnalysis.eligible").value(true))
+			.andExpect(jsonPath("$.spendingAnalysis.status").value("NOT_ANALYZED"));
 
 		doThrow(new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AI_PROVIDER_LIMITED", "사용 한도")).when(gateway).generate(anyString(), anyString());
 		mvc.perform(post("/api/v1/statistics/analysis").with(csrf()).cookie(member).contentType(MediaType.APPLICATION_JSON)
@@ -198,6 +214,15 @@ class SpendingAnalysisIntegrationTest {
 		assertThat(inputs.getAllValues()).allSatisfy(input -> assertThat(input)
 			.doesNotContain("PRIVATE_STORE", "PRIVATE_NOTE", "owner-analysis@example.com", ledgerId.toString()));
 		assertThat(inputs.getAllValues().getFirst()).contains("18500", "800000");
+		// Empty current records override an old cached result without another provider call.
+		jdbc.update("delete from expenses where ledger_id = ? and spent_on between '2026-08-25' and '2026-09-24'", ledgerId);
+		mvc.perform(get("/api/v1/statistics").cookie(member).param("from", "2026-08-25").param("to", "2026-09-24"))
+			.andExpect(jsonPath("$.spendingAnalysis.status").value("NO_EXPENSES"))
+			.andExpect(jsonPath("$.spendingAnalysis.text").isEmpty());
+		mvc.perform(post("/api/v1/statistics/analysis").with(csrf()).cookie(member).contentType(MediaType.APPLICATION_JSON)
+			.content(period("2026-08-25", "2026-09-24"))).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("ANALYSIS_NO_EXPENSES"));
+		verify(gateway, times(5)).generate(anyString(), anyString());
 	}
 
 	private void providerSuccess() {

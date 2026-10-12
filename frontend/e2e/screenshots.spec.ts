@@ -426,6 +426,49 @@ for (const unit of ["MONTHLY", "WEEKLY"] as const) {
   });
 }
 
+for (const unit of ["MONTHLY", "WEEKLY"] as const) {
+  test(`shows a fixed empty-cycle notice without an AI request (${unit})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.clock.setFixedTime(new Date("2026-10-12T12:00:00+09:00"));
+    await mockExpenseApis(page);
+    let hasExpenses = false;
+    let calls = 0;
+    const previous = unit === "WEEKLY" ? { from: "2026-10-05", to: "2026-10-11" } : { from: "2026-09-01", to: "2026-09-30" };
+    await page.route(/\/api\/v1\/statistics(?:\/initial)?(?:\?.*)?$/, (route) => {
+      const url = new URL(route.request().url());
+      const initial = url.pathname.endsWith("/initial");
+      const from = initial ? unit === "WEEKLY" ? "2026-10-12" : "2026-10-01" : url.searchParams.get("from")!;
+      const to = initial ? unit === "WEEKLY" ? "2026-10-18" : "2026-10-31" : url.searchParams.get("to")!;
+      const completed = from === previous.from && to === previous.to;
+      const statistics = { period: { from, to }, totalAmount: hasExpenses ? 12000 : 0,
+        budget: { amount: 500000, usageRate: 0 },
+        comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 0, changeAmount: 0, changeRate: null },
+        daily: hasExpenses ? [{ date: previous.from, amount: 12000 }] : [], categories: [],
+        spendingAnalysis: { eligible: completed && hasExpenses, status: !completed ? "UNAVAILABLE" : hasExpenses ? "NOT_ANALYZED" : "NO_EXPENSES", text: null, analyzedAt: null } };
+      return route.fulfill({ json: initial
+        ? { cycleSettings: { budgetCycleUnit: unit, budgetCycleStartDay: 1, budgetWeekStartDay: 1 }, statistics } : statistics });
+    });
+    await page.route("**/api/v1/statistics/analysis", (route) => { calls++; return route.abort(); });
+    await page.goto("/statistics");
+    await page.getByRole("button", { name: "이전 주기", exact: true }).click();
+    const panel = page.getByRole("region", { name: "소비 분석", exact: true });
+    await expect(panel).toContainText("이 주기에는 등록된 소비 기록이 없어 분석할 수 없습니다.");
+    await expect(panel.getByRole("button")).toHaveCount(0);
+    await expect(panel).not.toContainText("OpenAI");
+    await page.reload();
+    await page.getByRole("button", { name: "이전 주기", exact: true }).click();
+    await expect(panel).toContainText("이 주기에는 등록된 소비 기록이 없어 분석할 수 없습니다.");
+    expect(calls).toBe(0);
+    hasExpenses = true;
+    await page.getByRole("button", { name: "조회", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "소비 분석", exact: true })).toBeVisible();
+    await expect(panel).not.toContainText("등록된 소비 기록이 없어");
+    expect(calls).toBe(0);
+    await page.getByRole("button", { name: "현재 주기", exact: true }).click();
+    await expect(panel).toHaveCount(0);
+  });
+}
+
 test("saves a completed-cycle spending analysis and reloads it without another AI request", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.setFixedTime(new Date("2026-10-12T12:00:00+09:00"));

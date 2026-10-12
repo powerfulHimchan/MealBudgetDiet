@@ -64,6 +64,7 @@ public class SpendingAnalysisService {
 			if (!SpendingAnalysisPeriod.eligible(ledger, from, to, LocalDate.now(clock.withZone(SERVICE_ZONE)))) {
 				throw new ApiException(HttpStatus.BAD_REQUEST, "ANALYSIS_CYCLE_REQUIRED", "소비 분석은 종료된 한 개의 예산 주기에서 사용할 수 있습니다.");
 			}
+			if (!analytics.hasExpensesForLedger(ledgerId, from, to)) throw noExpenses();
 			var cached = repository.snapshot(ledgerId, from, to, true, clock.instant());
 			if ("COMPLETED".equals(cached.status())) return new Prepared(ledgerId, null, cached);
 			UUID token = UUID.randomUUID();
@@ -80,6 +81,7 @@ public class SpendingAnalysisService {
 				requireSameLedger(userId, prepared.ledgerId());
 				return analytics.statisticsForLedger(access.requireLedger(prepared.ledgerId()), from, to);
 			});
+			if (statistics.daily().isEmpty()) throw noExpenses();
 			// Aggregate-only data; the provider call never holds a database transaction.
 			var result = gateway.generate(INSTRUCTIONS, prompt(statistics));
 			String summary = normalizeSummary(result.text());
@@ -128,6 +130,10 @@ public class SpendingAnalysisService {
 			return summary.substring(0, summary.offsetByCodePoints(0, MAX_SUMMARY_LENGTH - 1)).stripTrailing() + "…";
 		}
 		return summary;
+	}
+
+	private static ApiException noExpenses() {
+		return new ApiException(HttpStatus.BAD_REQUEST, "ANALYSIS_NO_EXPENSES", "이 주기에는 등록된 소비 기록이 없어 분석할 수 없습니다.");
 	}
 
 	private static ApiException inProgress() {

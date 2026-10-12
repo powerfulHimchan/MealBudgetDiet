@@ -195,15 +195,22 @@ public class AnalyticsService {
 			comparison,
 			daily,
 			categories,
-			spendingAnalysis(ledger, from, to)
+			spendingAnalysis(ledger, from, to, !daily.isEmpty())
 		);
 	}
 
-	private SpendingAnalysisSnapshot spendingAnalysis(Ledger ledger, LocalDate from, LocalDate to) {
+	private SpendingAnalysisSnapshot spendingAnalysis(Ledger ledger, LocalDate from, LocalDate to, boolean hasExpenses) {
 		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
 		if (!to.isBefore(today)) return SpendingAnalysisSnapshot.unavailable();
 		boolean eligible = SpendingAnalysisPeriod.eligible(ledger, from, to, today);
+		if (eligible && !hasExpenses) return SpendingAnalysisSnapshot.noExpenses();
 		return analysisRepository.snapshot(ledger.getId(), from, to, eligible, clock.instant());
+	}
+
+	boolean hasExpensesForLedger(UUID ledgerId, LocalDate from, LocalDate to) {
+		return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+			"select exists (select 1 from expenses where ledger_id = ? and spent_on between ? and ?)",
+			Boolean.class, ledgerId, from, to));
 	}
 
 	@Transactional(readOnly = true)
