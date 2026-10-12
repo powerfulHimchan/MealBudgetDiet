@@ -292,6 +292,51 @@ test("shows an honest comparison message when the previous amount is zero or the
   await expect(comparison).not.toContainText("12,000원");
 });
 
+test("tests OpenAI only after an administrator clicks the connection button", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.route("**/api/v1/admin/ai/status", (route) => route.fulfill({ json: { enabled: true, configured: true, ready: true, model: "gpt-5.4-mini" } }));
+  let attempts = 0;
+  await page.route("**/api/v1/admin/ai/connection-test", async (route) => {
+    attempts++;
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers()["x-xsrf-token"]).toBe("screenshot-token");
+    if (attempts === 1) await route.fulfill({ status: 503, json: { detail: "OpenAI 사용 한도 또는 잔액을 확인해 주세요." } });
+    else await route.fulfill({ json: { model: "gpt-5.4-mini", text: "Sikbi AI 연결 성공", inputTokens: 25, outputTokens: 8 } });
+  });
+  await page.goto("/settings/account");
+  await page.getByRole("link", { name: "AI 연결 확인" }).click();
+  const button = page.getByRole("button", { name: "연결 테스트", exact: true });
+  await expect(button).toBeEnabled();
+  expect(attempts).toBe(0);
+  await expect(page.getByText("등록됨", { exact: true })).toBeVisible();
+  await button.click();
+  await expect(page.getByRole("alert")).toContainText("OpenAI 사용 한도 또는 잔액을 확인해 주세요.");
+  await expect(page.getByText("OpenAI 호출 성공", { exact: true })).toHaveCount(0);
+  await button.click();
+  const result = page.getByRole("status", { name: "연결 테스트 결과" });
+  await expect(result).toContainText("Sikbi AI 연결 성공");
+  await expect(result).toContainText("gpt-5.4-mini");
+  expect(attempts).toBe(2);
+  await page.screenshot({ path: path.join(screenshotDirectory, "ai-connection-mobile.png"), fullPage: true });
+});
+
+for (const scenario of ["not configured", "forbidden"]) {
+  test(`does not allow an OpenAI test when ${scenario}`, async ({ page }) => {
+    await mockExpenseApis(page);
+    await page.route("**/api/v1/admin/ai/status", (route) => scenario === "forbidden"
+      ? route.fulfill({ status: 403, json: { detail: "서비스 관리자 권한이 필요합니다." } })
+      : route.fulfill({ json: { enabled: true, configured: false, ready: false, model: "gpt-5.4-mini" } }));
+    await page.goto("/settings/ai");
+    if (scenario === "forbidden") {
+      await expect(page.getByRole("alert")).toContainText("서비스 관리자 권한이 필요합니다.");
+      await expect(page.getByRole("button", { name: "연결 테스트", exact: true })).toHaveCount(0);
+    } else {
+      await expect(page.getByText("미등록", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "연결 테스트", exact: true })).toBeDisabled();
+    }
+  });
+}
+
 test("manage categories from settings", async ({ page }) => {
   await mockExpenseApis(page);
   await page.goto("/settings/categories");

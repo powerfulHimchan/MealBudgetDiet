@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { multipartMutation, mutation, request } from "../../../lib/api";
@@ -245,6 +246,7 @@ export function AccountSettings() {
               </div>
             </div>
             <div className="profile-actions">
+              {user.serviceRole === "SERVICE_ADMIN" && <Link className="secondary-button" href="/settings/ai"><ShieldCheck size={16} />AI 연결 확인</Link>}
               <label className="dark-button">
                 {isSavingImage ? <LoaderCircle className="spin" size={16} /> : <Camera size={16} />}
                 {user.profileImageUrl ? "사진 변경" : "사진 등록"}
