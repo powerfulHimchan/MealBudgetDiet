@@ -333,6 +333,8 @@ test("saves a completed-cycle spending analysis and reloads it without another A
   await expect(panel.getByRole("alert")).toContainText("OpenAI 사용 한도 또는 잔액을 확인해 주세요.");
   await panel.getByRole("button", { name: "소비 분석", exact: true }).click();
   await expect(panel.getByText(summary, { exact: true })).toBeVisible();
+  expect(await panel.evaluate((element) => element.getBoundingClientRect().bottom)).toBeLessThanOrEqual(
+    await page.getByRole("region", { name: "통계 요약", exact: true }).evaluate((element) => element.getBoundingClientRect().top));
   await expect(panel.getByRole("button", { name: "소비 분석", exact: true })).toHaveCount(0);
   expect(attempts).toBe(2);
   await page.screenshot({ path: path.join(screenshotDirectory, "spending-analysis-mobile.png"), fullPage: true });
