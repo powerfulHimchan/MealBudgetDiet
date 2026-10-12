@@ -24,9 +24,15 @@ class SpendingAnalysisPeriodTest {
 		assertThat(SpendingAnalysisPeriod.eligible(ledger, date("2026-10-08"), date("2026-10-14"), date("2026-10-09"))).isFalse();
 	}
 	@Test void capsUnicodeTextWithoutSplittingSurrogatePairs() {
-		String normalized = SpendingAnalysisService.normalizeSummary("😀".repeat(130));
-		assertThat(normalized.codePointCount(0, normalized.length())).isEqualTo(120);
+		String normalized = SpendingAnalysisService.normalizeSummary("😀".repeat(330));
+		assertThat(normalized.codePointCount(0, normalized.length())).isEqualTo(320);
 		assertThat(normalized).endsWith("…");
+	}
+	@Test void preservesThreeHundredCharacterSummaryAndExactLimit() {
+		String summary = "가".repeat(300);
+		assertThat(SpendingAnalysisService.normalizeSummary(summary)).isEqualTo(summary);
+		String atLimit = "가".repeat(320);
+		assertThat(SpendingAnalysisService.normalizeSummary(atLimit)).isEqualTo(atLimit);
 	}
 	@Test void normalizesWhitespaceAndRejectsEmptyOutput() {
 		assertThat(SpendingAnalysisService.normalizeSummary("  장보기\n\t중심 소비  ")).isEqualTo("장보기 중심 소비");
