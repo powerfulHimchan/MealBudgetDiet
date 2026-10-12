@@ -55,7 +55,7 @@ import jakarta.servlet.http.Cookie;
 @TestPropertySource(properties = "app.bootstrap-token=spending-analysis-bootstrap-token")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class SpendingAnalysisIntegrationTest {
-	private static final String SUMMARY = "장보기 중심의 소비로 예산 사용률이 낮고 이전 주기보다 지출이 늘었습니다. 다음 주기에는 필요한 품목을 미리 정해 구매하고, 장보기 지출이 계속 늘어나는지 확인해 보세요.";
+	private static final String SUMMARY = "이번 주기는 장보기 중심으로 소비했으며 예산 사용률은 낮지만 이전 주기보다 총지출이 늘었습니다. 지출이 가장 많았던 날과 상위 카테고리의 비중을 함께 살펴보면 다음 주기에서 점검할 항목을 정하는 데 도움이 됩니다. 다만 집계 정보만으로는 지출이 늘어난 원인이나 개별 구매의 필요성을 판단하기 어렵습니다. 다음 주기에는 필요한 품목과 구매 순서를 미리 정하고 카테고리별 지출을 주기적으로 확인해 보세요. 예산을 유지하면서 자주 지출하는 항목을 먼저 점검하되, 식비 기록이 빠진 날짜가 없는지도 확인하면 주기별 비교를 더 정확하게 할 수 있습니다.";
 	@Autowired private MockMvc mvc;
 	@Autowired private JdbcTemplate jdbc;
 	@Autowired private SpendingAnalysisRepository repository;
@@ -170,6 +170,7 @@ class SpendingAnalysisIntegrationTest {
 	private void providerSuccess() {
 		doAnswer(invocation -> {
 			assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+			assertThat(invocation.getArgument(0, String.class)).contains("약 300자", "280~320자", "최대 320자");
 			return new AiTextResult("test-model", SUMMARY, 150, 50);
 		}).when(gateway).generate(anyString(), anyString());
 	}

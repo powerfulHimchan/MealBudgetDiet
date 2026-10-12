@@ -298,7 +298,7 @@ test("saves a completed-cycle spending analysis and reloads it without another A
   await mockExpenseApis(page);
   let saved: { eligible: boolean; status: string; text: string | null; analyzedAt: string | null } | null = null;
   let attempts = 0;
-  const summary = "외식 비중이 높고 예산 사용률은 안정적입니다. 다음 주기에는 외식 횟수를 미리 정하고 장보기 계획을 세워 예산을 유지해 보세요.";
+  const summary = "이번 주기는 장보기 중심으로 소비했으며 예산 사용률은 낮지만 이전 주기보다 총지출이 늘었습니다. 지출이 가장 많았던 날과 상위 카테고리의 비중을 함께 살펴보면 다음 주기에서 점검할 항목을 정하는 데 도움이 됩니다. 다만 집계 정보만으로는 지출이 늘어난 원인이나 개별 구매의 필요성을 판단하기 어렵습니다. 다음 주기에는 필요한 품목과 구매 순서를 미리 정하고 카테고리별 지출을 주기적으로 확인해 보세요. 예산을 유지하면서 자주 지출하는 항목을 먼저 점검하되, 식비 기록이 빠진 날짜가 없는지도 확인하면 주기별 비교를 더 정확하게 할 수 있습니다.";
   await page.route(/\/api\/v1\/statistics(?:\/initial)?(?:\?.*)?$/, (route) => {
     const url = new URL(route.request().url());
     const previous = url.searchParams.get("from") === "2026-09-01";
@@ -327,6 +327,7 @@ test("saves a completed-cycle spending analysis and reloads it without another A
   await page.getByRole("button", { name: "직전 주기", exact: true }).click();
   const panel = page.getByRole("region", { name: "소비 분석", exact: true });
   await expect(panel).toBeVisible();
+  await expect(panel.getByText("이 주기의 소비를 분석하여 정리합니다.", { exact: true })).toBeVisible();
   expect(attempts).toBe(0);
   await panel.getByRole("button", { name: "소비 분석", exact: true }).click();
   await expect(panel.getByRole("alert")).toContainText("OpenAI 사용 한도 또는 잔액을 확인해 주세요.");

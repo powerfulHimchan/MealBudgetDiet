@@ -52,7 +52,7 @@ export function SpendingAnalysisView({ period, analysis, disabled, onAnalyzed, o
         <p className={styles.caption}>{analysis.analyzedAt && `${new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short" }).format(new Date(analysis.analyzedAt))} 분석 · `}분석 시점의 통계를 기준으로 한 결과입니다.</p>
       </> : <>
         <p className={styles.caption} role={processing || isAnalyzing ? "status" : undefined}>
-          {processing || isAnalyzing ? "이 주기의 소비를 분석하고 있어요. 잠시만 기다려 주세요." : "이 주기의 소비를 약 100자로 정리합니다. 분석한 결과는 다음에도 바로 확인할 수 있어요."}
+          {processing || isAnalyzing ? "이 주기의 소비를 분석하고 있어요. 잠시만 기다려 주세요." : "이 주기의 소비를 분석하여 정리합니다."}
         </p>
         <p className={styles.caption}>분석을 요청하면 금액과 카테고리별 집계 정보가 OpenAI에 전달됩니다.</p>
       </>}
