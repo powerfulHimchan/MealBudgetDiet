@@ -150,7 +150,7 @@ export function StatisticsView() {
 
   const csvParams = new URLSearchParams(range);
   const analysisCycle = data ? cycleForDate(data.period.from, cycleUnit, budgetCycleStartDay, weekStartDay) : null;
-  const showAnalysis = !isLoading && data?.spendingAnalysis?.eligible
+  const showAnalysis = !isLoading && data && (data.spendingAnalysis?.eligible || data.spendingAnalysis?.status === "NO_EXPENSES")
     && data.period.from === draft.from && data.period.to === draft.to
     && data.period.from === analysisCycle?.from && data.period.to === analysisCycle?.to
     && data.period.to < todayInSeoul();

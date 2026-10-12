@@ -7,7 +7,7 @@ import styles from "./spending-analysis.module.css";
 
 export type SpendingAnalysis = {
   eligible: boolean;
-  status: "UNAVAILABLE" | "NOT_ANALYZED" | "PROCESSING" | "COMPLETED";
+  status: "UNAVAILABLE" | "NO_EXPENSES" | "NOT_ANALYZED" | "PROCESSING" | "COMPLETED";
   text: string | null;
   analyzedAt: string | null;
 };
@@ -23,7 +23,8 @@ export function SpendingAnalysisView({ period, analysis, disabled, onAnalyzed, o
 }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (!analysis || (!analysis.eligible && !analysis.text)) return null;
+  const noExpenses = analysis?.status === "NO_EXPENSES";
+  if (!analysis || (!analysis.eligible && !analysis.text && !noExpenses)) return null;
 
   async function analyze() {
     if (!analysis?.eligible || isAnalyzing || disabled) return;
@@ -43,11 +44,11 @@ export function SpendingAnalysisView({ period, analysis, disabled, onAnalyzed, o
     <section className={styles.panel} aria-label="소비 분석">
       <div className="panel-heading">
         <div className={styles.heading}><Sparkles size={20} /><h2>소비 분석</h2></div>
-        {!analysis.text && <button className="dark-button" disabled={disabled || isAnalyzing} onClick={processing ? onRefresh : () => void analyze()} type="button">
+        {!analysis.text && !noExpenses && <button className="dark-button" disabled={disabled || isAnalyzing} onClick={processing ? onRefresh : () => void analyze()} type="button">
           {isAnalyzing && <LoaderCircle className="spin" size={16} />}{isAnalyzing ? "분석 중" : processing ? "결과 확인" : "소비 분석"}
         </button>}
       </div>
-      {analysis.text ? <>
+      {noExpenses ? <p className={styles.caption}>이 주기에는 등록된 소비 기록이 없어 분석할 수 없습니다.</p> : analysis.text ? <>
         <p className={styles.summary} aria-label="저장된 소비 분석">{analysis.text}</p>
         <p className={styles.caption}>{analysis.analyzedAt && `${new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short" }).format(new Date(analysis.analyzedAt))} 분석 · `}분석 시점의 통계를 기준으로 한 결과입니다.</p>
       </> : <>
