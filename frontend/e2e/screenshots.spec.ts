@@ -293,6 +293,7 @@ test("shows an honest comparison message when the previous amount is zero or the
 });
 
 test("tests OpenAI only after an administrator clicks the connection button", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await mockExpenseApis(page);
   await page.route("**/api/v1/admin/ai/status", (route) => route.fulfill({ json: { enabled: true, configured: true, ready: true, model: "gpt-5.4-mini" } }));
   let attempts = 0;
@@ -310,7 +311,7 @@ test("tests OpenAI only after an administrator clicks the connection button", as
   expect(attempts).toBe(0);
   await expect(page.getByText("등록됨", { exact: true })).toBeVisible();
   await button.click();
-  await expect(page.getByRole("alert")).toContainText("OpenAI 사용 한도 또는 잔액을 확인해 주세요.");
+  await expect(page.getByRole("region", { name: "OpenAI 연결 상태" }).getByRole("alert")).toContainText("OpenAI 사용 한도 또는 잔액을 확인해 주세요.");
   await expect(page.getByText("OpenAI 호출 성공", { exact: true })).toHaveCount(0);
   await button.click();
   const result = page.getByRole("status", { name: "연결 테스트 결과" });
@@ -328,7 +329,7 @@ for (const scenario of ["not configured", "forbidden"]) {
       : route.fulfill({ json: { enabled: true, configured: false, ready: false, model: "gpt-5.4-mini" } }));
     await page.goto("/settings/ai");
     if (scenario === "forbidden") {
-      await expect(page.getByRole("alert")).toContainText("서비스 관리자 권한이 필요합니다.");
+      await expect(page.getByRole("region", { name: "OpenAI 연결 상태" }).getByRole("alert")).toContainText("서비스 관리자 권한이 필요합니다.");
       await expect(page.getByRole("button", { name: "연결 테스트", exact: true })).toHaveCount(0);
     } else {
       await expect(page.getByText("미등록", { exact: true })).toBeVisible();
