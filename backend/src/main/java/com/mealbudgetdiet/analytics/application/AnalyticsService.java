@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.analytics.application.DashboardSnapshot.RecentExpense;
+import com.mealbudgetdiet.analytics.infrastructure.SpendingAnalysisRepository;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.CategoryAmount;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.Comparison;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.DailyAmount;
@@ -43,19 +44,22 @@ public class AnalyticsService {
 	private final CategoryRepository categoryRepository;
 	private final JdbcTemplate jdbcTemplate;
 	private final Clock clock;
+	private final SpendingAnalysisRepository analysisRepository;
 
 	public AnalyticsService(
 		LedgerAccessService ledgerAccessService,
 		BudgetService budgetService,
 		CategoryRepository categoryRepository,
 		JdbcTemplate jdbcTemplate,
-		Clock clock
+		Clock clock,
+		SpendingAnalysisRepository analysisRepository
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.budgetService = budgetService;
 		this.categoryRepository = categoryRepository;
 		this.jdbcTemplate = jdbcTemplate;
 		this.clock = clock;
+		this.analysisRepository = analysisRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -116,7 +120,7 @@ public class AnalyticsService {
 		Ledger ledger = ledger(userId);
 		BudgetCycle cycle = BudgetCycle.containing(LocalDate.now(clock.withZone(SERVICE_ZONE)),
 			ledger.getBudgetCycleUnit(), ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
-		return new InitialStatistics(BudgetCycleSettings.from(ledger), statistics(ledger, cycle.from(), cycle.to()));
+		return new InitialStatistics(BudgetCycleSettings.from(ledger), statisticsForLedger(ledger, cycle.from(), cycle.to()));
 	}
 
 	public record InitialStatistics(BudgetCycleSettings cycleSettings, StatisticsSnapshot statistics) {
@@ -149,10 +153,10 @@ public class AnalyticsService {
 			from = requestedFrom;
 			to = requestedTo;
 		}
-		return statistics(ledger, from, to);
+		return statisticsForLedger(ledger, from, to);
 	}
 
-	private StatisticsSnapshot statistics(Ledger ledger, LocalDate from, LocalDate to) {
+	StatisticsSnapshot statisticsForLedger(Ledger ledger, LocalDate from, LocalDate to) {
 		UUID ledgerId = ledger.getId();
 
 		List<DailyAmount> daily = jdbcTemplate.query("""
@@ -190,8 +194,16 @@ public class AnalyticsService {
 			new StatisticsSnapshot.Budget(budget, percentage(total, budget)),
 			comparison,
 			daily,
-			categories
+			categories,
+			spendingAnalysis(ledger, from, to)
 		);
+	}
+
+	private SpendingAnalysisSnapshot spendingAnalysis(Ledger ledger, LocalDate from, LocalDate to) {
+		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
+		if (!to.isBefore(today)) return SpendingAnalysisSnapshot.unavailable();
+		boolean eligible = SpendingAnalysisPeriod.eligible(ledger, from, to, today);
+		return analysisRepository.snapshot(ledger.getId(), from, to, eligible, clock.instant());
 	}
 
 	@Transactional(readOnly = true)

@@ -8,6 +8,7 @@ import { BrandLink } from "../brand-link";
 import { request, todayInSeoul } from "../../lib/api";
 import { addMonths, budgetCycleContaining, budgetCycleStarting, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { CalendarPicker } from "../ui/date-picker";
+import { SpendingAnalysisView, type SpendingAnalysis } from "./spending-analysis";
 
 type StatisticsData = {
   period: { from: string; to: string };
@@ -18,6 +19,7 @@ type StatisticsData = {
     currentPeriod?: DateRange | null; currentAmount?: number; samePoint?: boolean; available?: boolean;
   };
   daily: Array<{ date: string; amount: number }>;
+  spendingAnalysis?: SpendingAnalysis | null;
   categories: Array<{ categoryId: string | null; categoryName: string; amount: number; ratio: number }>;
 };
 
@@ -193,6 +195,16 @@ export function StatisticsView() {
               </> : <><strong>아직 비교할 수 없어요</strong><small>선택한 기간이 시작되면 비교할 수 있어요.</small></>}
             </article>
           </section>
+
+          <SpendingAnalysisView
+            key={`${data.period.from}/${data.period.to}`}
+            period={data.period}
+            analysis={data.spendingAnalysis}
+            disabled={isLoading}
+            onAnalyzed={(response) => setData((current) => current?.period.from === response.period.from && current.period.to === response.period.to
+              ? { ...current, spendingAnalysis: response.analysis } : current)}
+            onRefresh={() => void load(data.period)}
+          />
 
           <div className="analytics-grid">
             <section className="chart-panel">

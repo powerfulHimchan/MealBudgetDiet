@@ -99,3 +99,13 @@ cd backend
 테스트는 로컬 HTTP 모의 서버와 MockMvc를 사용해 실제 키나 유료 호출이 필요 없다. 운영 키로 연결 테스트에 성공해야 실제 OpenAI 연결이 확인된다.
 
 공식 문서: [Responses API](https://developers.openai.com/api/reference/python/resources/responses/methods/create), [GPT-4.1 Mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini), [API 데이터 보존](https://developers.openai.com/api/docs/guides/your-data).
+
+## 주기별 소비 분석
+
+통계의 종료된 단일 예산 주기에 `소비 분석` 버튼이 표시된다. `POST /api/v1/statistics/analysis`에 `from`, `to`를 보내면 한국어 약 100자(최대 120자)의 분석을 생성한다. 장부의 활성 멤버가 요청할 수 있으며 CSRF 토큰이 필요하다. 진행 중인 주기, 일부 날짜, 여러 주기를 묶은 기간은 `ANALYSIS_CYCLE_REQUIRED`로 거절한다.
+
+입력은 기간·총지출·예산·이전 주기 대비 증감·상위 카테고리 비중·최다 지출일 등 집계 정보로 제한한다. 상호명·메모·사진·회원 정보는 보내지 않는다. 기존 Responses API 연결의 `store:false` 및 출력 토큰 상한을 적용한다.
+
+`spending_analyses`에 장부 ID와 주기의 시작·종료일을 고유 키로 결과, 분석 시각, 응답 모델, 토큰 사용량을 저장한다. 통계 조회의 `spendingAnalysis`는 저장된 내용을 함께 반환하며, 같은 주기를 다시 POST해도 저장된 결과를 반환한다. 저장된 분석을 조회할 때는 OpenAI 호출이 없다. 결과는 분석 시점의 통계이며 이후 식비 수정으로 자동 재생성되지 않는다.
+
+DB에서 생성 중인 주기를 선점해 동시 호출을 막는다. 생성 중에는 `ANALYSIS_IN_PROGRESS`(409)를 반환하며 화면의 `결과 확인`으로 저장 결과를 다시 조회할 수 있다. 실패한 요청과 5분이 지난 중단 요청은 버튼으로 다시 시도할 수 있다. 자동 재시도는 하지 않으며 OpenAI 호출 중 DB 트랜잭션을 유지하지 않는다.
