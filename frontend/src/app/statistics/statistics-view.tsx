@@ -6,7 +6,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { AppNav } from "../app-nav";
 import { BrandLink } from "../brand-link";
 import { request, todayInSeoul } from "../../lib/api";
-import { addMonths, budgetCycleContaining, budgetCycleStarting, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
+import { addMonths, budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { CalendarPicker } from "../ui/date-picker";
 import { SpendingAnalysisView, type SpendingAnalysis } from "./spending-analysis";
 
@@ -136,6 +136,11 @@ export function StatisticsView() {
   }
 
   const csvParams = new URLSearchParams(range);
+  const analysisCycle = data ? cycleForDate(data.period.from, cycleUnit, budgetCycleStartDay, weekStartDay) : null;
+  const showAnalysis = !isLoading && data?.spendingAnalysis?.eligible
+    && data.period.from === draft.from && data.period.to === draft.to
+    && data.period.from === analysisCycle?.from && data.period.to === analysisCycle?.to
+    && data.period.to < todayInSeoul();
   const changeIsUp = (data?.comparison.changeAmount ?? 0) > 0;
   const comparison = data?.comparison;
   const comparisonAvailable = comparison?.available !== false;
@@ -182,7 +187,7 @@ export function StatisticsView() {
           <SpendingAnalysisView
             key={`${data.period.from}/${data.period.to}`}
             period={data.period}
-            analysis={data.spendingAnalysis}
+            analysis={showAnalysis ? data.spendingAnalysis : null}
             disabled={isLoading}
             onAnalyzed={(response) => setData((current) => current?.period.from === response.period.from && current.period.to === response.period.to
               ? { ...current, spendingAnalysis: response.analysis } : current)}

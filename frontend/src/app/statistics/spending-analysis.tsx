@@ -26,7 +26,7 @@ export function SpendingAnalysisView({ period, analysis, disabled, onAnalyzed, o
   if (!analysis || (!analysis.eligible && !analysis.text)) return null;
 
   async function analyze() {
-    if (isAnalyzing || disabled) return;
+    if (!analysis?.eligible || isAnalyzing || disabled) return;
     setIsAnalyzing(true);
     setError(null);
     try {
