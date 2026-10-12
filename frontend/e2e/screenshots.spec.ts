@@ -292,6 +292,66 @@ test("shows an honest comparison message when the previous amount is zero or the
   await expect(comparison).not.toContainText("12,000원");
 });
 
+for (const unit of ["MONTHLY", "WEEKLY"] as const) {
+  test(`hides spending analysis as soon as selected dates stop matching the loaded cycle (${unit})`, async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-10-12T12:00:00+09:00"));
+    await mockExpenseApis(page);
+    const weekly = unit === "WEEKLY";
+    const complete = weekly ? { from: "2026-10-05", to: "2026-10-11" } : { from: "2026-09-01", to: "2026-09-30" };
+    const partialTo = weekly ? "2026-10-08" : "2026-09-15";
+    const crossedFrom = weekly ? "2026-10-02" : "2026-08-15";
+    let pendingResponse: Promise<void> | undefined;
+    await page.route(/\/api\/v1\/statistics(?:\/initial)?(?:\?.*)?$/, async (route) => {
+      const url = new URL(route.request().url());
+      const initial = url.pathname.endsWith("/initial");
+      const from = initial ? weekly ? "2026-10-12" : "2026-10-01" : url.searchParams.get("from")!;
+      const to = initial ? weekly ? "2026-10-18" : "2026-10-31" : url.searchParams.get("to")!;
+      const eligible = from === complete.from && to === complete.to;
+      const statistics = { period: { from, to }, totalAmount: 120000,
+        budget: { amount: 500000, usageRate: 24 },
+        comparison: { from: "2026-08-01", to: "2026-08-31", totalAmount: 100000, changeAmount: 20000, changeRate: 20 },
+        daily: [], categories: [], spendingAnalysis: { eligible, status: eligible ? "NOT_ANALYZED" : "UNAVAILABLE", text: null, analyzedAt: null } };
+      if (!initial) await pendingResponse;
+      return route.fulfill({ json: initial
+        ? { cycleSettings: { budgetCycleUnit: unit, budgetCycleStartDay: 1, budgetWeekStartDay: 1 }, statistics } : statistics });
+    });
+    let calls = 0;
+    await page.route("**/api/v1/statistics/analysis", () => { calls++; });
+    await page.goto("/statistics");
+    await page.getByRole("button", { name: "직전 주기", exact: true }).click();
+    const panel = page.getByRole("region", { name: "소비 분석", exact: true });
+    await expect(panel.getByRole("button", { name: "소비 분석", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "통계 종료일", exact: true }).click();
+    await page.getByRole("button", { name: weekly ? "2026년 10월 8일" : "2026년 9월 15일", exact: true }).click();
+    await expect(panel).toHaveCount(0);
+    await page.getByRole("button", { name: "조회", exact: true }).click();
+    await expect(page.getByRole("region", { name: "통계 요약" })).toContainText(`${complete.from} ~ ${partialTo}`);
+    await expect(panel).toHaveCount(0);
+    await page.getByRole("button", { name: "통계 시작일", exact: true }).click();
+    if (!weekly) await page.getByRole("dialog", { name: "통계 시작일", exact: true }).getByRole("button", { name: "이전 달", exact: true }).click();
+    await page.getByRole("button", { name: weekly ? "2026년 10월 2일" : "2026년 8월 15일", exact: true }).click();
+    await page.getByRole("button", { name: "조회", exact: true }).click();
+    await expect(page.getByRole("region", { name: "통계 요약" })).toContainText(`${crossedFrom} ~ ${partialTo}`);
+    await expect(panel).toHaveCount(0);
+    await page.getByRole("button", { name: "직전 주기", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "소비 분석", exact: true })).toBeVisible();
+    let releaseResponse!: () => void;
+    pendingResponse = new Promise<void>((resolve) => { releaseResponse = resolve; });
+    await page.getByRole("button", { name: "조회", exact: true }).click();
+    try {
+      await expect(panel).toHaveCount(0);
+    } finally {
+      releaseResponse();
+    }
+    await expect(panel.getByRole("button", { name: "소비 분석", exact: true })).toBeVisible();
+    pendingResponse = undefined;
+    await page.getByRole("button", { name: "최근 3개 주기", exact: true }).click();
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "조회", exact: true })).toBeEnabled();
+    expect(calls).toBe(0);
+  });
+}
+
 test("saves a completed-cycle spending analysis and reloads it without another AI request", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.setFixedTime(new Date("2026-10-12T12:00:00+09:00"));
