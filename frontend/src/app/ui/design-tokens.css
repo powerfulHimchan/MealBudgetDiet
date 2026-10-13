@@ -14,7 +14,6 @@
   --hero-eyebrow: #7DB1FF;
   --hero-description: #B6C3DC;
   --icon-blue: #60A5FA;
-  --number-color: #94A3B8;
   --hatch: #F6F8FC;
   --button-radius: 999px;
   --panel-radius: 0;
@@ -22,6 +21,9 @@
   --nav-tab-width: 92px;
   --card-padding: 20px;
   --motion-duration: .15s;
+  --layer-nav: 30;
+  --layer-modal: 60;
+  --layer-crop: 70;
   --font-ui: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   --brand: var(--blue);
   --brand-strong: var(--blue-hover);

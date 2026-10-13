@@ -104,7 +104,7 @@ export function Dashboard() {
               <small>{data.projectedSpent > data.budget ? "현재 속도라면 예산을 초과할 수 있어요." : "현재 속도라면 예산 안에서 마칠 것으로 보여요."}</small>
             </div>
 
-            <Link className="primary-action" href="/expenses?new=1"><Plus size={20} strokeWidth={2.5} />식비 등록</Link>
+            <Link className="primary-action" data-ui="button" href="/expenses?new=1"><Plus size={20} strokeWidth={2.5} />식비 등록</Link>
           </section>
 
           <section className="recent-card" aria-labelledby="recent-title">

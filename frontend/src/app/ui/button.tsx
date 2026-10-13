@@ -6,6 +6,6 @@ type ButtonProps = Appearance & (ButtonHTMLAttributes<HTMLButtonElement> | (Anch
 
 export function Button({ variant = "primary", className = "", ...props }: ButtonProps) {
   const classes = `${styles.button} ${styles[variant]} ${className}`;
-  if ("href" in props) return <a {...props} className={classes} />;
-  return <button {...props} className={classes} type={props.type ?? "button"} />;
+  if ("href" in props) return <a {...props} className={classes} data-ui="button" />;
+  return <button {...props} className={classes} data-ui="button" type={props.type ?? "button"} />;
 }

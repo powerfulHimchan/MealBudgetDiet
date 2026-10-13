@@ -198,21 +198,21 @@ export function AuthScreen({
               <Mail size={25} />
               <strong>이메일을 확인해 주세요.</strong>
               <span>가입된 계정이라면 비밀번호 재설정 링크를 보내드렸습니다.</span>
-              <Link className="auth-primary-link" href="/login">로그인으로 이동</Link>
+              <Link className="auth-primary-link" data-ui="button" href="/login">로그인으로 이동</Link>
             </div>
           ) : mode === "reset" && resetComplete ? (
             <div className="auth-complete-panel" aria-live="polite">
               <ShieldCheck size={25} />
               <strong>새 비밀번호를 저장했습니다.</strong>
               <span>보안을 위해 모든 기기에서 로그아웃했습니다. 새 비밀번호로 로그인해 주세요.</span>
-              <Link className="auth-primary-link" href="/login">새 비밀번호로 로그인</Link>
+              <Link className="auth-primary-link" data-ui="button" href="/login">새 비밀번호로 로그인</Link>
             </div>
           ) : mode === "setup" && bootstrapAvailable === false ? (
             <div className="auth-complete-panel">
               <CircleDollarSign size={25} />
               <strong>서비스 관리자 설정이 완료되어 있습니다.</strong>
               <span>기존 계정으로 로그인하거나 새 장부를 만들어 주세요.</span>
-              <Link className="auth-primary-link" href="/login">로그인으로 이동</Link>
+              <Link className="auth-primary-link" data-ui="button" href="/login">로그인으로 이동</Link>
             </div>
           ) : (
             <form className="auth-form" onSubmit={(event) => void submit(event)}>

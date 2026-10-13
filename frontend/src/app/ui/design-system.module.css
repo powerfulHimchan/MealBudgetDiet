@@ -1,6 +1,7 @@
 .scope { padding-bottom: 112px; }
 .scope, .scope * { border-radius: var(--panel-radius); }
-.scope :not(button):not(.button) { border-radius: var(--panel-radius); }
+.scope :not(button):not(.button):not([data-ui="button"]) { border-radius: var(--panel-radius); }
+.scope [data-ui="button"] { border-radius: var(--button-radius); }
 .scope svg, .bottomNav svg { stroke-linecap: square; stroke-linejoin: miter; }
 .scope button:not(:global(.calendar-picker__trigger)), .scope .button { border-radius: var(--button-radius); }
 .scope button, .scope a, .scope input, .scope select, .scope textarea { transition: background-color var(--motion-duration), color var(--motion-duration), border-color var(--motion-duration), box-shadow var(--motion-duration), transform var(--motion-duration); }
@@ -53,7 +54,6 @@
 .menuCard::before { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: var(--blue); content: ""; opacity: 0; transition: opacity var(--motion-duration); }
 .menuIcon { display: grid; width: 46px; height: 46px; place-items: center; background: var(--ink); color: var(--icon-blue); transition: background-color var(--motion-duration), color var(--motion-duration); }
 .menuCopy { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
-.menuNumber { color: var(--number-color); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; }
 .menuCopy strong { color: var(--ink); font-size: 15.5px; font-weight: 800; }
 .menuDescription { color: var(--mute); font-size: 12.5px; line-height: 1.55; }
 .menuArrow { color: var(--mute); transition: color var(--motion-duration), transform var(--motion-duration); }
@@ -63,7 +63,7 @@
 .menuCard:hover .menuArrow, .menuCard:focus-visible .menuArrow { color: var(--blue); transform: translateX(3px); }
 .menuFiller { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: repeating-linear-gradient(135deg, var(--hatch) 0 6px, var(--surface) 6px 12px); }
 
-.bottomNav { position: fixed; z-index: 30; right: 0; bottom: max(20px, env(safe-area-inset-bottom)); left: 0; display: grid; width: calc(var(--nav-tab-width) * 4 + 2px); max-width: calc(100% - 28px); grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 auto; border: 1px solid var(--ink); border-radius: var(--panel-radius); background: var(--surface); box-shadow: 4px 4px 0 var(--ink); }
+.bottomNav { position: fixed; z-index: var(--layer-nav); right: 0; bottom: max(20px, env(safe-area-inset-bottom)); left: 0; display: grid; width: calc(var(--nav-tab-width) * 4 + 2px); max-width: calc(100% - 28px); grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 auto; border: 1px solid var(--ink); border-radius: var(--panel-radius); background: var(--surface); box-shadow: 4px 4px 0 var(--ink); }
 .bottomNav a { position: relative; display: flex; min-width: 0; min-height: 66px; align-items: center; justify-content: center; flex-direction: column; gap: 5px; border-radius: var(--panel-radius); color: var(--mute); font-size: 11px; font-weight: 700; transition: background-color var(--motion-duration), color var(--motion-duration); }
 .bottomNav a + a { border-left: 1px solid var(--line); }
 .bottomNav a:hover { background: var(--hover); color: var(--ink); }
@@ -78,6 +78,54 @@
 @media (max-width: 600px) {
   .hero { flex-wrap: wrap; padding: 24px 20px; }
   .hero > .button { margin-left: auto; }
-  .scope :global(.custom-range) { grid-template-columns: minmax(0, 1fr); }
-  .scope :global(.custom-range) > button { grid-column: 1 / -1; justify-self: start; }
+  .scope :global(.custom-range) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scope :global(.custom-range) > button { grid-column: 1 / -1; justify-self: end; }
+  .scope .dateField :global(.calendar-picker__trigger) { gap: 6px; padding-inline: 8px; font-size: 12px; }
+  .scope .dateField :global(.calendar-picker__trigger) svg { width: 15px; height: 15px; }
+}
+
+/* Shared appearance for every route, including authentication and dialogs. */
+.siteScope, .siteScope * { border-radius: var(--panel-radius); }
+.siteScope :not(button):not(.button):not([data-ui="button"]) { border-radius: var(--panel-radius); }
+.siteScope button:not(:global(.calendar-picker__trigger)):not(:global(.custom-select__trigger)), .siteScope [data-ui="button"], .siteScope .button { border-radius: var(--button-radius); }
+.siteScope button, .siteScope a, .siteScope input, .siteScope select, .siteScope textarea, .siteScope label[data-ui="button"] { transition: background-color var(--motion-duration), color var(--motion-duration), border-color var(--motion-duration), box-shadow var(--motion-duration), transform var(--motion-duration); }
+.siteScope :is(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.siteScope svg { stroke-linecap: square; stroke-linejoin: miter; }
+.siteScope :global(.app-shell) { padding-bottom: 112px; }
+.siteScope :global(.modal-backdrop) { z-index: var(--layer-modal); }
+.siteScope :global(.image-crop-backdrop) { z-index: var(--layer-crop); }
+.siteScope :is(:global(.recent-card), :global(.setting-panel), :global(.profile-settings-panel), :global(.account-security-panel), :global(.account-danger-panel), :global(.expense-results), :global(.expense-modal), :global(.auth-card), :global(.image-crop-dialog), :global(.category-delete-dialog), :global(.member-role-dialog), :global(.invitation-revoke-dialog), :global(.account-withdrawal-dialog)) { padding: var(--card-padding); border-color: var(--line); background: var(--surface); box-shadow: none; }
+.siteScope :is(:global(.category-settings-panel), :global(.member-settings-panel), :global(.invitation-settings-panel), :global(.filter-panel), :global(.expense-cycle-panel), :global(.account-session-panel), :global(.settings-placeholder-panel)) { border-color: var(--line); background: var(--surface); box-shadow: none; }
+.siteScope :global(.filter-panel) { padding: var(--card-padding); }
+.siteScope :is(:global(.panel-icon), :global(.auth-card-icon), :global(.settings-placeholder-icon), :global(.public-document-icon), :global(.offline-page__icon), :global(.placeholder-page__icon)) { background: var(--ink); color: var(--icon-blue); }
+.siteScope :is(:global(.budget-card), :global(.auth-promo), :global(.public-document-hero), :global(.page-hero)) { border-bottom: 4px solid var(--blue); background: linear-gradient(var(--hero-grid) 1px, transparent 1px), linear-gradient(90deg, var(--hero-grid) 1px, transparent 1px), linear-gradient(120deg, var(--hero-start), var(--hero-middle) 62%, var(--hero-end)); background-size: 32px 32px, 32px 32px, auto; color: var(--surface); }
+.siteScope :global(.budget-card) { padding: var(--card-padding); box-shadow: none; }
+.siteScope :is(:global(.budget-card), :global(.auth-promo), :global(.public-document-hero), :global(.page-hero)) h1 { font-size: 30px; font-weight: 800; }
+.siteScope :global(.budget-card)::after, .siteScope :global(.auth-promo)::after { display: none; }
+.siteScope :is(:global(.budget-card), :global(.auth-promo), :global(.public-document-hero), :global(.page-hero)) :global(.eyebrow) { color: var(--hero-eyebrow); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.siteScope :global(.public-document-hero) > p:last-child, .siteScope :global(.auth-promo-copy) > p:last-child { color: var(--hero-description); font-size: 14px; }
+.siteScope :global(.auth-shell), .siteScope :global(.auth-form-side) { background: var(--canvas); }
+.siteScope :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, :global(.calendar-picker__trigger), :global(.custom-select__trigger)) { min-height: 42px; border-color: var(--line); border-bottom: 2px solid var(--ink); border-radius: var(--panel-radius); background: var(--surface); color: var(--ink); }
+.siteScope textarea { border-color: var(--line); border-bottom: 2px solid var(--ink); background: var(--surface); color: var(--ink); }
+.siteScope input[type="range"] { height: 6px; padding: 0; border: 0; appearance: none; background: var(--line); }
+.siteScope input[type="range"]::-webkit-slider-thumb { width: 16px; height: 16px; border: 1px solid var(--ink); border-radius: var(--panel-radius); appearance: none; background: var(--blue); cursor: ew-resize; }
+.siteScope input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 1px solid var(--ink); border-radius: var(--panel-radius); background: var(--blue); cursor: ew-resize; }
+.siteScope :global(.calendar-picker__trigger), .siteScope :global(.custom-select__trigger) { border-radius: var(--panel-radius); }
+.siteScope :global(.primary-action), .siteScope :global(.auth-submit), .siteScope :global(.auth-primary-link), .siteScope :global(.expense-add-button) { min-height: var(--button-height); border-color: var(--blue); background: var(--blue); color: var(--surface); font-size: 13px; box-shadow: 0 4px 12px rgba(37, 99, 235, .35); }
+.siteScope :global(.primary-action):hover, .siteScope :global(.auth-submit):hover:not(:disabled), .siteScope :global(.auth-primary-link):hover, .siteScope :global(.expense-add-button):hover:not(:disabled) { background: var(--blue-hover); }
+.siteScope :global(.secondary-button) { border-color: var(--line); background: var(--surface); color: var(--ink); }
+.siteScope :global(.secondary-button):hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+.siteScope :global(.dark-button) { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+.siteScope :global(.dark-button):hover:not(:disabled) { background: var(--blue-hover); }
+.siteScope :global(.settings-context-badge) { margin-bottom: 12px; }
+.siteScope :global(.calendar-picker__compact-value) { display: none; }
+
+@media (max-width: 1024px) {
+  .siteScope :is(:global(.dashboard-grid), :global(.settings-grid), :global(.account-settings-grid), :global(.auth-shell)) { grid-template-columns: minmax(0, 1fr); }
+  .siteScope :global(.auth-promo) { min-height: auto; }
+}
+@media (max-width: 600px) {
+  .siteScope :global(.auth-form-row) { grid-template-columns: minmax(0, 1fr); }
+  .siteScope :global(.calendar-picker__full-value) { display: none; }
+  .siteScope :global(.calendar-picker__compact-value) { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }

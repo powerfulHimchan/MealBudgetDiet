@@ -3,9 +3,8 @@
 .period span { color: var(--mute); font-size: 11px; }
 .period strong { color: var(--ink); font-size: 15px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
-  .navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 8px; }
-  .period { grid-column: 1 / -1; grid-row: 1; }
-  .navigation button { grid-row: 2; gap: 3px; padding-inline: 12px; }
-  .navigation button:first-child { justify-self: start; }
-  .navigation button:last-child { justify-self: end; }
+  .navigation { grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 8px; }
+  .navigation button { width: 42px; padding: 0; }
+  .buttonLabel { display: none; }
+  .period strong { max-width: 100%; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
 }

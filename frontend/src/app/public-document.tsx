@@ -15,7 +15,7 @@ export function PublicDocument({ eyebrow, title, description, children }: Public
     <main className="public-document-shell">
       <header className="public-document-header">
         <BrandLink className="auth-brand" href="/login" />
-        <Link className="public-document-login" href="/login">
+        <Link className="public-document-login" data-ui="button" href="/login">
           로그인 <ExternalLink size={15} />
         </Link>
       </header>

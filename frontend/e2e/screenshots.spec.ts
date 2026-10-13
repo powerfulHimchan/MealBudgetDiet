@@ -85,7 +85,7 @@ test("capture implemented frontend screens", async ({ browser }) => {
       await expect(mobile.getByRole("link", { name: /예산 관리/ })).toBeVisible();
       await expect(mobile.getByRole("link", { name: /멤버 관리/ })).toBeVisible();
       await expect(mobile.getByRole("link", { name: /푸시 알림/ })).toBeVisible();
-      await expect(mobile.getByRole("link", { name: /계정 설정/ })).toBeVisible();
+      await expect(mobile.getByRole("region", { name: "계정", exact: true }).getByRole("link", { name: /계정 설정/ })).toBeVisible();
     } else if (screen.route === "/settings/budget") {
       await expect(mobile.getByText("현재 적용 금액", { exact: true })).toBeVisible();
       await expect(mobile.getByRole("heading", { name: "예산 주기" })).toBeVisible();
@@ -822,6 +822,7 @@ test("redirects an anonymous user to login and returns to the requested page", a
 
   await expect(page).toHaveURL("/statistics?from=2026-09-01&to=2026-09-30");
   await expect(page.getByRole("heading", { name: "기간별 통계" })).toBeVisible();
+  await expect(page.getByText("658,800원", { exact: true })).toBeVisible();
 });
 
 test("recovers from an invalidated server session", async ({ page }) => {

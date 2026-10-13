@@ -246,8 +246,8 @@ export function AccountSettings() {
               </div>
             </div>
             <div className="profile-actions">
-              {user.serviceRole === "SERVICE_ADMIN" && <Link className="secondary-button" href="/settings/ai"><ShieldCheck size={16} />AI 연결 확인</Link>}
-              <label className="dark-button">
+              {user.serviceRole === "SERVICE_ADMIN" && <Link className="secondary-button" data-ui="button" href="/settings/ai"><ShieldCheck size={16} />AI 연결 확인</Link>}
+              <label className="dark-button" data-ui="button">
                 {isSavingImage ? <LoaderCircle className="spin" size={16} /> : <Camera size={16} />}
                 {user.profileImageUrl ? "사진 변경" : "사진 등록"}
                 <input accept="image/jpeg,image/png,image/webp" disabled={isBusy} onChange={selectProfileImage} type="file" />
