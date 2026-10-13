@@ -25,6 +25,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -67,9 +69,14 @@ class SpendingAnalysisIntegrationTest {
 	@Autowired private ObjectMapper mapper;
 	@MockitoBean private OpenAiGateway gateway;
 
-	@Test
+	@ParameterizedTest
+	@CsvSource({
+		"V20__clear_requested_ledger_spending_analyses.sql, 2026-10-12T09:21:45Z",
+		"V21__reset_requested_ledger_analysis_context.sql, 2026-10-13T06:18:59Z"
+	})
 	@Transactional
-	void requestedResetPreservesOtherLedgersAndNewOrInFlightAnalyses() throws Exception {
+	void requestedResetPreservesOtherLedgersAndNewOrInFlightAnalyses(String migrationFile, String requestedAt) throws Exception {
+		Instant cutoff = Instant.parse(requestedAt);
 		// Shadow the table inside this transaction to replay the one-time migration safely.
 		jdbc.execute("CREATE TEMP TABLE spending_analyses AS SELECT * FROM public.spending_analyses WITH NO DATA");
 		String ledger = "44df45be-f354-4896-bf7f-6f1ce74536ef";
@@ -77,18 +84,22 @@ class SpendingAnalysisIntegrationTest {
 		for (String owner : new String[] { ledger, other }) {
 			jdbc.update("""
 				INSERT INTO spending_analyses (ledger_id, period_from, period_to, status, summary, analyzed_at)
-				VALUES (?::uuid, '2026-08-01', '2026-08-31', 'COMPLETED', '기존 분석', '2026-10-12 09:21:45+00')
-				""", owner);
+				VALUES (?::uuid, '2026-08-01', '2026-08-31', 'COMPLETED', '기존 분석', ?::timestamptz)
+				""", owner, cutoff.toString());
 		}
 		jdbc.update("""
 			INSERT INTO spending_analyses (ledger_id, period_from, period_to, status, summary, analyzed_at)
-			VALUES (?::uuid, '2026-09-01', '2026-09-30', 'COMPLETED', '새 분석', '2026-10-12 09:21:46+00'),
+			VALUES (?::uuid, '2026-09-01', '2026-09-30', 'COMPLETED', '새 분석', ?::timestamptz),
 			       (?::uuid, '2026-07-01', '2026-07-31', 'PROCESSING', NULL, NULL)
-			""", ledger, ledger);
-		var migration = new ClassPathResource("db/migration/V20__clear_requested_ledger_spending_analyses.sql");
+			""", ledger, cutoff.plusSeconds(1).toString(), ledger);
+		var migration = new ClassPathResource("db/migration/" + migrationFile);
 		try (var stream = migration.getInputStream()) {
-			jdbc.execute(StreamUtils.copyToString(stream, StandardCharsets.UTF_8));
+			String sql = StreamUtils.copyToString(stream, StandardCharsets.UTF_8);
+			jdbc.execute(sql);
+			jdbc.execute(sql); // A retry must preserve all remaining records.
 		}
+		assertThat(repository.snapshot(UUID.fromString(ledger), LocalDate.parse("2026-08-01"),
+			LocalDate.parse("2026-08-31"), true, cutoff).status()).isEqualTo("NOT_ANALYZED");
 		assertThat(jdbc.queryForObject("SELECT count(*) FROM spending_analyses WHERE summary = '기존 분석' AND ledger_id = ?::uuid", Integer.class, ledger)).isZero();
 		assertThat(jdbc.queryForObject("SELECT count(*) FROM spending_analyses WHERE ledger_id = ?::uuid", Integer.class, other)).isEqualTo(1);
 		assertThat(jdbc.queryForObject("SELECT count(*) FROM spending_analyses WHERE ledger_id = ?::uuid", Integer.class, ledger)).isEqualTo(2);
