@@ -107,6 +107,9 @@
 .siteScope :global(.auth-shell), .siteScope :global(.auth-form-side) { background: var(--canvas); }
 .siteScope :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, :global(.calendar-picker__trigger), :global(.custom-select__trigger)) { min-height: 42px; border-color: var(--line); border-bottom: 2px solid var(--ink); border-radius: var(--panel-radius); background: var(--surface); color: var(--ink); }
 .siteScope textarea { border-color: var(--line); border-bottom: 2px solid var(--ink); background: var(--surface); color: var(--ink); }
+.siteScope input[type="range"] { height: 6px; padding: 0; border: 0; appearance: none; background: var(--line); }
+.siteScope input[type="range"]::-webkit-slider-thumb { width: 16px; height: 16px; border: 1px solid var(--ink); border-radius: var(--panel-radius); appearance: none; background: var(--blue); cursor: ew-resize; }
+.siteScope input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 1px solid var(--ink); border-radius: var(--panel-radius); background: var(--blue); cursor: ew-resize; }
 .siteScope :global(.calendar-picker__trigger), .siteScope :global(.custom-select__trigger) { border-radius: var(--panel-radius); }
 .siteScope :global(.primary-action), .siteScope :global(.auth-submit), .siteScope :global(.auth-primary-link), .siteScope :global(.expense-add-button) { min-height: var(--button-height); border-color: var(--blue); background: var(--blue); color: var(--surface); font-size: 13px; box-shadow: 0 4px 12px rgba(37, 99, 235, .35); }
 .siteScope :global(.primary-action):hover, .siteScope :global(.auth-submit):hover:not(:disabled), .siteScope :global(.auth-primary-link):hover, .siteScope :global(.expense-add-button):hover:not(:disabled) { background: var(--blue-hover); }
