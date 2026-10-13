@@ -8,6 +8,7 @@ import { AppNav } from "./app-nav";
 import { request } from "../lib/api";
 import { CurrentUserAvatar } from "./current-user-avatar";
 import { BrandLink } from "./brand-link";
+import { MidCycleAnalysisView, type MidCycleAnalysis } from "./mid-cycle-analysis";
 
 type DashboardData = {
   yearMonth: string;
@@ -21,6 +22,7 @@ type DashboardData = {
   usageRate: number;
   pushUsageThreshold: number;
   status: "NORMAL" | "WARNING" | "EXCEEDED";
+  midCycleAnalysis?: MidCycleAnalysis;
   recentExpenses: Array<{
     id: string;
     amount: number;
@@ -102,6 +104,11 @@ export function Dashboard() {
                 <strong>{won.format(data.projectedSpent)}원</strong>
               </div>
               <small>{data.projectedSpent > data.budget ? "현재 속도라면 예산을 초과할 수 있어요." : "현재 속도라면 예산 안에서 마칠 것으로 보여요."}</small>
+              {data.midCycleAnalysis && <MidCycleAnalysisView
+                key={`${data.period.from}:${data.period.to}`}
+                period={data.period}
+                initial={data.midCycleAnalysis}
+              />}
             </div>
 
             <Link className="primary-action" data-ui="button" href="/expenses?new=1"><Plus size={20} strokeWidth={2.5} />식비 등록</Link>
