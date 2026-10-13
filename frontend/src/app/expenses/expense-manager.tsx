@@ -1,26 +1,22 @@
 "use client";
 
 import {
-  BarChart3,
   ArrowLeft,
   ArrowRight,
   Camera,
   ChevronDown,
   Check,
-  House,
   LoaderCircle,
   Pencil,
   Plus,
   ReceiptText,
   RotateCcw,
   Search,
-  Settings,
   SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { mutation, multipartMutation, request, todayInSeoul } from "../../lib/api";
 import { adjacentCycle, cycleForDate, type BudgetCycleRange, type BudgetCycleUnit } from "../../lib/budget-cycle";
@@ -29,6 +25,8 @@ import { CurrentUserAvatar } from "../current-user-avatar";
 import { CalendarPicker } from "../ui/date-picker";
 import { CustomSelect } from "../ui/custom-select";
 import { ImageCropDialog } from "../ui/image-crop-dialog";
+import { BottomNav } from "../ui/bottom-nav";
+import { Hero } from "../ui/hero";
 
 type Category = { id: string; name: string; sortOrder: number; version: number };
 type Expense = {
@@ -481,16 +479,11 @@ export function ExpenseManager() {
         <CurrentUserAvatar />
       </header>
 
-      <section className="expense-hero">
-        <div>
-          <p className="eyebrow">SHARED LEDGER</p>
-          <h1>식비 내역</h1>
-          <p>함께 사용한 식비를 기록하고 필요한 내역을 찾아보세요.</p>
-        </div>
+      <Hero eyebrow="SHARED LEDGER" title="식비 내역" description="함께 사용한 식비를 기록하고 필요한 내역을 찾아보세요." action={
         <button className="expense-add-button" disabled={!cycleSettings} type="button" onClick={openCreate}>
           <Plus size={19} /> 식비 등록
         </button>
-      </section>
+      } />
 
       {error && <div className="message-banner message-banner--error" role="alert">{error}</div>}
       {notice && (
@@ -692,12 +685,7 @@ export function ExpenseManager() {
         </div>
       </div>
 
-      <nav className="bottom-nav" aria-label="주요 메뉴">
-        <Link href="/"><House size={20} /><span>홈</span></Link>
-        <Link className="is-active" href="/expenses"><ReceiptText size={20} /><span>식비</span></Link>
-        <Link href="/statistics"><BarChart3 size={20} /><span>통계</span></Link>
-        <Link href="/settings"><Settings size={20} /><span>설정</span></Link>
-      </nav>
+      <BottomNav active="expenses" />
 
       {isExpenseOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeExpenseModal(); }}>
@@ -761,7 +749,7 @@ export function ExpenseManager() {
                   </ul>
                 )}
                 {draftImages.length < 3 && (
-                  <label className="expense-image-picker">
+                  <label className="expense-image-picker" data-ui="button">
                     {isUploading ? <LoaderCircle className="spin" size={20} /> : <Camera size={20} />}
                     <span>{isUploading ? "이미지 처리 중" : "이미지 추가"}</span>
                     <input accept="image/jpeg,image/png,image/webp" disabled={isUploading || pendingCropFiles.length > 0} multiple onChange={(event) => { selectImages(event.target.files); event.target.value = ""; }} type="file" />

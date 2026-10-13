@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { PwaRegister } from "./pwa-register";
 import "./globals.css";
+import designStyles from "./ui/design-system.module.css";
 
 export const metadata: Metadata = {
   title: "Sikbi - 함께 쓰는 식비 관리",
@@ -21,7 +22,7 @@ export const viewport: Viewport = { themeColor: "#080d18", colorScheme: "light" 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko">
-      <body><PwaRegister />{children}</body>
+      <body className={designStyles.siteScope}><PwaRegister />{children}</body>
     </html>
   );
 }

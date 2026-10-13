@@ -10,6 +10,7 @@ type CalendarPickerProps = {
   mode?: "date" | "month";
   disabled?: boolean;
   placeholder?: string;
+  compactOnMobile?: boolean;
 };
 
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
@@ -38,6 +39,7 @@ export function CalendarPicker({
   mode = "date",
   disabled = false,
   placeholder = mode === "date" ? "날짜 선택" : "월 선택",
+  compactOnMobile = false,
 }: CalendarPickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const initial = initialView(value);
@@ -89,7 +91,8 @@ export function CalendarPicker({
         }}
         type="button"
       >
-        <span className={value ? undefined : "is-placeholder"}>{displayValue(value, mode, placeholder)}</span>
+        <span className={`${compactOnMobile ? "calendar-picker__full-value" : ""}${value ? "" : " is-placeholder"}`}>{displayValue(value, mode, placeholder)}</span>
+        {compactOnMobile && <span aria-hidden="true" className={`calendar-picker__compact-value${value ? "" : " is-placeholder"}`}>{value ? value.replaceAll("-", ".") : placeholder}</span>}
         <CalendarDays size={17} />
       </button>
       {open && (

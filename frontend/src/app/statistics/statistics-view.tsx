@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarRange, ChevronLeft, ChevronRight, Download, LoaderCircle, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, LoaderCircle, TrendingDown, TrendingUp } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BrandLink } from "../brand-link";
+import { CurrentUserAvatar } from "../current-user-avatar";
 import { request, todayInSeoul } from "../../lib/api";
 import { addMonths, adjacentCycle, budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { BottomNav } from "../ui/bottom-nav";
@@ -171,7 +172,7 @@ export function StatisticsView() {
     <main className={`app-shell analytics-shell ${designStyles.scope}`}>
       <header className="topbar">
         <BrandLink />
-        <span className="page-badge"><CalendarRange size={16} /> 분석</span>
+        <CurrentUserAvatar />
       </header>
 
       <Hero eyebrow="SPENDING ANALYTICS" title="기간별 통계" description="기간별 지출 추이와 카테고리 비중을 확인하세요." action={
@@ -192,9 +193,9 @@ export function StatisticsView() {
           <Button disabled={isLoading} type="submit">조회</Button>
         </form>
         <nav className={navigationStyles.navigation} aria-label="주기 이동">
-          <Button variant="outline" disabled={isLoading || !data} onClick={() => moveCycle(-1)}><ChevronLeft aria-hidden="true" size={16} />이전 주기</Button>
-          <div className={navigationStyles.period} aria-live="polite"><span>조회된 기간</span><strong>{comparisonDateRange(range.from, range.to)}</strong></div>
-          <Button variant="outline" disabled={isLoading || !data} onClick={() => moveCycle(1)}>다음 주기<ChevronRight aria-hidden="true" size={16} /></Button>
+          <Button aria-label="이전 주기" variant="outline" disabled={isLoading || !data} onClick={() => moveCycle(-1)}><ChevronLeft aria-hidden="true" size={16} /><span className={navigationStyles.buttonLabel}>이전 주기</span></Button>
+          <div className={navigationStyles.period} aria-live="polite"><span>조회된 기간</span><strong title={comparisonDateRange(range.from, range.to)}>{comparisonDateRange(range.from, range.to)}</strong></div>
+          <Button aria-label="다음 주기" variant="outline" disabled={isLoading || !data} onClick={() => moveCycle(1)}><span className={navigationStyles.buttonLabel}>다음 주기</span><ChevronRight aria-hidden="true" size={16} /></Button>
         </nav>
       </section>
 
