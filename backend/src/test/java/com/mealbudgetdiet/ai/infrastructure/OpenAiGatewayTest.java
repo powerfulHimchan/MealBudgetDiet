@@ -97,8 +97,17 @@ class OpenAiGatewayTest {
 	@Test
 	void rejectsBlankAndOversizedInputsWithoutCallingProvider() {
 		assertError(() -> gateway(true, SECRET).generate("test", " "), "AI_INVALID_INPUT", HttpStatus.BAD_REQUEST);
-		assertError(() -> gateway(true, SECRET).generate("test", "x".repeat(4001)), "AI_INVALID_INPUT", HttpStatus.BAD_REQUEST);
+		assertError(() -> gateway(true, SECRET).generate("test", "x".repeat(OpenAiGateway.MAX_INPUT_LENGTH + 1)), "AI_INVALID_INPUT", HttpStatus.BAD_REQUEST);
+		assertError(() -> gateway(true, SECRET).generate("x".repeat(4001), "test"), "AI_INVALID_INPUT", HttpStatus.BAD_REQUEST);
 		assertThat(requests.get()).isZero();
+	}
+
+	@Test
+	void acceptsExpenseContextUpToTheInputLimit() {
+		String input = "가".repeat(OpenAiGateway.MAX_INPUT_LENGTH);
+		gateway(true, SECRET).generate("Reply in Korean.", input);
+		assertThat(mapper.readTree(requestBody.get()).path("input").asString()).isEqualTo(input);
+		assertThat(requests.get()).isEqualTo(1);
 	}
 
 	@ParameterizedTest

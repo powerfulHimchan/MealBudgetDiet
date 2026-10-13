@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,6 +19,30 @@ public class SpendingAnalysisRepository {
 
 	public SpendingAnalysisRepository(JdbcTemplate jdbc) {
 		this.jdbc = jdbc;
+	}
+
+	public ExpenseDetails expenseDetails(UUID ledgerId, LocalDate from, LocalDate to) {
+		var rows = jdbc.query("""
+			select e.spent_on, e.amount, coalesce(c.name, '분류 없음') category_name,
+			       e.merchant, e.memo, count(*) over () total_count
+			from expenses e
+			left join categories c on c.id = e.category_id
+			where e.ledger_id = ? and e.spent_on between ? and ?
+			order by e.amount desc, e.spent_on desc, e.id desc
+			limit 200
+			""", (rs, index) -> new ExpenseDetailRow(rs.getLong("total_count"), new ExpenseDetail(
+				rs.getObject("spent_on", LocalDate.class), rs.getLong("amount"), rs.getString("category_name"),
+				rs.getString("merchant"), rs.getString("memo"))), ledgerId, from, to);
+		return new ExpenseDetails(rows.isEmpty() ? 0 : rows.getFirst().totalCount(), rows.stream().map(ExpenseDetailRow::detail).toList());
+	}
+
+	public record ExpenseDetail(LocalDate spentOn, long amount, String categoryName, String merchant, String memo) {
+	}
+
+	public record ExpenseDetails(long totalCount, List<ExpenseDetail> items) {
+	}
+
+	private record ExpenseDetailRow(long totalCount, ExpenseDetail detail) {
 	}
 
 	public SpendingAnalysisSnapshot snapshot(UUID ledgerId, LocalDate from, LocalDate to, boolean eligible, Instant now) {
