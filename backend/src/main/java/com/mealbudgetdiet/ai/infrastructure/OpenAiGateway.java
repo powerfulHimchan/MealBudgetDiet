@@ -22,7 +22,8 @@ import tools.jackson.databind.ObjectMapper;
 public class OpenAiGateway {
 
 	private static final URI RESPONSES_URI = URI.create("https://api.openai.com/v1/responses");
-	private static final int MAX_INPUT_LENGTH = 4000;
+	public static final int MAX_INPUT_LENGTH = 32_000;
+	private static final int MAX_INSTRUCTIONS_LENGTH = 4000;
 	private final OpenAiProperties properties;
 	private final ObjectMapper objectMapper;
 	private final HttpClient httpClient;
@@ -55,9 +56,9 @@ public class OpenAiGateway {
 
 	public AiTextResult generate(String instructions, String input) {
 		requireReady();
-		if (instructions == null || instructions.isBlank() || instructions.length() > MAX_INPUT_LENGTH
+		if (instructions == null || instructions.isBlank() || instructions.length() > MAX_INSTRUCTIONS_LENGTH
 			|| input == null || input.isBlank() || input.length() > MAX_INPUT_LENGTH) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "AI_INVALID_INPUT", "AI 입력은 1~4000자여야 합니다.");
+			throw new ApiException(HttpStatus.BAD_REQUEST, "AI_INVALID_INPUT", "AI 요청의 입력이 비어 있거나 너무 깁니다.");
 		}
 		try {
 			var body = objectMapper.writeValueAsString(Map.of(

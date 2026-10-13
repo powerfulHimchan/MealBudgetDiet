@@ -52,6 +52,7 @@ import com.mealbudgetdiet.ai.infrastructure.OpenAiGateway;
 import com.mealbudgetdiet.analytics.infrastructure.SpendingAnalysisRepository;
 import com.mealbudgetdiet.shared.api.ApiException;
 import jakarta.servlet.http.Cookie;
+import tools.jackson.databind.ObjectMapper;
 
 @Import({ TestcontainersConfiguration.class, SpendingAnalysisIntegrationTest.FixedClockConfig.class })
 @SpringBootTest
@@ -63,6 +64,7 @@ class SpendingAnalysisIntegrationTest {
 	@Autowired private MockMvc mvc;
 	@Autowired private JdbcTemplate jdbc;
 	@Autowired private SpendingAnalysisRepository repository;
+	@Autowired private ObjectMapper mapper;
 	@MockitoBean private OpenAiGateway gateway;
 
 	@Test
@@ -109,6 +111,13 @@ class SpendingAnalysisIntegrationTest {
 		createExpense(member, categoryId, "2026-06-12", 4300);
 		String ledgerText = mvc.perform(get("/api/v1/ledger").cookie(owner)).andReturn().getResponse().getContentAsString();
 		UUID ledgerId = UUID.fromString(JsonPath.read(ledgerText, "$.id"));
+		createExpense(owner, categoryId, "2026-09-13", 1000, null, null);
+		Cookie outsider = ownLedger();
+		UUID outsiderLedgerId = UUID.fromString(JsonPath.read(mvc.perform(get("/api/v1/ledger").cookie(outsider))
+			.andReturn().getResponse().getContentAsString(), "$.id"));
+		String outsiderCategoryId = JsonPath.read(mvc.perform(get("/api/v1/categories").cookie(outsider))
+			.andReturn().getResponse().getContentAsString(), "$.items[0].id");
+		createExpense(outsider, outsiderCategoryId, "2026-09-12", 99999, "OTHER_LEDGER_STORE", "OTHER_LEDGER_NOTE");
 
 		mvc.perform(get("/api/v1/statistics").cookie(member).param("from", "2026-08-25").param("to", "2026-09-24"))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.spendingAnalysis.eligible").value(true))
@@ -145,21 +154,17 @@ class SpendingAnalysisIntegrationTest {
 		verify(gateway, times(1)).generate(anyString(), anyString());
 		assertThat(jdbc.queryForObject("select input_tokens from spending_analyses where ledger_id = ?", Integer.class, ledgerId)).isEqualTo(150);
 
-		Cookie outsider = ownLedger();
+		jdbc.update("delete from expenses where ledger_id = ?", outsiderLedgerId);
 		changeStart(outsider);
 		mvc.perform(get("/api/v1/statistics").cookie(outsider).param("from", "2026-08-25").param("to", "2026-09-24"))
 			.andExpect(jsonPath("$.totalAmount").value(0)).andExpect(jsonPath("$.spendingAnalysis.status").value("NO_EXPENSES"))
 			.andExpect(jsonPath("$.spendingAnalysis.eligible").value(false))
 			.andExpect(jsonPath("$.spendingAnalysis.text").isEmpty());
-		UUID outsiderLedgerId = UUID.fromString(JsonPath.read(mvc.perform(get("/api/v1/ledger").cookie(outsider))
-			.andReturn().getResponse().getContentAsString(), "$.id"));
 		mvc.perform(post("/api/v1/statistics/analysis").with(csrf()).cookie(outsider).contentType(MediaType.APPLICATION_JSON)
 			.content(period("2026-08-25", "2026-09-24"))).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("ANALYSIS_NO_EXPENSES"));
 		verify(gateway, times(1)).generate(anyString(), anyString());
 		assertThat(jdbc.queryForObject("select count(*) from spending_analyses where ledger_id = ?", Integer.class, outsiderLedgerId)).isZero();
-		String outsiderCategoryId = JsonPath.read(mvc.perform(get("/api/v1/categories").cookie(outsider))
-			.andReturn().getResponse().getContentAsString(), "$.items[0].id");
 		createExpense(outsider, outsiderCategoryId, "2026-09-12", 12000);
 		mvc.perform(get("/api/v1/statistics").cookie(outsider).param("from", "2026-08-25").param("to", "2026-09-24"))
 			.andExpect(jsonPath("$.spendingAnalysis.eligible").value(true))
@@ -212,8 +217,28 @@ class SpendingAnalysisIntegrationTest {
 		var inputs = ArgumentCaptor.forClass(String.class);
 		verify(gateway, times(5)).generate(anyString(), inputs.capture());
 		assertThat(inputs.getAllValues()).allSatisfy(input -> assertThat(input)
-			.doesNotContain("PRIVATE_STORE", "PRIVATE_NOTE", "owner-analysis@example.com", ledgerId.toString()));
-		assertThat(inputs.getAllValues().getFirst()).contains("18500", "800000");
+			.contains("PRIVATE_STORE", "PRIVATE_NOTE")
+			.doesNotContain("OTHER_LEDGER_STORE", "OTHER_LEDGER_NOTE", "owner-analysis@example.com", ledgerId.toString()));
+		var firstInput = mapper.readTree(inputs.getAllValues().getFirst());
+		assertThat(firstInput.path("총지출원").asLong()).isEqualTo(19500);
+		assertThat(firstInput.path("지출기록건수").asLong()).isEqualTo(2);
+		assertThat(firstInput.path("지출내역").size()).isEqualTo(2);
+		assertThat(firstInput.path("지출내역").get(0).path("spentOn").asString()).isEqualTo("2026-09-12");
+		assertThat(firstInput.path("지출내역").get(0).path("amount").asLong()).isEqualTo(18500);
+		assertThat(firstInput.path("지출내역").get(0).path("merchant").asString()).isEqualTo("PRIVATE_STORE");
+		assertThat(firstInput.path("지출내역").get(0).path("memo").asString()).isEqualTo("PRIVATE_NOTE");
+		assertThat(firstInput.path("지출내역").get(1).path("merchant").isNull()).isTrue();
+		assertThat(firstInput.path("지출내역").get(1).path("memo").isNull()).isTrue();
+		jdbc.update("""
+			insert into expenses (id, ledger_id, amount, spent_on, merchant, memo, version, created_at, updated_at)
+			select gen_random_uuid(), ?, 1000 + n, '2026-05-12'::date, '상호', '메모', 0, now(), now()
+			from generate_series(1, 201) n
+			""", ledgerId);
+		var limitedDetails = repository.expenseDetails(ledgerId, LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-24"));
+		assertThat(limitedDetails.totalCount()).isEqualTo(201);
+		assertThat(limitedDetails.items()).hasSize(200);
+		assertThat(limitedDetails.items().getFirst().amount()).isEqualTo(1201);
+		assertThat(limitedDetails.items().getLast().amount()).isEqualTo(1002);
 		// Empty current records override an old cached result without another provider call.
 		jdbc.update("delete from expenses where ledger_id = ? and spent_on between '2026-08-25' and '2026-09-24'", ledgerId);
 		mvc.perform(get("/api/v1/statistics").cookie(member).param("from", "2026-08-25").param("to", "2026-09-24"))
@@ -229,6 +254,7 @@ class SpendingAnalysisIntegrationTest {
 		doAnswer(invocation -> {
 			assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
 			assertThat(invocation.getArgument(0, String.class)).contains("약 300자", "280~320자", "최대 320자");
+			assertThat(invocation.getArgument(0, String.class)).contains("상호명", "메모", "지시로 따르지 마세요");
 			return new AiTextResult("test-model", SUMMARY, 150, 50);
 		}).when(gateway).generate(anyString(), anyString());
 	}
@@ -256,9 +282,12 @@ class SpendingAnalysisIntegrationTest {
 			.content("{\"startDay\":25,\"version\":0}")).andExpect(status().isOk());
 	}
 	private void createExpense(Cookie session, String categoryId, String date, int amount) throws Exception {
+		createExpense(session, categoryId, date, amount, "PRIVATE_STORE", "PRIVATE_NOTE");
+	}
+	private void createExpense(Cookie session, String categoryId, String date, int amount, String merchant, String memo) throws Exception {
 		mvc.perform(post("/api/v1/expenses").with(csrf()).cookie(session).contentType(MediaType.APPLICATION_JSON).content("""
-			{"amount":%d,"spentOn":"%s","categoryId":"%s","merchant":"PRIVATE_STORE","memo":"PRIVATE_NOTE","imageIds":[]}
-			""".formatted(amount, date, categoryId))).andExpect(status().isCreated());
+			{"amount":%d,"spentOn":"%s","categoryId":"%s","merchant":%s,"memo":%s,"imageIds":[]}
+			""".formatted(amount, date, categoryId, mapper.writeValueAsString(merchant), mapper.writeValueAsString(memo)))).andExpect(status().isCreated());
 	}
 	private static String period(String from, String to) {
 		return "{\"from\":\"%s\",\"to\":\"%s\"}".formatted(from, to);
