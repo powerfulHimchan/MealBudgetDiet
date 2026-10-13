@@ -16,7 +16,6 @@ import {
   Search,
   Settings,
   SlidersHorizontal,
-  Tags,
   Trash2,
   X,
 } from "lucide-react";
@@ -691,19 +690,6 @@ export function ExpenseManager() {
             {hasNext && <button className="load-more-button" type="button" disabled={isLoading} onClick={() => void loadMore()}>내역 더 보기</button>}
           </section>
         </div>
-
-        <aside className="category-panel" aria-labelledby="category-title">
-          <div className="category-heading"><span><Tags size={19} /></span><div><p className="eyebrow">CATEGORY</p><h2 id="category-title">카테고리</h2></div><Link className="category-manage-link" href="/settings/categories">설정에서 관리</Link></div>
-          <ul>
-            {categories.map((category) => (
-              <li key={category.id}>
-                <span className="category-order">{String(category.sortOrder).padStart(2, "0")}</span>
-                <strong>{category.name}</strong>
-              </li>
-            ))}
-          </ul>
-          <p className="category-help">추가·수정·삭제는 설정의 카테고리 관리에서 할 수 있습니다.</p>
-        </aside>
       </div>
 
       <nav className="bottom-nav" aria-label="주요 메뉴">
