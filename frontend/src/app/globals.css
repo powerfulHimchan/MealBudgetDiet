@@ -1,23 +1,14 @@
 @import "tailwindcss";
-
-:root {
-  --ink: #080d18;
-  --muted: #64748b;
-  --line: #dbe4f0;
-  --surface: #ffffff;
-  --canvas: #f2f6fc;
-  --brand: #3b82f6;
-  --brand-strong: #1d4ed8;
-}
+@import "./ui/design-tokens.css";
 
 * { box-sizing: border-box; }
 html { min-height: 100%; background: var(--canvas); }
 body {
   min-height: 100vh;
   margin: 0;
-  background: radial-gradient(circle at 10% -5%, rgb(59 130 246 / 18%), transparent 30rem), var(--canvas);
+  background: var(--canvas);
   color: var(--ink);
-  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
 }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { font: inherit; }

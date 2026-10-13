@@ -1,0 +1,29 @@
+:root {
+  --ink: #0B1220;
+  --blue: #2563EB;
+  --blue-hover: #1D4ED8;
+  --line: #CFD8E6;
+  --mute: #64748B;
+  --canvas: #EEF2F9;
+  --surface: #FFFFFF;
+  --hover: #F4F8FF;
+  --hero-start: #070D1A;
+  --hero-middle: #0D1B3A;
+  --hero-end: #173A80;
+  --hero-grid: rgba(255, 255, 255, .04);
+  --hero-eyebrow: #7DB1FF;
+  --hero-description: #B6C3DC;
+  --icon-blue: #60A5FA;
+  --number-color: #94A3B8;
+  --hatch: #F6F8FC;
+  --button-radius: 999px;
+  --panel-radius: 0;
+  --button-height: 42px;
+  --nav-tab-width: 92px;
+  --card-padding: 20px;
+  --motion-duration: .15s;
+  --font-ui: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --brand: var(--blue);
+  --brand-strong: var(--blue-hover);
+  --muted: var(--mute);
+}

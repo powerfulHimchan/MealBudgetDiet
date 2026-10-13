@@ -3,6 +3,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AppNav } from "../app-nav";
 import { BrandLink } from "../brand-link";
+import { BottomNav } from "../ui/bottom-nav";
+import { Hero } from "../ui/hero";
+import designStyles from "../ui/design-system.module.css";
 
 type SettingsPageFrameProps = {
   badge?: ReactNode;
@@ -11,6 +14,7 @@ type SettingsPageFrameProps = {
   eyebrow: string;
   showBackLink?: boolean;
   title: string;
+  redesigned?: boolean;
 };
 
 export function SettingsPageFrame({
@@ -20,9 +24,10 @@ export function SettingsPageFrame({
   eyebrow,
   showBackLink = false,
   title,
+  redesigned = false,
 }: SettingsPageFrameProps) {
   return (
-    <main className="app-shell settings-shell">
+    <main className={`app-shell settings-shell${redesigned ? ` ${designStyles.scope}` : ""}`}>
       <header className="topbar">
         <BrandLink />
         {badge ?? <span className="page-badge"><SlidersHorizontal size={16} /> 설정</span>}
@@ -30,12 +35,12 @@ export function SettingsPageFrame({
 
       {showBackLink && <Link className="settings-back-link" href="/settings"><ArrowLeft size={16} /> 설정으로 돌아가기</Link>}
 
-      <section className="page-hero">
+      {redesigned ? <Hero eyebrow={eyebrow} title={title} description={description} /> : <section className="page-hero">
         <div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
-      </section>
+      </section>}
 
       {children}
-      <AppNav active="settings" />
+      {redesigned ? <BottomNav active="settings" /> : <AppNav active="settings" />}
     </main>
   );
 }

@@ -108,6 +108,7 @@ export function CalendarPicker({
                 {days.map((day, index) => day == null ? <span key={`empty-${index}`} /> : (
                   <button
                     aria-label={`${viewYear}년 ${viewMonth + 1}월 ${day}일`}
+                    aria-pressed={value === `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`}
                     className={value === `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}` ? "is-selected" : undefined}
                     key={day}
                     onClick={() => {
@@ -125,6 +126,7 @@ export function CalendarPicker({
             <div className="calendar-picker__months">
               {Array.from({ length: 12 }, (_, month) => (
                 <button
+                  aria-pressed={value === `${viewYear}-${pad(month + 1)}`}
                   className={value === `${viewYear}-${pad(month + 1)}` ? "is-selected" : undefined}
                   key={month}
                   onClick={() => {
