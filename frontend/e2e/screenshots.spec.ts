@@ -822,6 +822,7 @@ test("redirects an anonymous user to login and returns to the requested page", a
 
   await expect(page).toHaveURL("/statistics?from=2026-09-01&to=2026-09-30");
   await expect(page.getByRole("heading", { name: "기간별 통계" })).toBeVisible();
+  await expect(page.getByText("658,800원", { exact: true })).toBeVisible();
 });
 
 test("recovers from an invalidated server session", async ({ page }) => {
