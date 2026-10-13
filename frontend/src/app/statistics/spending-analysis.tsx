@@ -3,6 +3,7 @@
 import { LoaderCircle, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { mutation } from "../../lib/api";
+import { Button } from "../ui/button";
 import styles from "./spending-analysis.module.css";
 
 export type SpendingAnalysis = {
@@ -44,9 +45,9 @@ export function SpendingAnalysisView({ period, analysis, disabled, onAnalyzed, o
     <section className={styles.panel} aria-label="소비 분석">
       <div className="panel-heading">
         <div className={styles.heading}><Sparkles size={20} /><h2>소비 분석</h2></div>
-        {!analysis.text && !noExpenses && <button className="dark-button" disabled={disabled || isAnalyzing} onClick={processing ? onRefresh : () => void analyze()} type="button">
+        {!analysis.text && !noExpenses && <Button variant="ink" disabled={disabled || isAnalyzing} onClick={processing ? onRefresh : () => void analyze()}>
           {isAnalyzing && <LoaderCircle className="spin" size={16} />}{isAnalyzing ? "분석 중" : processing ? "결과 확인" : "소비 분석"}
-        </button>}
+        </Button>}
       </div>
       {noExpenses ? <p className={styles.caption}>이 주기에는 등록된 소비 기록이 없어 분석할 수 없습니다.</p> : analysis.text ? <>
         <p className={styles.summary} aria-label="저장된 소비 분석">{analysis.text}</p>

@@ -3,11 +3,15 @@
 import { CalendarRange, ChevronLeft, ChevronRight, Download, LoaderCircle, TrendingDown, TrendingUp } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AppNav } from "../app-nav";
 import { BrandLink } from "../brand-link";
 import { request, todayInSeoul } from "../../lib/api";
 import { addMonths, adjacentCycle, budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
-import { CalendarPicker } from "../ui/date-picker";
+import { BottomNav } from "../ui/bottom-nav";
+import { Button } from "../ui/button";
+import { DateField } from "../ui/date-field";
+import { Hero } from "../ui/hero";
+import { PresetChip } from "../ui/preset-chip";
+import designStyles from "../ui/design-system.module.css";
 import { SpendingAnalysisView, type SpendingAnalysis } from "./spending-analysis";
 import navigationStyles from "./cycle-navigation.module.css";
 
@@ -164,36 +168,33 @@ export function StatisticsView() {
       < (Date.parse(comparison.currentPeriod.to) - Date.parse(comparison.currentPeriod.from));
 
   return (
-    <main className="app-shell analytics-shell">
+    <main className={`app-shell analytics-shell ${designStyles.scope}`}>
       <header className="topbar">
         <BrandLink />
         <span className="page-badge"><CalendarRange size={16} /> 분석</span>
       </header>
 
-      <section className="page-hero">
-        <div><p className="eyebrow">SPENDING ANALYTICS</p><h1>기간별 통계</h1><p>기간별 지출 추이와 카테고리 비중을 확인하세요.</p></div>
-        <a className="secondary-button export-button" href={`/api/v1/expenses/export.csv?${csvParams}`} download>
-          <Download size={17} /> CSV 내보내기
-        </a>
-      </section>
+      <Hero eyebrow="SPENDING ANALYTICS" title="기간별 통계" description="기간별 지출 추이와 카테고리 비중을 확인하세요." action={
+        <Button variant="white" href={`/api/v1/expenses/export.csv?${csvParams}`} download><Download aria-hidden="true" size={17} /> CSV 내보내기</Button>
+      } />
 
       <section className="range-panel" aria-label="통계 기간 선택">
-        <div className="range-presets">
+        <div className="range-presets" role="group" aria-label="기간 프리셋">
           {rangeButtons.map((button) => (
-            <button className={selectedRange === button.key ? "is-active" : undefined} key={button.key} disabled={isLoading} onClick={() => selectPreset(button.key)} type="button">
+            <PresetChip selected={selectedRange === button.key} key={button.key} disabled={isLoading} onClick={() => selectPreset(button.key)}>
               {button.label}
-            </button>
+            </PresetChip>
           ))}
         </div>
         <form className="custom-range" onSubmit={submitCustom}>
-          <div className={navigationStyles.dateField}><span>시작일</span><CalendarPicker ariaLabel="통계 시작일" onChange={(from) => setDraft({ ...draft, from })} value={draft.from} /></div>
-          <div className={navigationStyles.dateField}><span>종료일</span><CalendarPicker ariaLabel="통계 종료일" onChange={(to) => setDraft({ ...draft, to })} value={draft.to} /></div>
-          <button className="dark-button" disabled={isLoading} type="submit">조회</button>
+          <DateField label="시작일" ariaLabel="통계 시작일" onChange={(from) => setDraft({ ...draft, from })} value={draft.from} />
+          <DateField label="종료일" ariaLabel="통계 종료일" onChange={(to) => setDraft({ ...draft, to })} value={draft.to} />
+          <Button disabled={isLoading} type="submit">조회</Button>
         </form>
         <nav className={navigationStyles.navigation} aria-label="주기 이동">
-          <button disabled={isLoading || !data} onClick={() => moveCycle(-1)} type="button"><ChevronLeft aria-hidden="true" size={16} />이전 주기</button>
+          <Button variant="outline" disabled={isLoading || !data} onClick={() => moveCycle(-1)}><ChevronLeft aria-hidden="true" size={16} />이전 주기</Button>
           <div className={navigationStyles.period} aria-live="polite"><span>조회된 기간</span><strong>{comparisonDateRange(range.from, range.to)}</strong></div>
-          <button disabled={isLoading || !data} onClick={() => moveCycle(1)} type="button">다음 주기<ChevronRight aria-hidden="true" size={16} /></button>
+          <Button variant="outline" disabled={isLoading || !data} onClick={() => moveCycle(1)}>다음 주기<ChevronRight aria-hidden="true" size={16} /></Button>
         </nav>
       </section>
 
@@ -235,12 +236,12 @@ export function StatisticsView() {
               <div className="chart-wrap" role="img" aria-label="일별 지출 추이 차트">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart accessibilityLayer={false} data={data.daily} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-                    <defs><linearGradient id="spending-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} /></linearGradient></defs>
-                    <CartesianGrid stroke="#dbe4f0" strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} minTickGap={22} />
-                    <YAxis tickFormatter={(value: number) => compactWon.format(value)} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <defs><linearGradient id="spending-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--blue)" stopOpacity={0.4} /><stop offset="100%" stopColor="var(--blue)" stopOpacity={0.02} /></linearGradient></defs>
+                    <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tick={{ fontSize: 11, fill: "var(--mute)" }} axisLine={false} tickLine={false} minTickGap={22} />
+                    <YAxis tickFormatter={(value: number) => compactWon.format(value)} tick={{ fontSize: 11, fill: "var(--mute)" }} axisLine={false} tickLine={false} />
                     <Tooltip formatter={(value) => [`${won.format(Number(value))}원`, "지출"]} labelFormatter={(label) => String(label)} />
-                    <Area isAnimationActive={false} type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#spending-fill)" />
+                    <Area isAnimationActive={false} type="monotone" dataKey="amount" stroke="var(--blue)" strokeWidth={2} fill="url(#spending-fill)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -263,7 +264,7 @@ export function StatisticsView() {
           </div>
         </>
       )}
-      <AppNav active="statistics" />
+      <BottomNav active="statistics" />
     </main>
   );
 }

@@ -1,0 +1,83 @@
+.scope { padding-bottom: 112px; }
+.scope, .scope * { border-radius: var(--panel-radius); }
+.scope :not(button):not(.button) { border-radius: var(--panel-radius); }
+.scope svg, .bottomNav svg { stroke-linecap: square; stroke-linejoin: miter; }
+.scope button:not(:global(.calendar-picker__trigger)), .scope .button { border-radius: var(--button-radius); }
+.scope button, .scope a, .scope input, .scope select, .scope textarea { transition: background-color var(--motion-duration), color var(--motion-duration), border-color var(--motion-duration), box-shadow var(--motion-duration), transform var(--motion-duration); }
+.scope :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.scope :global(.page-badge) { border-color: var(--line); background: var(--surface); color: var(--mute); }
+.scope :global(.range-panel) { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 20px 24px; border-color: var(--line); }
+.scope :global(.range-presets) { gap: 8px; }
+.scope :global(.custom-range) { gap: 12px; }
+.scope :global(.summary-grid) { gap: 12px; }
+.scope :global(.summary-grid) article { padding: var(--card-padding); border-color: var(--line); border-left-color: var(--blue); box-shadow: none; }
+.scope :global(.chart-panel), .scope :global(.category-stat-panel) { padding: var(--card-padding); border-color: var(--line); box-shadow: none; }
+.scope :global(.analytics-grid) { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+.scope :global(.recharts-default-tooltip) { border-color: var(--line) !important; background: var(--surface) !important; }
+
+.button { display: inline-flex; min-height: var(--button-height); flex: none; align-items: center; justify-content: center; gap: 7px; padding: 0 18px; border: 1px solid transparent; border-radius: var(--button-radius); font: inherit; font-size: 13px; font-weight: 800; line-height: 1.25; text-align: center; cursor: pointer; transition: background-color var(--motion-duration), color var(--motion-duration), border-color var(--motion-duration), box-shadow var(--motion-duration), transform var(--motion-duration); }
+.button svg { flex: none; }
+.button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.button:disabled { opacity: .55; cursor: default; }
+.button:active:not(:disabled) { transform: translateY(1px); }
+.primary { background: var(--blue); color: var(--surface); box-shadow: 0 4px 12px rgba(37, 99, 235, .35); }
+.primary:hover:not(:disabled) { background: var(--blue-hover); }
+.outline { border-color: var(--line); background: var(--surface); color: var(--ink); }
+.outline:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+.ink { background: var(--ink); color: var(--surface); }
+.ink:hover:not(:disabled) { background: var(--blue-hover); }
+.white { background: var(--surface); color: var(--ink); box-shadow: 0 3px 10px rgba(0, 0, 0, .12); }
+.white:hover { background: var(--hover); }
+.scope .preset { min-height: 40px; padding: 0 18px; border-color: var(--line); background: var(--surface); color: var(--mute); font-size: 13px; font-weight: 700; }
+.scope .preset:hover:not(:disabled) { border-color: var(--ink); background: var(--surface); color: var(--ink); }
+.scope .preset.selected, .scope .preset.selected:hover:not(:disabled) { border-color: transparent; background: var(--ink); color: var(--surface); }
+
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 28px; border: 0; border-bottom: 4px solid var(--blue); background: linear-gradient(var(--hero-grid) 1px, transparent 1px), linear-gradient(90deg, var(--hero-grid) 1px, transparent 1px), linear-gradient(120deg, var(--hero-start), var(--hero-middle) 62%, var(--hero-end)); background-size: 32px 32px, 32px 32px, auto; color: var(--surface); }
+.eyebrow { margin: 0 0 10px; color: var(--hero-eyebrow); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.hero h1 { font-size: 30px; font-weight: 800; line-height: 1.25; }
+.description { margin: 12px 0 0; color: var(--hero-description); font-size: 14px; line-height: 1.65; }
+
+.dateField { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+.dateField > span { color: var(--mute); font-size: 11px; font-weight: 700; }
+.scope .dateField :global(.calendar-picker__trigger) { height: 42px; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-bottom: 2px solid var(--ink); border-radius: var(--panel-radius); background: var(--surface); color: var(--ink); font-size: 13px; box-shadow: none; }
+.dateField :global(.calendar-picker__trigger) svg { flex: none; }
+.dateField:first-child :global(.calendar-picker__popover) { left: 0; right: auto; }
+.dateField:last-of-type :global(.calendar-picker__popover) { left: auto; right: 0; }
+.scope .dateField :global(.calendar-picker__popover) { min-width: 0; max-width: calc(100vw - 76px); border-color: var(--line); background: var(--surface); }
+
+.menuSection { margin-top: 28px; }
+.sectionTitle { display: flex; align-items: center; gap: 14px; margin: 0 0 12px; color: var(--mute); font-size: 12px; font-weight: 700; }
+.sectionTitle::after { height: 1px; flex: 1; background: var(--line); content: ""; }
+.menuGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.menuCard { position: relative; display: grid; grid-template-columns: 46px minmax(0, 1fr) 20px; min-height: 116px; align-items: center; gap: 14px; padding: var(--card-padding); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); transition: background-color var(--motion-duration); }
+.menuCard::before { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: var(--blue); content: ""; opacity: 0; transition: opacity var(--motion-duration); }
+.menuIcon { display: grid; width: 46px; height: 46px; place-items: center; background: var(--ink); color: var(--icon-blue); transition: background-color var(--motion-duration), color var(--motion-duration); }
+.menuCopy { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.menuNumber { color: var(--number-color); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; }
+.menuCopy strong { color: var(--ink); font-size: 15.5px; font-weight: 800; }
+.menuDescription { color: var(--mute); font-size: 12.5px; line-height: 1.55; }
+.menuArrow { color: var(--mute); transition: color var(--motion-duration), transform var(--motion-duration); }
+.menuCard:hover, .menuCard:focus-visible { background: var(--hover); }
+.menuCard:hover::before, .menuCard:focus-visible::before { opacity: 1; }
+.menuCard:hover .menuIcon, .menuCard:focus-visible .menuIcon { background: var(--blue); color: var(--surface); }
+.menuCard:hover .menuArrow, .menuCard:focus-visible .menuArrow { color: var(--blue); transform: translateX(3px); }
+.menuFiller { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: repeating-linear-gradient(135deg, var(--hatch) 0 6px, var(--surface) 6px 12px); }
+
+.bottomNav { position: fixed; z-index: 30; right: 0; bottom: max(20px, env(safe-area-inset-bottom)); left: 0; display: grid; width: calc(var(--nav-tab-width) * 4 + 2px); max-width: calc(100% - 28px); grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 auto; border: 1px solid var(--ink); border-radius: var(--panel-radius); background: var(--surface); box-shadow: 4px 4px 0 var(--ink); }
+.bottomNav a { position: relative; display: flex; min-width: 0; min-height: 66px; align-items: center; justify-content: center; flex-direction: column; gap: 5px; border-radius: var(--panel-radius); color: var(--mute); font-size: 11px; font-weight: 700; transition: background-color var(--motion-duration), color var(--motion-duration); }
+.bottomNav a + a { border-left: 1px solid var(--line); }
+.bottomNav a:hover { background: var(--hover); color: var(--ink); }
+.bottomNav a.current { background: var(--ink); color: var(--surface); }
+.bottomNav a.current::before { position: absolute; top: 0; right: 0; left: 0; height: 3px; background: var(--blue); content: ""; }
+.bottomNav a:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+@media (max-width: 1024px) {
+  .scope :global(.analytics-grid), .scope :global(.summary-grid), .menuGrid { grid-template-columns: minmax(0, 1fr); }
+  .menuFiller { display: none; }
+}
+@media (max-width: 600px) {
+  .hero { flex-wrap: wrap; padding: 24px 20px; }
+  .hero > .button { margin-left: auto; }
+  .scope :global(.custom-range) { grid-template-columns: minmax(0, 1fr); }
+  .scope :global(.custom-range) > button { grid-column: 1 / -1; justify-self: start; }
+}
