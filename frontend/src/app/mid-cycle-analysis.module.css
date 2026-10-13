@@ -1,0 +1,15 @@
+.panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hero-grid);
+  border-radius: var(--panel-radius);
+}
+.heading, .loading { display: flex; align-items: center; gap: 6px; }
+.heading { margin: 0 0 7px; color: var(--hero-eyebrow); font-size: .78rem; font-weight: 800; }
+.summary { margin: 0; color: var(--surface); font-size: .82rem; line-height: 1.65; overflow-wrap: anywhere; }
+.caption, .loading { margin: 7px 0 0; color: var(--hero-description); font-size: .7rem; line-height: 1.5; }
+.error { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.error p { flex: 1 1 160px; margin: 0; color: var(--hero-description); font-size: .72rem; line-height: 1.5; }
+.error button { min-height: 40px; }

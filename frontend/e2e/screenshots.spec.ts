@@ -4,6 +4,106 @@ import { budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleCo
 
 const screenshotDirectory = path.resolve(process.cwd(), "artifacts/screenshots");
 
+const midCycleText = "장보기 중심으로 소비했고 예산에 여유가 있습니다. 남은 기간에는 배달 빈도를 점검해 보세요.";
+const pendingMidCycle = { eligible: true, status: "NOT_ANALYZED", text: null, midpoint: "2026-10-16", through: null, analyzedAt: null };
+const completedMidCycle = { ...pendingMidCycle, status: "COMPLETED", text: midCycleText, through: "2026-10-20", analyzedAt: "2026-10-20T03:00:00Z" };
+function dashboardWithMidCycle(analysis: typeof pendingMidCycle | typeof completedMidCycle) {
+  return { yearMonth: "2026-10", cycleUnit: "MONTHLY", period: { from: "2026-10-01", to: "2026-10-31" },
+    budget: 800000, spent: 20000, remaining: 780000, projectedSpent: 31000, remainingDays: 11,
+    usageRate: 2.5, pushUsageThreshold: 80, status: "NORMAL", recentExpenses: [], midCycleAnalysis: analysis };
+}
+
+for (const width of [320, 390, 1024, 1440]) {
+  test(`automatically creates and reuses the mid-cycle evaluation at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockExpenseApis(page);
+    let generations = 0;
+    let saved = false;
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => { release = resolve; });
+    await page.route((url) => url.pathname === "/api/v1/dashboard", (route) => route.fulfill({ json: dashboardWithMidCycle(saved ? completedMidCycle : pendingMidCycle) }));
+    await page.route("**/api/v1/dashboard/mid-cycle-analysis", async (route) => {
+      expect(route.request().method()).toBe("POST");
+      expect(route.request().postDataJSON()).toEqual({ from: "2026-10-01", to: "2026-10-31" });
+      expect(route.request().headers()["x-xsrf-token"]).toBeTruthy();
+      generations++;
+      await ready;
+      saved = true;
+      await route.fulfill({ json: completedMidCycle });
+    });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "780,000원 남았어요" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "소비 중간평가" }).getByRole("status")).toContainText("현재까지의 소비를 분석하고 있어요.");
+    release();
+    const panel = page.locator(".projection-panel");
+    await expect(panel.getByRole("region", { name: "소비 중간평가" })).toBeVisible();
+    await expect(panel.getByLabel("저장된 중간평가")).toHaveText(midCycleText);
+    await expect(panel.getByText("2026-10-20까지의 소비 기준 · 주기당 한 번 분석")).toBeVisible();
+    expect(await panel.evaluate((element) => element.lastElementChild?.getAttribute("aria-label"))).toBe("소비 중간평가");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: path.join(screenshotDirectory, `mid-cycle-${width}.png`), fullPage: true });
+    await page.reload();
+    await expect(page.getByLabel("저장된 중간평가")).toHaveText(midCycleText);
+    expect(generations).toBe(1);
+  });
+}
+
+test("does not request a mid-cycle evaluation before the midpoint", async ({ page }) => {
+  await mockExpenseApis(page);
+  let calls = 0;
+  await page.route((url) => url.pathname === "/api/v1/dashboard", (route) => route.fulfill({ json: dashboardWithMidCycle({ ...pendingMidCycle, eligible: false, status: "UNAVAILABLE" }) }));
+  await page.route("**/api/v1/dashboard/mid-cycle-analysis**", async (route) => { calls++; await route.fulfill({ json: {} }); });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "780,000원 남았어요" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "소비 중간평가" })).toHaveCount(0);
+  expect(calls).toBe(0);
+});
+
+test("polls an existing shared evaluation without generating again", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.route((url) => url.pathname === "/api/v1/dashboard", (route) => route.fulfill({ json: dashboardWithMidCycle({ ...pendingMidCycle, status: "PROCESSING" }) }));
+  let reads = 0;
+  await page.route("**/api/v1/dashboard/mid-cycle-analysis**", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    reads++;
+    await route.fulfill({ json: completedMidCycle });
+  });
+  await page.goto("/");
+  await expect(page.getByLabel("저장된 중간평가")).toHaveText(midCycleText);
+  expect(reads).toBe(1);
+});
+
+test("keeps home available on an AI error and supports an explicit retry", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.route((url) => url.pathname === "/api/v1/dashboard", (route) => route.fulfill({ json: dashboardWithMidCycle(pendingMidCycle) }));
+  let calls = 0;
+  await page.route("**/api/v1/dashboard/mid-cycle-analysis", async (route) => {
+    calls++;
+    await route.fulfill(calls === 1 ? { status: 503, json: { detail: "AI 연결이 비활성화되어 있습니다." } } : { json: completedMidCycle });
+  });
+  await page.goto("/");
+  await expect(page.getByRole("region", { name: "소비 중간평가" }).getByRole("alert")).toHaveText("AI 연결이 비활성화되어 있습니다.");
+  await expect(page.getByRole("link", { name: "식비 등록", exact: true })).toBeVisible();
+  expect(calls).toBe(1);
+  await page.getByRole("button", { name: "다시 시도" }).click();
+  await expect(page.getByLabel("저장된 중간평가")).toHaveText(midCycleText);
+  expect(calls).toBe(2);
+});
+
+test("does not loop when there are no expenses to evaluate", async ({ page }) => {
+  await mockExpenseApis(page);
+  await page.route((url) => url.pathname === "/api/v1/dashboard", (route) => route.fulfill({ json: dashboardWithMidCycle(pendingMidCycle) }));
+  let calls = 0;
+  await page.route("**/api/v1/dashboard/mid-cycle-analysis", async (route) => {
+    calls++;
+    await route.fulfill({ json: { ...pendingMidCycle, eligible: false, status: "NO_EXPENSES", through: "2026-10-20" } });
+  });
+  await page.goto("/");
+  await expect(page.getByText("등록된 소비 기록이 없어 중간평가를 할 수 없습니다.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "소비 중간평가" })).toHaveAttribute("aria-busy", "false");
+  expect(calls).toBe(1);
+});
+
 test("capture implemented frontend screens", async ({ browser }) => {
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await mockExpenseApis(desktop);

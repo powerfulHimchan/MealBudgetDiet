@@ -19,7 +19,8 @@ public record DashboardSnapshot(
 	BigDecimal usageRate,
 	int pushUsageThreshold,
 	DashboardStatus status,
-	List<RecentExpense> recentExpenses
+	List<RecentExpense> recentExpenses,
+	MidCycleAnalysisSnapshot midCycleAnalysis
 ) {
 	public record Period(LocalDate from, LocalDate to) {
 	}

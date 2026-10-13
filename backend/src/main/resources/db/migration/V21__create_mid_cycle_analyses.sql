@@ -1,0 +1,21 @@
+CREATE TABLE mid_cycle_analyses (
+    ledger_id uuid NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
+    period_from date NOT NULL,
+    period_to date NOT NULL,
+    analyzed_through date NOT NULL,
+    status varchar(20) NOT NULL,
+    claim_token uuid,
+    lease_expires_at timestamptz,
+    summary varchar(110),
+    model varchar(100),
+    input_tokens integer,
+    output_tokens integer,
+    analyzed_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT current_timestamp,
+    updated_at timestamptz NOT NULL DEFAULT current_timestamp,
+    PRIMARY KEY (ledger_id, period_from, period_to),
+    CONSTRAINT ck_mid_cycle_period CHECK (period_from <= analyzed_through AND analyzed_through <= period_to),
+    CONSTRAINT ck_mid_cycle_status CHECK (status IN ('PROCESSING', 'COMPLETED', 'FAILED')),
+    CONSTRAINT ck_mid_cycle_claim CHECK (status <> 'PROCESSING' OR (claim_token IS NOT NULL AND lease_expires_at IS NOT NULL)),
+    CONSTRAINT ck_mid_cycle_result CHECK (status <> 'COMPLETED' OR (summary IS NOT NULL AND btrim(summary) <> '' AND analyzed_at IS NOT NULL))
+);

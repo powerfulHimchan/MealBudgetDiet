@@ -18,7 +18,12 @@ final class SpendingAnalysisPrompt {
 	}
 
 	String build(StatisticsSnapshot statistics, ExpenseDetails details) {
+		return build(statistics, details, Map.of());
+	}
+
+	String build(StatisticsSnapshot statistics, ExpenseDetails details, Map<String, Object> context) {
 		Map<String, Object> data = new LinkedHashMap<>();
+		data.putAll(context);
 		data.put("기간", statistics.period());
 		data.put("총지출원", statistics.totalAmount());
 		data.put("예산원", statistics.budget().amount());

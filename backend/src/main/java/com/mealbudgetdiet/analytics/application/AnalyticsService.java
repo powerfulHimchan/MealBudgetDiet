@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.analytics.application.DashboardSnapshot.RecentExpense;
 import com.mealbudgetdiet.analytics.infrastructure.SpendingAnalysisRepository;
+import com.mealbudgetdiet.analytics.infrastructure.MidCycleAnalysisRepository;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.CategoryAmount;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.Comparison;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot.DailyAmount;
@@ -45,6 +46,7 @@ public class AnalyticsService {
 	private final JdbcTemplate jdbcTemplate;
 	private final Clock clock;
 	private final SpendingAnalysisRepository analysisRepository;
+	private final MidCycleAnalysisRepository midCycleRepository;
 
 	public AnalyticsService(
 		LedgerAccessService ledgerAccessService,
@@ -52,7 +54,8 @@ public class AnalyticsService {
 		CategoryRepository categoryRepository,
 		JdbcTemplate jdbcTemplate,
 		Clock clock,
-		SpendingAnalysisRepository analysisRepository
+		SpendingAnalysisRepository analysisRepository,
+		MidCycleAnalysisRepository midCycleRepository
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.budgetService = budgetService;
@@ -60,6 +63,7 @@ public class AnalyticsService {
 		this.jdbcTemplate = jdbcTemplate;
 		this.clock = clock;
 		this.analysisRepository = analysisRepository;
+		this.midCycleRepository = midCycleRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -112,7 +116,8 @@ public class AnalyticsService {
 		return new DashboardSnapshot(
 			cycle.yearMonth(), ledger.getBudgetCycleUnit(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
 			budget.amount() - spent, projectedSpent, remainingDays, usageRate,
-			ledger.getPushUsageThreshold(), status, recent);
+			ledger.getPushUsageThreshold(), status, recent,
+			midCycleRepository.snapshot(ledgerId, cycle, today, clock.instant()));
 	}
 
 	@Transactional(readOnly = true)
@@ -275,7 +280,7 @@ public class AnalyticsService {
 		return total == null ? 0 : total;
 	}
 
-	private long projectedAmount(long spent, LocalDate from, LocalDate to, LocalDate today) {
+	static long projectedAmount(long spent, LocalDate from, LocalDate to, LocalDate today) {
 		if (spent == 0 || today.isBefore(from)) {
 			return 0;
 		}

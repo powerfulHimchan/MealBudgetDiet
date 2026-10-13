@@ -158,7 +158,8 @@ class AnalyticsComparisonTest {
 		});
 		var service = new AnalyticsService(access, budget, mock(CategoryRepository.class), jdbc,
 			Clock.fixed(Instant.parse(instant), ZoneOffset.UTC),
-			mock(com.mealbudgetdiet.analytics.infrastructure.SpendingAnalysisRepository.class));
+			mock(com.mealbudgetdiet.analytics.infrastructure.SpendingAnalysisRepository.class),
+			mock(com.mealbudgetdiet.analytics.infrastructure.MidCycleAnalysisRepository.class));
 		var result = from == null ? service.initialStatistics(userId).statistics()
 			: service.statistics(userId, null, date(from), date(to));
 		// Only the previous period requires a SUM query; current totals reuse the daily rows.
