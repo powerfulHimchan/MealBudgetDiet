@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { multipartMutation, mutation, request } from "../../../lib/api";
+import { stopDevicePushBeforeLogout } from "../../../lib/device-push";
 import { clearCurrentUserAvatar, updateCurrentUserAvatar } from "../../current-user-avatar";
 import { ImageCropDialog } from "../../ui/image-crop-dialog";
 import { SettingsPageFrame } from "../settings-page-frame";
@@ -171,6 +172,7 @@ export function AccountSettings() {
     setError(null);
     setNotice(null);
     try {
+      await stopDevicePushBeforeLogout();
       await mutation("/api/v1/auth/logout", "POST");
       clearCurrentUserAvatar();
       router.replace("/");

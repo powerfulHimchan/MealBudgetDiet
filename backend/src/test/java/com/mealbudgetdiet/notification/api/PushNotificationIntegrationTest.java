@@ -8,11 +8,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,9 +32,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.jayway.jsonpath.JsonPath;
 import com.mealbudgetdiet.TestcontainersConfiguration;
+import com.mealbudgetdiet.notification.application.PushSendResult;
+import com.mealbudgetdiet.notification.infrastructure.WebPushGateway;
 
 import jakarta.servlet.http.Cookie;
 
@@ -49,9 +58,56 @@ class PushNotificationIntegrationTest {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
+	@MockitoBean
+	private WebPushGateway gateway;
+
+	@BeforeEach
+	void configureGateway() throws Exception {
+		when(gateway.isConfigured()).thenReturn(true);
+		when(gateway.send(anyString(), anyString(), anyString(), anyString())).thenReturn(PushSendResult.sent());
+		if (jdbcTemplate.queryForObject("select count(*) from users where service_role = 'SERVICE_ADMIN'", Long.class) == 0) {
+			bootstrapAdmin();
+		}
+	}
+
+	@Test
+	void sendsTestOnlyToOwnedActiveDeviceWithCsrfAndUserCooldown() throws Exception {
+		Cookie owner = createLedgerOwner();
+		Cookie member = registerMember(owner);
+		String id = registerSubscription(owner, "https://fcm.googleapis.com/fcm/send/" + UUID.randomUUID(), true);
+		String path = "/api/v1/push-subscriptions/" + id + "/test";
+		mockMvc.perform(post(path).with(csrf())).andExpect(status().isUnauthorized());
+		mockMvc.perform(post(path).cookie(owner)).andExpect(status().isForbidden());
+		mockMvc.perform(post(path).with(csrf()).cookie(member)).andExpect(status().isNotFound());
+		mockMvc.perform(post(path).with(csrf()).cookie(owner)).andExpect(status().isAccepted());
+		mockMvc.perform(post(path).with(csrf()).cookie(owner))
+			.andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("PUSH_TEST_RATE_LIMITED"));
+		verify(gateway, times(1)).send(anyString(), anyString(), anyString(), anyString());
+		mockMvc.perform(delete("/api/v1/push-subscriptions/" + id).with(csrf()).cookie(owner)).andExpect(status().isNoContent());
+		mockMvc.perform(post(path).with(csrf()).cookie(owner)).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void rejectsIncompleteConfigurationAndExpiresGoneSubscriptions() throws Exception {
+		Cookie owner = createLedgerOwner();
+		String id = registerSubscription(owner, "https://fcm.googleapis.com/fcm/send/" + UUID.randomUUID(), true);
+		String path = "/api/v1/push-subscriptions/" + id + "/test";
+		when(gateway.isConfigured()).thenReturn(false);
+		mockMvc.perform(get("/api/v1/push/vapid-public-key").cookie(owner)).andExpect(status().isServiceUnavailable());
+		mockMvc.perform(post(path).with(csrf()).cookie(owner)).andExpect(status().isServiceUnavailable());
+		when(gateway.isConfigured()).thenReturn(true);
+		when(gateway.send(anyString(), anyString(), anyString(), anyString()))
+			.thenReturn(PushSendResult.failed(true, false, "Push service HTTP 410"));
+		mockMvc.perform(post(path).with(csrf()).cookie(owner)).andExpect(status().isGone());
+		assertThat(jdbcTemplate.queryForObject("select status from push_subscriptions where id = ?::uuid", String.class, id)).isEqualTo("EXPIRED");
+	}
+
 	@Test
 	void registersDevicesAndCreatesOneMonthlyAlertForAllActiveSubscriptions() throws Exception {
-		Cookie adminSession = bootstrapAdmin();
+		jdbcTemplate.update("delete from push_deliveries");
+		jdbcTemplate.update("delete from budget_alerts");
+		jdbcTemplate.update("delete from push_subscriptions");
+		Cookie adminSession = createLedgerOwner();
 		Cookie memberSession = registerMember(adminSession);
 		String categoryId = firstCategoryId(adminSession);
 
@@ -189,15 +245,24 @@ class PushNotificationIntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "email":"owner-push@example.com",
+					  "email":"owner-push-%s@example.com",
 					  "password":"owner-password!",
 					  "displayName":"장부 관리자",
 					  "ledgerName":"우리집 식비",
 					  "defaultMonthlyBudget":100000
 					}
-					"""))
+					""".formatted(UUID.randomUUID())))
 			.andExpect(status().isCreated())
 			.andReturn();
+		return sessionCookie(result.getResponse().getHeader("Set-Cookie"));
+	}
+
+	private Cookie createLedgerOwner() throws Exception {
+		var result = mockMvc.perform(post("/api/v1/auth/register-ledger").with(csrf())
+			.contentType(MediaType.APPLICATION_JSON).content("""
+				{"email":"push-%s@example.com","password":"owner-password!","displayName":"알림 테스트","ledgerName":"알림 장부","defaultMonthlyBudget":100000}
+				""".formatted(UUID.randomUUID())))
+			.andExpect(status().isCreated()).andReturn();
 		return sessionCookie(result.getResponse().getHeader("Set-Cookie"));
 	}
 
@@ -212,11 +277,11 @@ class PushNotificationIntegrationTest {
 				.content("""
 					{
 					  "inviteCode":"%s",
-					  "email":"member-push@example.com",
+					  "email":"member-push-%s@example.com",
 					  "password":"member-password!",
 					  "displayName":"가족 구성원"
 					}
-					""".formatted(code)))
+					""".formatted(code, UUID.randomUUID())))
 			.andExpect(status().isCreated())
 			.andReturn();
 		return sessionCookie(result.getResponse().getHeader("Set-Cookie"));

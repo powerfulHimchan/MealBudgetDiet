@@ -163,6 +163,7 @@ CSRF 토큰이 없거나 올바르지 않으면 HTTP 403을 반환한다.
 | GET | `/push/vapid-public-key` | MEMBER | Web Push 공개키 조회 |
 | PUT | `/push-subscriptions` | MEMBER | 현재 기기 구독 등록·갱신 |
 | DELETE | `/push-subscriptions/{subscriptionId}` | MEMBER | 현재 사용자 기기 구독 해제 |
+| POST | `/push-subscriptions/{subscriptionId}/test` | MEMBER | 현재 사용자 기기로 테스트 알림 발송 |
 
 ## 3. Bootstrap과 인증 API
 
@@ -1182,7 +1183,7 @@ GET /api/v1/push/vapid-public-key
 }
 ```
 
-VAPID 키가 서버에 설정되지 않은 환경에서는 `PUSH_NOT_CONFIGURED`와 HTTP 503을 반환한다.
+VAPID 공개키·비공개키·subject 중 하나라도 서버에 설정되지 않은 환경에서는 `PUSH_NOT_CONFIGURED`와 HTTP 503을 반환한다.
 
 ### 13.2 기기 구독 등록·갱신
 
@@ -1229,6 +1230,16 @@ DELETE /api/v1/push-subscriptions/{subscriptionId}
 성공: HTTP 204
 
 현재 사용자 소유가 아닌 subscription은 존재 여부를 노출하지 않고 HTTP 404를 반환한다.
+
+#### 기기 테스트 알림
+
+`POST /api/v1/push-subscriptions/{subscriptionId}/test`는 CSRF 토큰과 로그인이 필요하다.
+현재 사용자 소유 ACTIVE 구독 한 개에만 전송한다. 본문은 없고, HTTP 202는 push 서비스가
+요청을 수락했다는 뜻이며 기기에 실제 표시됐다는 확인은 아니다. 예산과 예산 알림 이력은 바꾸지 않는다.
+사용자당 60초에 한 번 허용하며 기존 `auth_rate_limits`에 `PUSH_TEST` scope와 사용자 HMAC을
+저장한다. 네트워크 실패에도 제한은 유지되고 기존 정리 작업이 오래된 제한 기록을 삭제한다.
+만료된 구독은 EXPIRED로 바꾸고 HTTP 410을 반환한다. 다른 사용자/비활성 구독은 404,
+설정 누락은 503, 호출 제한은 429, push 서비스 전송 실패는 502를 반환한다.
 
 ### 13.4 예산 주기 초과 위험 알림 판정
 
