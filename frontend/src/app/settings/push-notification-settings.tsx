@@ -3,8 +3,9 @@
 import { Bell, BellOff, Gauge, LoaderCircle, ShieldCheck, Smartphone } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { mutation, request } from "../../lib/api";
+import { PUSH_STORAGE_KEY } from "../../lib/device-push";
 
-type PushState = "checking" | "unsupported" | "denied" | "idle" | "active";
+type PushState = "checking" | "unsupported" | "denied" | "idle" | "active" | "error";
 type ServerSubscription = { id: string; status: "ACTIVE" | "EXPIRED" | "DISABLED"; createdAt: string };
 type StoredSubscription = { endpoint: string; id: string };
 type Ledger = {
@@ -13,8 +14,6 @@ type Ledger = {
   version: number;
 };
 type PushThresholdSettingsResponse = { pushUsageThreshold: number; version: number };
-
-const STORAGE_KEY = "meal-budget-diet-push-subscription";
 
 function base64UrlToUint8Array(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -36,15 +35,19 @@ function subscriptionBody(subscription: PushSubscription) {
 }
 
 function storeServerSubscription(subscription: PushSubscription, id: string) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ endpoint: subscription.endpoint, id } satisfies StoredSubscription));
+  localStorage.setItem(PUSH_STORAGE_KEY, JSON.stringify({ endpoint: subscription.endpoint, id } satisfies StoredSubscription));
 }
 
-function storedServerSubscription(subscription: PushSubscription) {
+async function readyRegistration() {
+  await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as StoredSubscription | null;
-    return stored?.endpoint === subscription.endpoint ? stored : null;
-  } catch {
-    return null;
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("알림 준비가 지연되고 있습니다. 잠시 후 다시 시도해 주세요.")), 15000); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -190,12 +193,11 @@ export function PushNotificationSettings() {
         return;
       }
       try {
-        const registration = await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+        const registration = await readyRegistration();
         const existing = await registration.pushManager.getSubscription();
         if (!active) return;
         setBrowserSubscription(existing);
         if (existing) {
-          const stored = storedServerSubscription(existing);
           try {
             const saved = await mutation<ServerSubscription>("/api/v1/push-subscriptions", "PUT", subscriptionBody(existing));
             if (!active) return;
@@ -203,13 +205,18 @@ export function PushNotificationSettings() {
             setServerSubscriptionId(saved.id);
           } catch {
             if (!active) return;
-            setServerSubscriptionId(stored?.id ?? null);
+            setServerSubscriptionId(null);
+            setState("error");
             setMessage("기기 구독을 서버와 동기화하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+            return;
           }
         }
         if (active) setState(existing ? "active" : "idle");
-      } catch {
-        if (active) setState("unsupported");
+      } catch (reason) {
+        if (active) {
+          setState("error");
+          setMessage(reason instanceof Error ? reason.message : "알림 준비에 실패했습니다. 다시 시도해 주세요.");
+        }
       }
     }, 0);
     return () => { active = false; window.clearTimeout(timer); };
@@ -226,19 +233,33 @@ export function PushNotificationSettings() {
         return;
       }
       const { publicKey } = await request<{ publicKey: string }>("/api/v1/push/vapid-public-key");
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
+      const registration = await readyRegistration();
+      const subscription = await registration.pushManager.getSubscription() ?? await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: base64UrlToUint8Array(publicKey),
       });
+      setBrowserSubscription(subscription);
       const saved = await mutation<ServerSubscription>("/api/v1/push-subscriptions", "PUT", subscriptionBody(subscription));
       storeServerSubscription(subscription, saved.id);
-      setBrowserSubscription(subscription);
       setServerSubscriptionId(saved.id);
       setState("active");
       setMessage("이 기기에서 예산 알림을 받습니다.");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "푸시 알림을 활성화하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function testPush() {
+    if (!serverSubscriptionId) return;
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      await mutation(`/api/v1/push-subscriptions/${serverSubscriptionId}/test`, "POST");
+      setMessage("푸시 서비스에 테스트 알림을 전송했습니다. 기기 알림창에서 수신 여부를 확인해 주세요.");
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "테스트 알림을 보내지 못했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -255,8 +276,11 @@ export function PushNotificationSettings() {
         id = saved.id;
       }
       await mutation(`/api/v1/push-subscriptions/${id}`, "DELETE");
-      await browserSubscription.unsubscribe();
-      localStorage.removeItem(STORAGE_KEY);
+      if (!await browserSubscription.unsubscribe()) {
+        setState("error");
+        throw new Error("기기의 알림 구독을 해제하지 못했습니다. 다시 시도해 주세요.");
+      }
+      localStorage.removeItem(PUSH_STORAGE_KEY);
       setBrowserSubscription(null);
       setServerSubscriptionId(null);
       setState("idle");
@@ -274,25 +298,30 @@ export function PushNotificationSettings() {
         <span className="panel-icon">{state === "active" ? <Bell size={21} /> : <BellOff size={21} />}</span>
         <div><p className="eyebrow">DEVICE NOTIFICATION</p><h2>푸시 알림</h2></div>
         <span className={`source-chip push-state push-state--${state}`}>
-          {state === "active" ? "활성" : state === "checking" ? "확인 중" : "비활성"}
+          {state === "active" ? "활성" : state === "checking" ? "확인 중" : state === "error" ? "연결 확인 필요" : "비활성"}
         </span>
       </div>
       <p className="setting-description">공유 장부에서 설정한 기준 사용률 이상이고 현재 소비 속도가 이어질 때 예산 초과가 예상되면 예산 주기당 1회 알려드립니다.</p>
 
       {state === "checking" && <div className="push-support-note"><LoaderCircle className="spin" size={18} />기기 지원 여부를 확인하고 있어요.</div>}
       {state === "unsupported" && <div className="push-support-note"><Smartphone size={18} />이 브라우저에서는 Web Push를 지원하지 않습니다.</div>}
-      {state === "denied" && <div className="push-support-note push-support-note--warning"><BellOff size={18} />브라우저 설정에서 sikbi 알림 권한을 허용해 주세요.</div>}
+      {state === "denied" && <div className="push-support-note push-support-note--warning"><BellOff size={18} />Android에서는 휴대폰 설정 → 앱 → Sikbi → 알림을 허용해 주세요. 브라우저로 이용 중이면 사이트 알림 권한도 확인한 뒤 화면을 다시 열어 주세요.</div>}
       {isIOSInstallRequired && <div className="push-support-note"><Smartphone size={18} />iPhone에서는 홈 화면에 앱을 추가한 뒤 푸시를 활성화할 수 있습니다.</div>}
       {message && <p className="push-message" role="status">{message}</p>}
 
       <div className="push-actions">
         {state === "active" ? (
-          <button className="secondary-button danger-button" disabled={isSaving} onClick={() => void disablePush()} type="button">
+          <>
+            <button className="secondary-button" disabled={isSaving || !serverSubscriptionId} onClick={() => void testPush()} type="button">
+            {isSaving && <LoaderCircle className="spin" size={16} />}테스트 알림 보내기
+            </button>
+            <button className="secondary-button danger-button" disabled={isSaving} onClick={() => void disablePush()} type="button">
             {isSaving && <LoaderCircle className="spin" size={16} />}이 기기 알림 해제
-          </button>
+            </button>
+          </>
         ) : (
           <button className="dark-button" disabled={isSaving || state === "checking" || state === "unsupported" || state === "denied"} onClick={() => void enablePush()} type="button">
-            {isSaving && <LoaderCircle className="spin" size={16} />}이 기기 알림 활성화
+            {isSaving && <LoaderCircle className="spin" size={16} />}{state === "error" ? "알림 연결 다시 시도" : "이 기기 알림 활성화"}
           </button>
         )}
       </div>

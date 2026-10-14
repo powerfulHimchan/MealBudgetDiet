@@ -51,12 +51,16 @@ public class WebPushGateway {
 	}
 
 	public PushSendResult send(PushDeliveryTask task, String payload) {
+		return send(task.endpoint(), task.p256dhKey(), task.authKey(), payload);
+	}
+
+	public PushSendResult send(String endpoint, String p256dhKey, String authKey, String payload) {
 		if (!isConfigured()) {
 			return PushSendResult.failed(false, false, "VAPID 설정이 없습니다.");
 		}
 		try {
 			var encoder = new WebPushRequestEncoder(publicKey, privateKey, subject);
-			var notification = new Notification(task.endpoint(), task.p256dhKey(), task.authKey(), payload);
+			var notification = new Notification(endpoint, p256dhKey, authKey, payload);
 			var encoded = encoder.encode(notification);
 			var requestBuilder = HttpRequest.newBuilder(encoded.uri())
 				.timeout(REQUEST_TIMEOUT)

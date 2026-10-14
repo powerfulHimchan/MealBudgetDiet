@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.notification.application.PushSubscriptionService;
 import com.mealbudgetdiet.notification.application.PushSubscriptionSnapshot;
+import com.mealbudgetdiet.notification.application.PushTestService;
+import com.mealbudgetdiet.notification.infrastructure.WebPushGateway;
 import com.mealbudgetdiet.notification.domain.PushSubscriptionStatus;
 import com.mealbudgetdiet.shared.api.ApiException;
 
@@ -30,18 +33,24 @@ public class PushController {
 
 	private final PushSubscriptionService subscriptionService;
 	private final String vapidPublicKey;
+	private final WebPushGateway gateway;
+	private final PushTestService testService;
 
 	public PushController(
 		PushSubscriptionService subscriptionService,
-		@Value("${app.push.vapid-public-key:}") String vapidPublicKey
+		@Value("${app.push.vapid-public-key:}") String vapidPublicKey,
+		WebPushGateway gateway,
+		PushTestService testService
 	) {
 		this.subscriptionService = subscriptionService;
 		this.vapidPublicKey = vapidPublicKey;
+		this.gateway = gateway;
+		this.testService = testService;
 	}
 
 	@GetMapping("/api/v1/push/vapid-public-key")
 	VapidKeyResponse vapidPublicKey() {
-		if (vapidPublicKey.isBlank()) {
+		if (vapidPublicKey.isBlank() || !gateway.isConfigured()) {
 			throw new ApiException(
 				HttpStatus.SERVICE_UNAVAILABLE, "PUSH_NOT_CONFIGURED", "푸시 알림이 아직 설정되지 않았습니다.");
 		}
@@ -66,6 +75,15 @@ public class PushController {
 	) {
 		subscriptionService.disable(principal.id(), subscriptionId);
 		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/api/v1/push-subscriptions/{subscriptionId}/test")
+	ResponseEntity<Void> test(
+		@AuthenticationPrincipal MealBudgetPrincipal principal,
+		@PathVariable UUID subscriptionId
+	) {
+		testService.send(principal.id(), subscriptionId);
+		return ResponseEntity.accepted().build();
 	}
 
 	public record PushSubscriptionRequest(
