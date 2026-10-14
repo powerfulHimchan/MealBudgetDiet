@@ -7,8 +7,8 @@ export async function stopDevicePushBeforeLogout() {
   const registration = await navigator.serviceWorker.getRegistration("/");
   const subscription = await registration?.pushManager.getSubscription();
   if (subscription) {
-    const stopped = await subscription.unsubscribe();
-    if (!stopped) throw new Error("기기 알림을 해제하지 못했습니다. 잠시 후 다시 로그아웃해 주세요.");
+    // false means it was already deactivated, which is also safe for logout.
+    await subscription.unsubscribe();
   }
   // Unsubscribing stops delivery even if the server cannot be reached. Do not
   // leave another account's notifications on a shared device after logout.

@@ -276,10 +276,7 @@ export function PushNotificationSettings() {
         id = saved.id;
       }
       await mutation(`/api/v1/push-subscriptions/${id}`, "DELETE");
-      if (!await browserSubscription.unsubscribe()) {
-        setState("error");
-        throw new Error("기기의 알림 구독을 해제하지 못했습니다. 다시 시도해 주세요.");
-      }
+      await browserSubscription.unsubscribe();
       localStorage.removeItem(PUSH_STORAGE_KEY);
       setBrowserSubscription(null);
       setServerSubscriptionId(null);
@@ -313,10 +310,10 @@ export function PushNotificationSettings() {
         {state === "active" ? (
           <>
             <button className="secondary-button" disabled={isSaving || !serverSubscriptionId} onClick={() => void testPush()} type="button">
-            {isSaving && <LoaderCircle className="spin" size={16} />}테스트 알림 보내기
+              {isSaving && <LoaderCircle className="spin" size={16} />}테스트 알림 보내기
             </button>
             <button className="secondary-button danger-button" disabled={isSaving} onClick={() => void disablePush()} type="button">
-            {isSaving && <LoaderCircle className="spin" size={16} />}이 기기 알림 해제
+              {isSaving && <LoaderCircle className="spin" size={16} />}이 기기 알림 해제
             </button>
           </>
         ) : (

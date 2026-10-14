@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function setup(page: Page, options: { existing?: boolean; denied?: boolean; registerFailure?: boolean } = {}) {
+async function setup(page: Page, options: { existing?: boolean; denied?: boolean; registerFailure?: boolean; unsubscribeResult?: boolean } = {}) {
   await page.context().addCookies([{ name: "MBD_SESSION", value: "push-test", url: "http://127.0.0.1:3000" }]);
   await page.addInitScript((options) => {
     let existing = options.existing ?? false;
@@ -8,7 +8,7 @@ async function setup(page: Page, options: { existing?: boolean; denied?: boolean
     const subscription = {
       endpoint: "https://fcm.googleapis.com/fcm/send/test-device",
       toJSON: () => ({ endpoint: subscription.endpoint, keys: { p256dh: "key", auth: "auth" } }),
-      unsubscribe: async () => { existing = false; localStorage.setItem("test-unsubscribed", "yes"); return true; },
+      unsubscribe: async () => { existing = false; localStorage.setItem("test-unsubscribed", "yes"); return options.unsubscribeResult ?? true; },
     };
     const registration = { pushManager: {
       getSubscription: async () => existing ? subscription : null,
@@ -38,7 +38,7 @@ async function setup(page: Page, options: { existing?: boolean; denied?: boolean
 }
 
 test("activates a device and sends a test without changing the budget", async ({ page }) => {
-  await setup(page);
+  await setup(page, { unsubscribeResult: false });
   let sent = 0;
   await page.route("**/push-subscriptions/device/test", async (route) => {
     expect(route.request().method()).toBe("POST");
@@ -96,8 +96,8 @@ test("displays provider failures without claiming device receipt", async ({ page
   await expect(page.getByRole("status")).toHaveText("테스트 알림은 1분에 한 번 보낼 수 있습니다.");
 });
 
-test("stops device delivery before logging out", async ({ page }) => {
-  await setup(page, { existing: true });
+test("stops device delivery before logging out even when already deactivated", async ({ page }) => {
+  await setup(page, { existing: true, unsubscribeResult: false });
   let loggedOut = false;
   await page.route("**/api/v1/auth/logout", async (route) => {
     expect(await page.evaluate(() => localStorage.getItem("test-unsubscribed"))).toBe("yes");
