@@ -62,9 +62,12 @@ class PushNotificationIntegrationTest {
 	private WebPushGateway gateway;
 
 	@BeforeEach
-	void configureGateway() {
+	void configureGateway() throws Exception {
 		when(gateway.isConfigured()).thenReturn(true);
 		when(gateway.send(anyString(), anyString(), anyString(), anyString())).thenReturn(PushSendResult.sent());
+		if (jdbcTemplate.queryForObject("select count(*) from users where service_role = 'SERVICE_ADMIN'", Long.class) == 0) {
+			bootstrapAdmin();
+		}
 	}
 
 	@Test
@@ -104,7 +107,7 @@ class PushNotificationIntegrationTest {
 		jdbcTemplate.update("delete from push_deliveries");
 		jdbcTemplate.update("delete from budget_alerts");
 		jdbcTemplate.update("delete from push_subscriptions");
-		Cookie adminSession = bootstrapAdmin();
+		Cookie adminSession = createLedgerOwner();
 		Cookie memberSession = registerMember(adminSession);
 		String categoryId = firstCategoryId(adminSession);
 
