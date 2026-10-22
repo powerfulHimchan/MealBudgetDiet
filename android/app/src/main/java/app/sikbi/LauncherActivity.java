@@ -15,40 +15,42 @@
  */
 package app.sikbi;
 
-import android.content.pm.ActivityInfo;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
+import androidx.browser.customtabs.CustomTabsCallback;
+import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
+import com.google.androidbrowserhelper.trusted.SessionStore;
+import com.google.androidbrowserhelper.trusted.SharedPreferencesTokenStore;
+import com.google.androidbrowserhelper.trusted.TwaLauncher;
+import com.google.androidbrowserhelper.trusted.splashscreens.SplashScreenStrategy;
 
-
-
-public class LauncherActivity
-        extends com.google.androidbrowserhelper.trusted.LauncherActivity {
-    
-
-    
+/** Preserves the browser helper's URL, login, notification and back-stack handling. */
+public class LauncherActivity extends com.google.androidbrowserhelper.trusted.LauncherActivity {
+    private SignatureSplashStrategy signatureSplash;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Setting an orientation crashes the app due to the transparent background on Android 8.0
-        // Oreo and below. We only set the orientation on Oreo and above. This only affects the
-        // splash screen and Chrome will still respect the orientation.
-        // See https://github.com/GoogleChromeLabs/bubblewrap/issues/496 for details.
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-        } else {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            getSplashScreen().setOnExitAnimationListener(splash -> splash.remove());
         }
     }
 
     @Override
-    protected Uri getLaunchingUrl() {
-        // Get the original launch Url.
-        Uri uri = super.getLaunchingUrl();
+    protected TwaLauncher createTwaLauncher() {
+        return new TwaLauncher(this, null, SessionStore.makeSessionId(getTaskId()),
+                new SharedPreferencesTokenStore(this)) {
+            @Override
+            public void launch(TrustedWebActivityIntentBuilder builder, CustomTabsCallback callback,
+                    SplashScreenStrategy unused, Runnable completion, FallbackStrategy fallback) {
+                if (isTaskRoot()) signatureSplash = new SignatureSplashStrategy(LauncherActivity.this);
+                super.launch(builder, callback, signatureSplash, completion, fallback);
+            }
+        };
+    }
 
-        
-
-        return uri;
+    @Override
+    protected void onDestroy() {
+        if (signatureSplash != null) signatureSplash.destroy();
+        super.onDestroy();
     }
 }
