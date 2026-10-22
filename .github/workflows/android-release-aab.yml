@@ -34,6 +34,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
 
       - name: Install Android API 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
@@ -62,13 +65,23 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon bundleRelease
 
-      - name: Prepare AAB
-        run: cp android/app/build/outputs/bundle/release/app-release.aab Sikbi-internal-test.aab
+      - name: Verify signature and prepare Play bundle
+        run: |
+          jarsigner -verify android/app/build/outputs/bundle/release/app-release.aab
+          cp android/app/build/outputs/bundle/release/app-release.aab Sikbi-1.0.1.aab
+          cp android/release-notes/1.0.1-ko.txt release-notes-ko.txt
+          sha256sum Sikbi-1.0.1.aab > SHA256SUMS.txt
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Sikbi-internal-test-aab
-          path: Sikbi-internal-test.aab
+          name: Sikbi-1.0.1-play-bundle
+          path: |
+            Sikbi-1.0.1.aab
+            release-notes-ko.txt
+            SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
+      - name: Remove temporary signing files
+        if: always()
+        run: rm -f android/sikbi-upload.jks android/keystore.properties

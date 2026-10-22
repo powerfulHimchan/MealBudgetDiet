@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Sikbi.Launch" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/signature_gradient</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">#080F23</item>
+        <item name="android:navigationBarColor">#24588C</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">#60A5FA</item>
+    </style>
+</resources>
