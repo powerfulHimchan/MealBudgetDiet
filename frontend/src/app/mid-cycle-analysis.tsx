@@ -62,11 +62,13 @@ export function MidCycleAnalysisView({ period, initial }: {
 
   return (
     <section className={styles.panel} aria-label="소비 중간평가" aria-busy={busy}>
-      <h2 className={styles.heading}><Sparkles size={15} aria-hidden="true" />소비 중간평가</h2>
-      {analysis.text ? <>
+      <h2 className={styles.heading}>
+        <Sparkles size={15} aria-hidden="true" />
+        <span>소비 중간평가{analysis.through ? `(${analysis.through}까지의 소비기준)` : ""}</span>
+      </h2>
+      {analysis.text ? (
         <p className={styles.summary} aria-label="저장된 중간평가">{analysis.text}</p>
-        <p className={styles.caption}>{analysis.through}까지의 소비 기준 · 주기당 한 번 분석</p>
-      </> : analysis.status === "NO_EXPENSES" ? (
+      ) : analysis.status === "NO_EXPENSES" ? (
         <p className={styles.caption}>등록된 소비 기록이 없어 중간평가를 할 수 없습니다.</p>
       ) : busy ? (
         <p className={styles.loading} role="status"><LoaderCircle className="spin" size={14} />현재까지의 소비를 분석하고 있어요.</p>
