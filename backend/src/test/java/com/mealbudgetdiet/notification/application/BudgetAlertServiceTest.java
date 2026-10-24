@@ -5,6 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class BudgetAlertServiceTest {
+	@Test
+	void alertsWhenRolloverLeavesNoAvailableBudget() {
+		assertThat(BudgetAlertService.matchesAlertCondition(-100000, 0, 80, 1, 30)).isTrue();
+		assertThat(BudgetAlertService.matchesAlertCondition(0, 1000, 80, 1, 30)).isTrue();
+		assertThat(BudgetAlertService.matchesAlertCondition(0, 0, 80, 1, 30)).isFalse();
+	}
 
 	@Test
 	void requiresBothConfiguredUsageThresholdAndProjectedOverrun() {

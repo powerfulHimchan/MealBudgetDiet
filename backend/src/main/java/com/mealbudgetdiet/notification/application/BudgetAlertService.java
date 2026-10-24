@@ -54,7 +54,7 @@ public class BudgetAlertService {
 			return;
 		}
 
-		long monthlyBudget = budgetService.budgetForCycle(ledger, cycle).amount();
+		long monthlyBudget = budgetService.budgetForCycle(ledger, cycle).appliedAmount();
 		boolean weekly = ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY;
 		BudgetAlertType alertType = weekly ? BudgetAlertType.WEEKLY_BUDGET_OVERRUN_RISK
 			: BudgetAlertType.MONTHLY_BUDGET_OVERRUN_RISK;
@@ -99,10 +99,11 @@ public class BudgetAlertService {
 		int elapsedDays,
 		int cycleDays
 	) {
-		if (monthlyBudget <= 0 || totalSpent < 0 || usageThreshold < 1 || usageThreshold > 100
+		if (totalSpent < 0 || usageThreshold < 1 || usageThreshold > 100
 			|| elapsedDays <= 0 || elapsedDays > cycleDays) {
 			return false;
 		}
+		if (monthlyBudget <= 0) return totalSpent > 0 || monthlyBudget < 0;
 		BigInteger budget = BigInteger.valueOf(monthlyBudget);
 		BigInteger spent = BigInteger.valueOf(totalSpent);
 		boolean usageAtLeastThreshold = spent.multiply(BigInteger.valueOf(100))

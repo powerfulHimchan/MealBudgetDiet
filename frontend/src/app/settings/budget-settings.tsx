@@ -7,6 +7,7 @@ import { budgetCycleContaining, cycleForDate, BudgetCycleUnit } from "../../lib/
 import { CalendarPicker } from "../ui/date-picker";
 import { CustomSelect } from "../ui/custom-select";
 import { SettingsPageFrame } from "./settings-page-frame";
+import { BudgetRolloverDetails, type BudgetRollover } from "../budget-rollover-details";
 
 type Ledger = {
   id: string;
@@ -26,7 +27,9 @@ type Budget = {
   amount: number;
   source: "DEFAULT" | "MONTHLY_OVERRIDE" | "WEEKLY_DEFAULT";
   version: number;
+  rollover?: BudgetRollover;
 };
+type RolloverSettings = { carrySurplus: boolean; carryDeficit: boolean; effectiveFrom: string; pending: boolean; version: number };
 type BudgetCycleSettings = Pick<Ledger, "budgetCycleUnit" | "budgetCycleStartDay" | "budgetWeekStartDay" | "defaultWeeklyBudget" | "version">;
 
 const won = new Intl.NumberFormat("ko-KR");
@@ -41,6 +44,9 @@ export function BudgetSettings() {
   const [unit, setUnit] = useState<BudgetCycleUnit>("MONTHLY");
   const [weekStartDay, setWeekStartDay] = useState("1");
   const [weeklyAmount, setWeeklyAmount] = useState("");
+  const [rolloverSettings, setRolloverSettings] = useState<RolloverSettings | null>(null);
+  const [carrySurplus, setCarrySurplus] = useState(false);
+  const [carryDeficit, setCarryDeficit] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +69,10 @@ export function BudgetSettings() {
       setUnit(nextLedger.budgetCycleUnit);
       setWeekStartDay(String(nextLedger.budgetWeekStartDay));
       setWeeklyAmount(nextLedger.defaultWeeklyBudget == null ? "" : String(nextLedger.defaultWeeklyBudget));
+      const nextRollover = await request<RolloverSettings>("/api/v1/budgets/rollover");
+      setRolloverSettings(nextRollover);
+      setCarrySurplus(nextRollover.carrySurplus);
+      setCarryDeficit(nextRollover.carryDeficit);
       if (nextLedger.budgetCycleUnit === "WEEKLY") {
         setBudget(await request<Budget>("/api/v1/budgets/current"));
       } else {
@@ -85,7 +95,11 @@ export function BudgetSettings() {
         );
         const nextBudget = await request<Budget>(nextLedger.budgetCycleUnit === "WEEKLY"
           ? "/api/v1/budgets/current" : `/api/v1/budgets/${currentCycle.yearMonth}`);
+        const nextRollover = await request<RolloverSettings>("/api/v1/budgets/rollover");
         if (!active) return;
+        setRolloverSettings(nextRollover);
+        setCarrySurplus(nextRollover.carrySurplus);
+        setCarryDeficit(nextRollover.carryDeficit);
         setLedger(nextLedger);
         setDefaultAmount(String(nextLedger.defaultMonthlyBudget));
         setStartDay(String(nextLedger.budgetCycleStartDay));
@@ -104,6 +118,25 @@ export function BudgetSettings() {
   function clearMessages() {
     setError(null);
     setNotice(null);
+  }
+
+  async function saveRollover(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!ledger) return;
+    setIsSaving(true);
+    clearMessages();
+    try {
+      const next = await mutation<RolloverSettings>("/api/v1/budgets/rollover", "PUT", {
+        carrySurplus, carryDeficit, version: ledger.version,
+      });
+      setRolloverSettings(next);
+      setLedger({ ...ledger, version: next.version });
+      setNotice(`예산 이월 설정을 저장했습니다. ${next.effectiveFrom}부터 적용됩니다.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "이월 설정을 저장하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function saveDefault(event: FormEvent<HTMLFormElement>) {
@@ -151,6 +184,10 @@ export function BudgetSettings() {
         await loadBudget(currentCycle.yearMonth);
       }
       setNotice("예산 주기를 변경했습니다.");
+      const nextRollover = await request<RolloverSettings>("/api/v1/budgets/rollover");
+      setRolloverSettings(nextRollover);
+      setCarrySurplus(nextRollover.carrySurplus);
+      setCarryDeficit(nextRollover.carryDeficit);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "예산 주기를 저장하지 못했습니다.");
     } finally {
@@ -164,12 +201,11 @@ export function BudgetSettings() {
     setIsSaving(true);
     setError(null);
     try {
-      const next = await mutation<Budget>(`/api/v1/budgets/${yearMonth}`, "PUT", {
+      await mutation<Budget>(`/api/v1/budgets/${yearMonth}`, "PUT", {
         amount: Number(monthlyAmount),
         version: budget.source === "MONTHLY_OVERRIDE" ? budget.version : 0,
       });
-      setBudget(next);
-      setMonthlyAmount(String(next.amount));
+      await loadBudget(yearMonth);
       setNotice(`${yearMonth}의 별도 예산을 저장했습니다.`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "월별 예산을 저장하지 못했습니다.");
@@ -200,6 +236,7 @@ export function BudgetSettings() {
       || weeklyAmount !== (ledger.defaultWeeklyBudget == null ? "" : String(ledger.defaultWeeklyBudget)))));
   const defaultChanged = !!ledger && defaultAmount !== String(ledger.defaultMonthlyBudget);
   const monthlyChanged = !!budget && monthlyAmount !== String(budget.amount);
+  const rolloverChanged = !!rolloverSettings && (carrySurplus !== rolloverSettings.carrySurplus || carryDeficit !== rolloverSettings.carryDeficit);
   const previewDay = Math.min(31, Math.max(1, Number(startDay) || 1));
   const previewCycle = cycleForDate(
     new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()),
@@ -303,8 +340,25 @@ export function BudgetSettings() {
             </form>
           </section>}
 
+          {rolloverSettings && <section className="setting-panel">
+            <div className="panel-heading"><span className="panel-icon"><CircleDollarSign size={21} /></span><div><p className="eyebrow">BUDGET ROLLOVER</p><h2>예산 이월</h2></div></div>
+            <p className="setting-description">직전 주기에 남거나 초과한 금액을 다음 주기 예산에 반영합니다. 모든 멤버에게 동일하게 적용됩니다.</p>
+            <form className="budget-form" onSubmit={saveRollover}>
+              <label className="rollover-option"><input checked={carrySurplus} disabled={!isAdmin || isSaving} onChange={(event) => setCarrySurplus(event.target.checked)} type="checkbox" /><span>남은 금액 이월<small>남은 예산을 다음 주기 예산에 더합니다.</small></span></label>
+              <label className="rollover-option"><input checked={carryDeficit} disabled={!isAdmin || isSaving} onChange={(event) => setCarryDeficit(event.target.checked)} type="checkbox" /><span>초과 금액 이월<small>초과 지출을 다음 주기 예산에서 차감합니다.</small></span></label>
+              <p className="setting-description">변경한 설정은 다음 주기부터 적용됩니다. 처음 켜면 이번 주기의 잔액부터 이월하며, 지난 지출을 수정하면 이월금도 다시 계산됩니다.</p>
+              {rolloverSettings.pending && <p className="read-only-note">저장된 설정 적용 시작일: {rolloverSettings.effectiveFrom}</p>}
+              <p className="setting-description">주간·월간 또는 시작일을 변경하면 새 기준의 이번 주기 잔액부터 다시 이월합니다.</p>
+              {isAdmin ? <div className="setting-form-actions">
+                <button className="secondary-button" disabled={isSaving || !rolloverChanged} onClick={() => { setCarrySurplus(rolloverSettings.carrySurplus); setCarryDeficit(rolloverSettings.carryDeficit); clearMessages(); }} type="button">취소</button>
+                <button className="dark-button" disabled={isSaving || !rolloverChanged} type="submit">이월 설정 저장</button>
+              </div> : <p className="read-only-note">관리자만 이월 설정을 변경할 수 있습니다.</p>}
+            </form>
+          </section>}
+
           <section className="budget-guide">
-            <strong>현재 적용 금액</strong><span>{won.format(budget.amount)}원</span><p>{budget.period.from} ~ {budget.period.to} 주기에는 {budget.source === "WEEKLY_DEFAULT" ? "기본 주 예산" : budget.source === "DEFAULT" ? "기본 월 예산" : "별도로 지정한 예산"}이 적용됩니다.</p>
+            <strong>현재 적용 금액</strong><span>{won.format(budget.rollover?.enabled ? Math.max(0, budget.rollover.effectiveAmount) : budget.amount)}원</span><p>{budget.period.from} ~ {budget.period.to} 주기에는 {budget.source === "WEEKLY_DEFAULT" ? "기본 주 예산" : budget.source === "DEFAULT" ? "기본 월 예산" : "별도로 지정한 예산"}이 적용됩니다.</p>
+            <BudgetRolloverDetails value={budget.rollover} />
           </section>
         </div>
       )}

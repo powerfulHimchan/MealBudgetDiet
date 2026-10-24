@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Download, LoaderCircle, TrendingDown, Trendi
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { BrandLink } from "../brand-link";
 import { CurrentUserAvatar } from "../current-user-avatar";
+import { BudgetRolloverDetails, type BudgetRollover } from "../budget-rollover-details";
 import { request, todayInSeoul } from "../../lib/api";
 import { addMonths, adjacentCycle, budgetCycleContaining, budgetCycleStarting, cycleForDate, weeklyCycleContaining, BudgetCycleUnit } from "../../lib/budget-cycle";
 import { BottomNav } from "../ui/bottom-nav";
@@ -19,7 +20,7 @@ import navigationStyles from "./cycle-navigation.module.css";
 type StatisticsData = {
   period: { from: string; to: string };
   totalAmount: number;
-  budget: { amount: number; usageRate: number };
+  budget: { amount: number; usageRate: number; rollover?: BudgetRollover };
   comparison: {
     from: string; to: string; totalAmount: number; changeAmount: number; changeRate: number | null;
     currentPeriod?: DateRange | null; currentAmount?: number; samePoint?: boolean; available?: boolean;
@@ -215,7 +216,7 @@ export function StatisticsView() {
 
           <section className="summary-grid" aria-label="통계 요약">
             <article><span>총 지출</span><strong>{won.format(data.totalAmount)}원</strong><small>{data.period.from} ~ {data.period.to}</small></article>
-            <article><span>기간 예산</span><strong>{won.format(data.budget.amount)}원</strong><small>사용률 {Number(data.budget.usageRate).toFixed(1)}%</small></article>
+            <article><span>기간 예산</span><strong>{won.format(data.budget.rollover?.enabled ? Math.max(0, data.budget.amount) : data.budget.amount)}원</strong><small>사용률 {Number(data.budget.usageRate).toFixed(1)}%</small><BudgetRolloverDetails value={data.budget.rollover} range={!!analysisCycle && (analysisCycle.from !== data.period.from || analysisCycle.to !== data.period.to)} /></article>
             <article>
               <span>{comparisonTitle}{data.comparison.samePoint ? " 같은 시점" : ""} 대비</span>
               {comparisonAvailable ? <>

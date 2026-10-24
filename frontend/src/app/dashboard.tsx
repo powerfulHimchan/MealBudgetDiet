@@ -9,12 +9,14 @@ import { request } from "../lib/api";
 import { CurrentUserAvatar } from "./current-user-avatar";
 import { BrandLink } from "./brand-link";
 import { MidCycleAnalysisView, type MidCycleAnalysis } from "./mid-cycle-analysis";
+import { BudgetRolloverDetails, type BudgetRollover } from "./budget-rollover-details";
 
 type DashboardData = {
   yearMonth: string;
   cycleUnit: "MONTHLY" | "WEEKLY";
   period: { from: string; to: string };
   budget: number;
+  rollover?: BudgetRollover;
   spent: number;
   remaining: number;
   projectedSpent: number;
@@ -93,9 +95,11 @@ export function Dashboard() {
 
             <div className="budget-stats">
               <div><span>이번 주기 사용</span><strong>{won.format(data.spent)}원</strong></div>
-              <div><span>전체 예산</span><strong>{won.format(data.budget)}원</strong></div>
+              <div><span>전체 예산</span><strong>{won.format(data.rollover?.enabled ? Math.max(0, data.budget) : data.budget)}원</strong></div>
               <div className="usage-stat"><span>현재 사용률</span><strong>{Number(data.usageRate).toFixed(1)}%</strong></div>
             </div>
+
+            <BudgetRolloverDetails value={data.rollover} />
 
             <div className="projection-panel">
               <span className="projection-icon"><TrendingUp size={19} /></span>

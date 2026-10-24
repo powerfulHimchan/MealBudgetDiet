@@ -27,6 +27,9 @@ final class SpendingAnalysisPrompt {
 		data.put("기간", statistics.period());
 		data.put("총지출원", statistics.totalAmount());
 		data.put("예산원", statistics.budget().amount());
+		if (statistics.budget().rollover() != null && statistics.budget().rollover().enabled()) {
+			data.put("예산이월", statistics.budget().rollover());
+		}
 		data.put("예산사용률", statistics.budget().usageRate());
 		data.put("이전주기지출원", statistics.comparison().totalAmount());
 		data.put("이전주기대비증감률", statistics.comparison().changeRate());

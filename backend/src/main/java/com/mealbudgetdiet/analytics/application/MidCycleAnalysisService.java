@@ -97,9 +97,10 @@ public class MidCycleAnalysisService {
 				Ledger ledger = requireSameLedger(userId, prepared.ledgerId());
 				var statistics = analytics.statisticsForLedger(ledger, from, prepared.through());
 				if (statistics.daily().isEmpty()) throw new ApiException(HttpStatus.BAD_REQUEST, "ANALYSIS_NO_EXPENSES", "등록된 소비 기록이 없어 중간평가를 할 수 없습니다.");
-				long budget = budgets.budgetForCycle(ledger, prepared.cycle()).amount();
-				var wholeCycleBudget = new StatisticsSnapshot.Budget(budget, BigDecimal.valueOf(statistics.totalAmount())
-					.multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(budget), 2, RoundingMode.HALF_UP));
+				var applied = budgets.budgetForCycle(ledger, prepared.cycle());
+				long budget = applied.appliedAmount();
+				var wholeCycleBudget = new StatisticsSnapshot.Budget(budget,
+					AnalyticsService.budgetUsageRate(statistics.totalAmount(), budget), applied.rollover());
 				var evaluation = new StatisticsSnapshot(statistics.period(), statistics.totalAmount(), wholeCycleBudget,
 					statistics.comparison(), statistics.daily(), statistics.categories(), statistics.spendingAnalysis());
 				return prompt.build(evaluation, expenses.expenseDetails(ledger.getId(), from, prepared.through()), Map.of(

@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mealbudgetdiet.budget.application.BudgetService;
 import com.mealbudgetdiet.budget.application.BudgetSnapshot;
 import com.mealbudgetdiet.budget.application.BudgetSource;
+import com.mealbudgetdiet.budget.application.BudgetRolloverService;
+import com.mealbudgetdiet.budget.application.BudgetRolloverSnapshot;
 import com.mealbudgetdiet.identity.infrastructure.MealBudgetPrincipal;
 import com.mealbudgetdiet.shared.api.ApiException;
 
@@ -31,10 +33,26 @@ import jakarta.validation.constraints.PositiveOrZero;
 public class BudgetController {
 
 	private final BudgetService budgetService;
+	private final BudgetRolloverService rollover;
 
-	public BudgetController(BudgetService budgetService) {
+	public BudgetController(BudgetService budgetService, BudgetRolloverService rollover) {
 		this.budgetService = budgetService;
+		this.rollover = rollover;
 	}
+
+	@GetMapping("/rollover")
+	BudgetRolloverService.Settings rollover(@AuthenticationPrincipal MealBudgetPrincipal principal) {
+		return rollover.settings(principal.id());
+	}
+
+	@PutMapping("/rollover")
+	BudgetRolloverService.Settings updateRollover(@AuthenticationPrincipal MealBudgetPrincipal principal,
+		@Valid @RequestBody RolloverRequest request) {
+		return rollover.update(principal.id(), request.carrySurplus(), request.carryDeficit(), request.version());
+	}
+
+	public record RolloverRequest(@NotNull Boolean carrySurplus, @NotNull Boolean carryDeficit,
+		@NotNull @PositiveOrZero Integer version) { }
 
 	@GetMapping("/current")
 	BudgetResponse current(@AuthenticationPrincipal MealBudgetPrincipal principal) {
@@ -92,7 +110,8 @@ public class BudgetController {
 		PeriodResponse period,
 		long amount,
 		BudgetSource source,
-		int version
+		int version,
+		BudgetRolloverSnapshot rollover
 	) {
 		static BudgetResponse from(BudgetSnapshot snapshot) {
 			return new BudgetResponse(
@@ -100,7 +119,7 @@ public class BudgetController {
 				snapshot.period() == null
 					? null
 					: new PeriodResponse(snapshot.period().from(), snapshot.period().to()),
-				snapshot.amount(), snapshot.source(), snapshot.version());
+				snapshot.amount(), snapshot.source(), snapshot.version(), snapshot.rollover());
 		}
 	}
 

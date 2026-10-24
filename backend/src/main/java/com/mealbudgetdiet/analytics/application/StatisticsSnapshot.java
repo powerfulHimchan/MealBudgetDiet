@@ -17,7 +17,9 @@ public record StatisticsSnapshot(
 	public record Period(LocalDate from, LocalDate to) {
 	}
 
-	public record Budget(long amount, BigDecimal usageRate) {
+	public record Budget(long amount, BigDecimal usageRate,
+		com.mealbudgetdiet.budget.application.BudgetRolloverSnapshot rollover) {
+		public Budget(long amount, BigDecimal usageRate) { this(amount, usageRate, null); }
 	}
 
 	public record Comparison(

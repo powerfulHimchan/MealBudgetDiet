@@ -32,17 +32,20 @@ public class BudgetService {
 	private final LedgerRepository ledgerRepository;
 	private final MonthlyBudgetRepository monthlyBudgetRepository;
 	private final Clock clock;
+	private final BudgetRolloverService rollover;
 
 	public BudgetService(
 		LedgerAccessService ledgerAccessService,
 		LedgerRepository ledgerRepository,
 		MonthlyBudgetRepository monthlyBudgetRepository,
-		Clock clock
+		Clock clock,
+		BudgetRolloverService rollover
 	) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.ledgerRepository = ledgerRepository;
 		this.monthlyBudgetRepository = monthlyBudgetRepository;
 		this.clock = clock;
+		this.rollover = rollover;
 	}
 
 	@Transactional(readOnly = true)
@@ -54,18 +57,24 @@ public class BudgetService {
 	}
 
 	public BudgetSnapshot budgetForCycle(Ledger ledger, BudgetCycle cycle) {
+		BudgetSnapshot base;
 		if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
-			return new BudgetSnapshot(cycle.yearMonth(), cycle, ledger.getDefaultWeeklyBudget(),
+			base = new BudgetSnapshot(cycle.yearMonth(), cycle, ledger.getDefaultWeeklyBudget(),
 				BudgetSource.WEEKLY_DEFAULT, ledger.getVersion());
+		} else {
+			base = appliedBudget(ledger, cycle);
 		}
-		return appliedBudget(ledger, cycle);
+		var applied = rollover.forCycle(ledger, cycle, base.amount());
+		return new BudgetSnapshot(base.yearMonth(), cycle, base.amount(), base.source(), base.version(), applied);
 	}
 
 	@Transactional(readOnly = true)
 	public BudgetSnapshot getAppliedBudget(UUID userId, YearMonth yearMonth) {
 		UUID ledgerId = ledgerId(userId);
 		var ledger = ledgerAccessService.requireLedger(ledgerId);
-		return appliedBudget(ledger, BudgetCycle.starting(yearMonth, ledger.getBudgetCycleStartDay()));
+		return ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY
+			? appliedBudget(ledger, BudgetCycle.starting(yearMonth, ledger.getBudgetCycleStartDay()))
+			: budgetForCycle(ledger, BudgetCycle.starting(yearMonth, ledger.getBudgetCycleStartDay()));
 	}
 
 	@Transactional
@@ -76,6 +85,7 @@ public class BudgetService {
 			throw versionConflict();
 		}
 		ledger.changeDefaultMonthlyBudget(amount);
+		if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.MONTHLY) rollover.recordBaseChange(ledger);
 		ledgerRepository.flush();
 		return new BudgetSnapshot(
 			null, null, ledger.getDefaultMonthlyBudget(), BudgetSource.DEFAULT, ledger.getVersion());
@@ -118,6 +128,17 @@ public class BudgetService {
 	@Transactional(readOnly = true)
 	public long proratedBudget(UUID ledgerId, LocalDate from, LocalDate to) {
 		Ledger ledger = ledgerAccessService.requireLedger(ledgerId);
+		BudgetCycle opening = BudgetCycle.containing(from, ledger.getBudgetCycleUnit(),
+			ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
+		if (!to.isAfter(opening.to())) {
+			long applied = budgetForCycle(ledger, opening).appliedAmount();
+			long days = ChronoUnit.DAYS.between(from, to) + 1;
+			return BigDecimal.valueOf(applied).multiply(BigDecimal.valueOf(days))
+				.divide(BigDecimal.valueOf(opening.days()), 0, RoundingMode.HALF_UP).longValueExact();
+		}
+		// A transfer between cycles is not new budget. Only the opening carry enters a multi-cycle range.
+		long openingCarry = budgetForCycle(ledger, opening).rollover().carryAmount();
+		var historicalDefaults = rollover.defaultHistory(ledger, to);
 		if (ledger.getBudgetCycleUnit() == BudgetCycleUnit.WEEKLY) {
 			BigDecimal total = BigDecimal.ZERO;
 			for (BudgetCycle cycle = BudgetCycle.weeklyContaining(from, ledger.getBudgetWeekStartDay());
@@ -126,10 +147,12 @@ public class BudgetService {
 				LocalDate start = from.isAfter(cycle.from()) ? from : cycle.from();
 				LocalDate end = to.isBefore(cycle.to()) ? to : cycle.to();
 				long days = ChronoUnit.DAYS.between(start, end) + 1;
-				total = total.add(BigDecimal.valueOf(ledger.getDefaultWeeklyBudget())
+				var storedBase = historicalDefaults.floorEntry(cycle.from());
+				long base = storedBase == null ? ledger.getDefaultWeeklyBudget() : storedBase.getValue();
+				total = total.add(BigDecimal.valueOf(base)
 					.multiply(BigDecimal.valueOf(days)).divide(BigDecimal.valueOf(7), 8, RoundingMode.HALF_UP));
 			}
-			return total.setScale(0, RoundingMode.HALF_UP).longValueExact();
+			return Math.addExact(total.setScale(0, RoundingMode.HALF_UP).longValueExact(), openingCarry);
 		}
 		int startDay = ledger.getBudgetCycleStartDay();
 		BudgetCycle firstCycle = BudgetCycle.containing(from, startDay);
@@ -148,12 +171,13 @@ public class BudgetService {
 			long includedDays = ChronoUnit.DAYS.between(segmentFrom, segmentTo) + 1;
 			long amount = overrides.containsKey(month)
 				? overrides.get(month).getAmount()
-				: ledger.getDefaultMonthlyBudget();
+				: historicalDefaults.floorEntry(cycle.from()) == null ? ledger.getDefaultMonthlyBudget()
+					: historicalDefaults.floorEntry(cycle.from()).getValue();
 			total = total.add(BigDecimal.valueOf(amount)
 				.multiply(BigDecimal.valueOf(includedDays))
 				.divide(BigDecimal.valueOf(cycle.days()), 8, RoundingMode.HALF_UP));
 		}
-		return total.setScale(0, RoundingMode.HALF_UP).longValueExact();
+		return Math.addExact(total.setScale(0, RoundingMode.HALF_UP).longValueExact(), openingCarry);
 	}
 
 	private BudgetSnapshot appliedBudget(Ledger ledger, BudgetCycle cycle) {
