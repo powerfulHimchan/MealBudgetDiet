@@ -147,7 +147,7 @@ public class ExpenseService {
 		var items = pageExpenses.stream()
 			.map(expense -> snapshot(expense, images.getOrDefault(expense.getId(), List.of()))).toList();
 		String nextCursor = hasNext ? encodeCursor(found.get(size - 1)) : null;
-		long totalAmount = expenseRepository.sumAmount(
+		var totals = expenseRepository.summarize(
 			ledgerId,
 			from == null ? EARLIEST_SUPPORTED_DATE : from,
 			to == null ? LATEST_SUPPORTED_DATE : to,
@@ -156,7 +156,7 @@ public class ExpenseService {
 			uncategorized,
 			keywordPattern
 		);
-		return new ExpensePage(items, nextCursor, hasNext, totalAmount);
+		return new ExpensePage(items, nextCursor, hasNext, totals.getTotalAmount(), totals.getTotalCount());
 	}
 
 	@Transactional(readOnly = true)

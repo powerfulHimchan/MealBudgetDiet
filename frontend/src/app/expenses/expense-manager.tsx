@@ -44,7 +44,7 @@ type Expense = {
 type ExpenseImage = { id: string; contentUrl: string; thumbnailUrl?: string; sortOrder: number };
 type DraftImage = ExpenseImage & { temporary: boolean };
 type UploadedImage = { id: string; contentUrl: string; thumbnailUrl?: string; status: "TEMP"; purpose: "EXPENSE" };
-type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean; totalAmount: number };
+type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean; totalAmount: number; totalCount: number };
 type Filters = { from: string; to: string; categoryId: string; keyword: string };
 type CycleSettings = { budgetCycleUnit: BudgetCycleUnit; budgetCycleStartDay: number; budgetWeekStartDay: number };
 type ExpenseDraft = {
@@ -93,6 +93,7 @@ export function ExpenseManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalAmount, setTotalAmount] = useState<number | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [cycleSettings, setCycleSettings] = useState<CycleSettings | null>(null);
@@ -135,6 +136,7 @@ export function ExpenseManager() {
         setCategories(categoryItems);
         setExpenses(expenseData.items);
         setTotalAmount(expenseData.totalAmount);
+        setTotalCount(expenseData.totalCount ?? null);
         setNextCursor(expenseData.nextCursor);
         setHasNext(expenseData.hasNext);
         if (new URLSearchParams(window.location.search).get("new") === "1") {
@@ -196,6 +198,7 @@ export function ExpenseManager() {
     setError(null);
     setExpenses([]);
     setTotalAmount(null);
+    setTotalCount(null);
     setNextCursor(null);
     setHasNext(false);
     try {
@@ -203,6 +206,7 @@ export function ExpenseManager() {
       if (version !== requestVersion.current) return;
       setExpenses(page.items);
       setTotalAmount(page.totalAmount);
+      setTotalCount(page.totalCount ?? null);
       setNextCursor(page.nextCursor);
       setHasNext(page.hasNext);
     } catch (reason) {
@@ -374,6 +378,7 @@ export function ExpenseManager() {
       if (version !== requestVersion.current) return;
       setExpenses((current) => [...current, ...page.items]);
       setTotalAmount(page.totalAmount);
+      setTotalCount(page.totalCount ?? null);
       setNextCursor(page.nextCursor);
       setHasNext(page.hasNext);
     } catch (reason) {
@@ -651,7 +656,7 @@ export function ExpenseManager() {
             <div className="results-heading">
               <div>
                 <p className="eyebrow">{hasNext ? "불러온 내역 · 더 보기를 눌러 확인하세요" : "내역"}</p>
-                <h2 id="expense-results-title">{expenses.length}건 · {totalAmount === null ? "집계 중…" : `${won.format(totalAmount)}원`}</h2>
+                <h2 id="expense-results-title">{totalCount === null ? "집계 중…" : `${won.format(totalCount)}건`} · {totalAmount === null ? "집계 중…" : `${won.format(totalAmount)}원`}</h2>
               </div>
               {isLoading && <LoaderCircle className="spin" aria-label="불러오는 중" size={22} />}
             </div>

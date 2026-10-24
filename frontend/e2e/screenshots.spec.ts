@@ -768,14 +768,14 @@ test("defaults to the ledger cycle and preserves search when browsing past cycle
   const fixture = await mockExpenseApis(page, true, { budgetCycleStartDay: 25 });
   await page.route("**/api/v1/expenses/initial?*", (route) => route.fulfill({ json: {
     cycleSettings: fixture.ledger, period: { from: "2026-08-25", to: "2026-09-24" }, categories: fixture.categories,
-    page: { items: [{ id: "cycle-expense", amount: 12000, spentOn: "2026-09-12", category: null, merchant: "이번 주기 식당", memo: null, version: 0 }], hasNext: false, nextCursor: null, totalAmount: 12000 },
+    page: { items: [{ id: "cycle-expense", amount: 12000, spentOn: "2026-09-12", category: null, merchant: "이번 주기 식당", memo: null, version: 0 }], hasNext: false, nextCursor: null, totalCount: 1, totalAmount: 12000 },
   } }));
   const ranges: URLSearchParams[] = [];
   await page.route("**/api/v1/expenses?*", (route) => {
     const params = new URL(route.request().url()).searchParams;
     ranges.push(params);
     const current = !params.get("from") || params.get("from") === "2026-08-25";
-    return route.fulfill({ json: { items: [{ id: "cycle-expense", amount: 12000, spentOn: current ? "2026-09-12" : "2026-08-12", category: null, merchant: current ? "이번 주기 식당" : "이전 주기 식당", memo: null, version: 0 }], hasNext: false, nextCursor: null, totalAmount: 12000 } });
+    return route.fulfill({ json: { items: [{ id: "cycle-expense", amount: 12000, spentOn: current ? "2026-09-12" : "2026-08-12", category: null, merchant: current ? "이번 주기 식당" : "이전 주기 식당", memo: null, version: 0 }], hasNext: false, nextCursor: null, totalCount: 1, totalAmount: 12000 } });
   });
   await page.goto("/expenses");
   const cyclePanel = page.getByRole("region", { name: "식비 주기 선택" });
@@ -1124,9 +1124,9 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
     } else if (pathname === "/api/v1/expenses/initial") {
       const today = await page.evaluate(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()));
       const period = ledger.budgetCycleUnit === "WEEKLY" ? weeklyCycleContaining(today, ledger.budgetWeekStartDay) : budgetCycleContaining(today, ledger.budgetCycleStartDay);
-      await route.fulfill({ json: { cycleSettings: ledger, period, categories, page: { items: expenses, nextCursor: null, hasNext: false, totalAmount: expenses.reduce((sum, expense) => sum + expense.amount, 0) } } });
+      await route.fulfill({ json: { cycleSettings: ledger, period, categories, page: { items: expenses, nextCursor: null, hasNext: false, totalCount: expenses.length, totalAmount: expenses.reduce((sum, expense) => sum + expense.amount, 0) } } });
     } else if (pathname === "/api/v1/expenses") {
-      await route.fulfill({ json: { items: expenses, nextCursor: null, hasNext: false, totalAmount: expenses.reduce((sum, expense) => sum + expense.amount, 0) } });
+      await route.fulfill({ json: { items: expenses, nextCursor: null, hasNext: false, totalCount: expenses.length, totalAmount: expenses.reduce((sum, expense) => sum + expense.amount, 0) } });
     } else if (pathname === "/api/v1/uploads/images") {
       const purpose = new URL(route.request().url()).searchParams.get("purpose") ?? "EXPENSE";
       await route.fulfill({ json: { id: "15151515-1515-1515-1515-151515151515", purpose, contentUrl: "/api/v1/images/15151515-1515-1515-1515-151515151515/content", mimeType: "image/webp", width: 1, height: 1, status: "TEMP" }, status: 201 });
