@@ -64,7 +64,7 @@ export function MidCycleAnalysisView({ period, initial }: {
     <section className={styles.panel} aria-label="소비 중간평가" aria-busy={busy}>
       <h2 className={styles.heading}>
         <Sparkles size={15} aria-hidden="true" />
-        <span>소비 중간평가{analysis.through ? `(${analysis.through}까지의 소비기준)` : ""}</span>
+        <span>소비 중간평가{analysis.through ? ` (${analysis.through}까지의 소비기준)` : ""}</span>
       </h2>
       {analysis.text ? (
         <p className={styles.summary} aria-label="저장된 중간평가">{analysis.text}</p>

@@ -38,7 +38,7 @@ for (const width of [320, 390, 1024, 1440]) {
     const panel = page.locator(".projection-panel");
     await expect(panel.getByRole("region", { name: "소비 중간평가" })).toBeVisible();
     await expect(panel.getByLabel("저장된 중간평가")).toHaveText(midCycleText);
-    await expect(panel.getByRole("heading", { name: "소비 중간평가(2026-10-20까지의 소비기준)", exact: true })).toBeVisible();
+    await expect(panel.getByRole("heading", { name: "소비 중간평가 (2026-10-20까지의 소비기준)", exact: true })).toBeVisible();
     await expect(panel.getByText(/주기당 한 번 분석/)).toHaveCount(0);
     await expect(panel.getByRole("region", { name: "소비 중간평가" }).locator("p").filter({ hasText: "2026-10-20" })).toHaveCount(0);
     expect(await panel.evaluate((element) => element.lastElementChild?.getAttribute("aria-label"))).toBe("소비 중간평가");

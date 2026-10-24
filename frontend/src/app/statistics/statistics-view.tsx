@@ -2,7 +2,6 @@
 
 import { ChevronLeft, ChevronRight, Download, LoaderCircle, TrendingDown, TrendingUp } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BrandLink } from "../brand-link";
 import { CurrentUserAvatar } from "../current-user-avatar";
 import { request, todayInSeoul } from "../../lib/api";
@@ -14,6 +13,7 @@ import { Hero } from "../ui/hero";
 import { PresetChip } from "../ui/preset-chip";
 import designStyles from "../ui/design-system.module.css";
 import { SpendingAnalysisView, type SpendingAnalysis } from "./spending-analysis";
+import { SpendingTrend } from "./spending-trend";
 import navigationStyles from "./cycle-navigation.module.css";
 
 type StatisticsData = {
@@ -34,7 +34,6 @@ type RangeKey = PresetRangeKey | "custom" | "cycle";
 type DateRange = { from: string; to: string };
 
 const won = new Intl.NumberFormat("ko-KR");
-const compactWon = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
 
 function comparisonDateRange(from: string, to: string) {
   const [year, month, day] = from.split("-").map(Number);
@@ -232,21 +231,7 @@ export function StatisticsView() {
           </section>
 
           <div className="analytics-grid">
-            <section className="chart-panel">
-              <div className="panel-heading"><div><p className="eyebrow">DAILY TREND</p><h2>일별 지출 추이</h2></div>{isLoading && <LoaderCircle className="spin" size={20} />}</div>
-              <div className="chart-wrap" role="img" aria-label="일별 지출 추이 차트">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart accessibilityLayer={false} data={data.daily} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-                    <defs><linearGradient id="spending-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--blue)" stopOpacity={0.4} /><stop offset="100%" stopColor="var(--blue)" stopOpacity={0.02} /></linearGradient></defs>
-                    <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tick={{ fontSize: 11, fill: "var(--mute)" }} axisLine={false} tickLine={false} minTickGap={22} />
-                    <YAxis tickFormatter={(value: number) => compactWon.format(value)} tick={{ fontSize: 11, fill: "var(--mute)" }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(value) => [`${won.format(Number(value))}원`, "지출"]} labelFormatter={(label) => String(label)} />
-                    <Area isAnimationActive={false} type="monotone" dataKey="amount" stroke="var(--blue)" strokeWidth={2} fill="url(#spending-fill)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
+            <SpendingTrend daily={data.daily} period={data.period} weekStartDay={weekStartDay} isLoading={isLoading} />
 
             <section className="category-stat-panel">
               <div className="panel-heading"><div><p className="eyebrow">CATEGORY SHARE</p><h2>카테고리별 비중</h2></div></div>
