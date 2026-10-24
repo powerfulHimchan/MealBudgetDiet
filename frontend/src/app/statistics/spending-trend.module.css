@@ -1,0 +1,5 @@
+.units { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; max-width: 360px; margin-top: 16px; }
+.units button.unit { min-width: 0; padding-inline: 8px; }
+.tooltip { max-width: min(290px, calc(100vw - 48px)); padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); box-shadow: 0 4px 12px rgb(11 18 32 / 8%); }
+.tooltip p { margin: 0 0 6px; font-size: 12px; overflow-wrap: anywhere; }
+.tooltip strong { font-size: 13px; }
