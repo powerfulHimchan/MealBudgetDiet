@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { mutation, multipartMutation, request, todayInSeoul } from "../../lib/api";
 import { adjacentCycle, cycleForDate, type BudgetCycleRange, type BudgetCycleUnit } from "../../lib/budget-cycle";
 import { BrandLink } from "../brand-link";
@@ -47,6 +47,7 @@ type UploadedImage = { id: string; contentUrl: string; thumbnailUrl?: string; st
 type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean; totalAmount: number; totalCount: number };
 type Filters = { from: string; to: string; categoryId: string; keyword: string };
 type CycleSettings = { budgetCycleUnit: BudgetCycleUnit; budgetCycleStartDay: number; budgetWeekStartDay: number };
+type ScrollPosition = { left: number; top: number };
 type ExpenseDraft = {
   amount: string;
   spentOn: string;
@@ -78,8 +79,8 @@ async function uploadExpenseImage(file: File): Promise<UploadedImage> {
   return multipartMutation<UploadedImage>("/api/v1/uploads/images?purpose=EXPENSE", body);
 }
 
-function expenseQuery(filters: Filters, cursor?: string) {
-  const params = new URLSearchParams({ size: "20" });
+function expenseQuery(filters: Filters, cursor?: string, size = 20) {
+  const params = new URLSearchParams({ size: String(size) });
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
   if (filters.categoryId === "uncategorized") params.set("uncategorized", "true");
@@ -99,6 +100,8 @@ export function ExpenseManager() {
   const [cycleSettings, setCycleSettings] = useState<CycleSettings | null>(null);
   const [isCyclePickerOpen, setIsCyclePickerOpen] = useState(false);
   const requestVersion = useRef(0);
+  const expenseFormScrollPosition = useRef<ScrollPosition | null>(null);
+  const pendingScrollPosition = useRef<ScrollPosition | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasNext, setHasNext] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,6 +158,12 @@ export function ExpenseManager() {
     return () => { active = false; controller.abort(); };
   }, []);
 
+  useLayoutEffect(() => {
+    if (!pendingScrollPosition.current) return;
+    window.scrollTo({ ...pendingScrollPosition.current, behavior: "instant" });
+    pendingScrollPosition.current = null;
+  }, [expenses]);
+
   const appliedCategoryLabel = appliedFilters.categoryId === "uncategorized"
     ? "분류 없음"
     : categories.find((category) => category.id === appliedFilters.categoryId)?.name;
@@ -192,19 +201,38 @@ export function ExpenseManager() {
     };
   }, [appliedFilters, isMobileFilterOpen]);
 
-  async function refreshExpenses(nextFilters: Filters = appliedFilters) {
+  async function refreshExpenses(
+    nextFilters: Filters = appliedFilters,
+    options: { preserveVisibleItems?: boolean; scrollPosition?: ScrollPosition | null } = {},
+  ) {
     const version = ++requestVersion.current;
+    const targetCount = options.preserveVisibleItems ? Math.max(20, expenses.length) : 20;
+    const scrollPosition = options.preserveVisibleItems
+      ? options.scrollPosition ?? { left: window.scrollX, top: window.scrollY }
+      : null;
+    pendingScrollPosition.current = null;
     setIsLoading(true);
     setError(null);
-    setExpenses([]);
-    setTotalAmount(null);
-    setTotalCount(null);
-    setNextCursor(null);
-    setHasNext(false);
+    if (!options.preserveVisibleItems) {
+      setExpenses([]);
+      setTotalAmount(null);
+      setTotalCount(null);
+      setNextCursor(null);
+      setHasNext(false);
+    }
     try {
-      const page = await request<ExpensePage>(expenseQuery(nextFilters));
+      // Rebuild the visible range with fresh cursors: edits can change dates or filters.
+      // Keep the old list rendered until every previously visible item has been refreshed.
+      let page = await request<ExpensePage>(expenseQuery(nextFilters, undefined, Math.min(100, targetCount)));
       if (version !== requestVersion.current) return;
-      setExpenses(page.items);
+      const items = [...page.items];
+      while (page.hasNext && page.nextCursor && items.length < targetCount) {
+        page = await request<ExpensePage>(expenseQuery(nextFilters, page.nextCursor, Math.min(100, targetCount - items.length)));
+        if (version !== requestVersion.current) return;
+        items.push(...page.items);
+      }
+      pendingScrollPosition.current = scrollPosition;
+      setExpenses(items);
       setTotalAmount(page.totalAmount);
       setTotalCount(page.totalCount ?? null);
       setNextCursor(page.nextCursor);
@@ -217,6 +245,7 @@ export function ExpenseManager() {
   }
 
   function openCreate() {
+    expenseFormScrollPosition.current = { left: window.scrollX, top: window.scrollY };
     setEditingExpense(null);
     setDraft({
       amount: "",
@@ -230,6 +259,7 @@ export function ExpenseManager() {
   }
 
   function openEdit(expense: Expense) {
+    expenseFormScrollPosition.current = { left: window.scrollX, top: window.scrollY };
     setEditingExpense(expense);
     setDraft({
       amount: String(expense.amount),
@@ -280,7 +310,7 @@ export function ExpenseManager() {
       }
       setDraftImages([]);
       setIsExpenseOpen(false);
-      await refreshExpenses();
+      await refreshExpenses(appliedFilters, { preserveVisibleItems: true, scrollPosition: expenseFormScrollPosition.current });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "식비를 저장하지 못했습니다.");
     } finally {
@@ -358,12 +388,13 @@ export function ExpenseManager() {
   }
 
   async function deleteExpense(expense: Expense) {
+    const scrollPosition = { left: window.scrollX, top: window.scrollY };
     if (!window.confirm(`${expense.merchant ?? "선택한 식비"} 내역을 삭제할까요?`)) return;
     setError(null);
     try {
       await mutation(`/api/v1/expenses/${expense.id}?version=${expense.version}`, "DELETE");
       setNotice("식비 내역을 삭제했습니다.");
-      await refreshExpenses();
+      await refreshExpenses(appliedFilters, { preserveVisibleItems: true, scrollPosition });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "식비를 삭제하지 못했습니다.");
     }
