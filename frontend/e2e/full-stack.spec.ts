@@ -108,6 +108,7 @@ test("two users share an expense with an image and see matching statistics", asy
   expect((await createExpenseResponsePromise).status()).toBe(201);
   await expect(adminPage.getByText("식비 내역을 등록했습니다.", { exact: true })).toBeVisible();
   await expect(adminPage.getByText(originalMerchant, { exact: true })).toBeVisible();
+  await expect(adminPage.locator("#expense-results-title")).toHaveText("1건 · 45,000원");
 
   await adminPage.getByRole("button", { name: "이전 주기", exact: true }).click();
   await expect(adminPage.getByText("조건에 맞는 식비가 없습니다.")).toBeVisible();
@@ -136,6 +137,7 @@ test("two users share an expense with an image and see matching statistics", asy
   expect((await updateResponsePromise).status()).toBe(200);
   await expect(memberPage.getByText("식비 내역을 수정했습니다.", { exact: true })).toBeVisible();
   await expect(memberPage.getByText(updatedMerchant, { exact: true })).toBeVisible();
+  await expect(memberPage.locator("#expense-results-title")).toHaveText("1건 · 54,321원");
 
   await adminPage.reload();
   const updatedAdminExpense = adminPage.getByRole("listitem").filter({ hasText: updatedMerchant });
@@ -159,10 +161,33 @@ test("two users share an expense with an image and see matching statistics", asy
   expect((await deleteResponsePromise).status()).toBe(204);
   await expect(memberPage.getByText("식비 내역을 삭제했습니다.", { exact: true })).toBeVisible();
   await expect(memberPage.getByText(updatedMerchant, { exact: true })).toHaveCount(0);
+  await expect(memberPage.locator("#expense-results-title")).toHaveText("0건 · 0원");
 
   await adminPage.goto("/");
   await expect(adminPage.getByRole("heading", { name: "500,000원 남았어요" })).toBeVisible();
   await expect(adminPage.getByText(updatedMerchant, { exact: true })).toHaveCount(0);
+
+  // Keep the list paginated while showing the sum of all 21 expenses from the first visit.
+  const csrfResponse = await adminPage.request.get("/api/v1/auth/csrf");
+  const csrf = await csrfResponse.json() as { headerName: string; token: string };
+  const initialResponse = await adminPage.request.get("/api/v1/expenses/initial?size=20");
+  const initial = await initialResponse.json() as { period: { from: string }; categories: { id: string }[] };
+  for (let index = 0; index < 21; index++) {
+    const response = await adminPage.request.post("/api/v1/expenses", {
+      headers: { [csrf.headerName]: csrf.token },
+      data: { amount: 1000, spentOn: initial.period.from, categoryId: initial.categories[0].id,
+        merchant: `합계 확인 ${index}`, memo: "페이지 경계 검증", imageIds: [] },
+    });
+    expect(response.status()).toBe(201);
+  }
+  await adminPage.goto("/expenses");
+  await expect(adminPage.locator("#expense-results-title")).toHaveText("20건 · 21,000원");
+  await adminPage.getByRole("button", { name: "내역 더 보기", exact: true }).click();
+  await expect(adminPage.locator("#expense-results-title")).toHaveText("21건 · 21,000원");
+  await adminPage.getByRole("button", { name: "이전 주기", exact: true }).click();
+  await expect(adminPage.locator("#expense-results-title")).toHaveText("0건 · 0원");
+  await adminPage.getByRole("button", { name: "이번 주기로", exact: true }).click();
+  await expect(adminPage.locator("#expense-results-title")).toHaveText("20건 · 21,000원");
 
   await memberContext.close();
   await adminContext.close();

@@ -85,6 +85,7 @@ class ExpenseManagementIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items.length()").value(2))
 			.andExpect(jsonPath("$.items[0].merchant").value("동네마트"))
+			.andExpect(jsonPath("$.totalAmount").value(40_300))
 			.andExpect(jsonPath("$.hasNext").value(true))
 			.andReturn();
 		String cursor = JsonPath.read(firstPage.getResponse().getContentAsString(), "$.nextCursor");
@@ -96,6 +97,7 @@ class ExpenseManagementIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items.length()").value(1))
 			.andExpect(jsonPath("$.items[0].merchant").value("구내식당"))
+			.andExpect(jsonPath("$.totalAmount").value(40_300))
 			.andExpect(jsonPath("$.hasNext").value(false));
 
 		mockMvc.perform(get("/api/v1/expenses")
@@ -103,7 +105,17 @@ class ExpenseManagementIntegrationTest {
 				.param("keyword", "마트"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items.length()").value(1))
-			.andExpect(jsonPath("$.items[0].id").value(firstExpenseId));
+			.andExpect(jsonPath("$.items[0].id").value(firstExpenseId))
+			.andExpect(jsonPath("$.totalAmount").value(18_500));
+
+		mockMvc.perform(get("/api/v1/expenses").cookie(adminSession)
+				.param("categoryId", customCategoryId))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalAmount").value(12_000));
+		mockMvc.perform(get("/api/v1/expenses").cookie(adminSession)
+				.param("keyword", "일치하지않는검색어"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalAmount").value(0));
 
 		mockMvc.perform(put("/api/v1/expenses/{expenseId}", firstExpenseId)
 				.with(csrf())
@@ -132,6 +144,14 @@ class ExpenseManagementIntegrationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.category").doesNotExist());
 
+		mockMvc.perform(get("/api/v1/expenses").cookie(memberSession)
+				.param("uncategorized", "true"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalAmount").value(12_000));
+		mockMvc.perform(get("/api/v1/expenses").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalAmount").value(41_800));
+
 		mockMvc.perform(delete("/api/v1/expenses/{expenseId}", firstExpenseId)
 				.with(csrf())
 				.cookie(memberSession)
@@ -154,6 +174,42 @@ class ExpenseManagementIntegrationTest {
 				.param("cursor", "not-a-cursor"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("INVALID_EXPENSE_CURSOR"));
+
+		mockMvc.perform(get("/api/v1/expenses").cookie(memberSession))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalAmount").value(21_800));
+
+		assertCurrentCycleTotalIncludesUnloadedExpenses(adminSession, defaultCategoryId);
+	}
+
+	private void assertCurrentCycleTotalIncludesUnloadedExpenses(Cookie session, String categoryId) throws Exception {
+		var initial = mockMvc.perform(get("/api/v1/expenses/initial").cookie(session))
+			.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		String from = JsonPath.read(initial, "$.period.from");
+		String to = JsonPath.read(initial, "$.period.to");
+		long baseline = ((Number) JsonPath.read(initial, "$.page.totalAmount")).longValue();
+		for (int index = 0; index < 21; index++) {
+			createExpense(session, 1_000, from, categoryId, "합계검증", "전체 주기");
+		}
+		createExpense(session, 9_999, java.time.LocalDate.parse(from).minusDays(1).toString(),
+			categoryId, "합계검증", "주기 바깥");
+
+		var firstPage = mockMvc.perform(get("/api/v1/expenses/initial").cookie(session))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.page.items.length()").value(20))
+			.andExpect(jsonPath("$.page.hasNext").value(true))
+			.andExpect(jsonPath("$.page.totalAmount").value(baseline + 21_000))
+			.andReturn().getResponse().getContentAsString();
+		String cursor = JsonPath.read(firstPage, "$.page.nextCursor");
+		mockMvc.perform(get("/api/v1/expenses").cookie(session)
+				.param("from", from).param("to", to).param("cursor", cursor))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalAmount").value(baseline + 21_000));
+		mockMvc.perform(get("/api/v1/expenses").cookie(session)
+				.param("from", from).param("to", to).param("keyword", "합계검증").param("size", "1"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items.length()").value(1))
+			.andExpect(jsonPath("$.totalAmount").value(21_000));
 	}
 
 	private Cookie bootstrapAdmin() throws Exception {
