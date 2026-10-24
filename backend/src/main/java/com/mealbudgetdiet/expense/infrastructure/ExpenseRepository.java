@@ -17,7 +17,8 @@ import com.mealbudgetdiet.expense.domain.Expense;
 public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 
 	@Query("""
-		select coalesce(sum(expense.amount), 0) from Expense expense
+		select coalesce(sum(expense.amount), 0) as totalAmount, count(expense) as totalCount
+		from Expense expense
 		where expense.ledgerId = :ledgerId
 		  and expense.spentOn >= :fromDate
 		  and expense.spentOn <= :toDate
@@ -26,7 +27,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 		  and (lower(coalesce(expense.merchant, '')) like :keywordPattern
 		       or lower(coalesce(expense.memo, '')) like :keywordPattern)
 		""")
-	long sumAmount(
+	Totals summarize(
 		@Param("ledgerId") UUID ledgerId,
 		@Param("fromDate") LocalDate fromDate,
 		@Param("toDate") LocalDate toDate,
@@ -35,6 +36,11 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 		@Param("uncategorized") boolean uncategorized,
 		@Param("keywordPattern") String keywordPattern
 	);
+
+	interface Totals {
+		long getTotalAmount();
+		long getTotalCount();
+	}
 
 	@EntityGraph(attributePaths = "category")
 	Optional<Expense> findByIdAndLedgerId(UUID id, UUID ledgerId);

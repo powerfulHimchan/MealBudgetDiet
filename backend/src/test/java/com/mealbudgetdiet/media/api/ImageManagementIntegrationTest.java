@@ -172,7 +172,8 @@ class ImageManagementIntegrationTest {
 			null, false, null, 20, null);
 		assertThat(page.items()).hasSize(20).allSatisfy(expense -> assertThat(expense.images()).hasSize(1));
 		assertThat(page.totalAmount()).isEqualTo(20_000);
-		// Membership, expenses with categories, one query for image links, and the full filtered sum.
+		assertThat(page.totalCount()).isEqualTo(20);
+		// Membership, expenses with categories, one query for image links, and one for both totals.
 		assertThat(statistics.getPrepareStatementCount()).isEqualTo(4);
 	}
 
