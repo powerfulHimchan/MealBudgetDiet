@@ -20,7 +20,8 @@ public record DashboardSnapshot(
 	int pushUsageThreshold,
 	DashboardStatus status,
 	List<RecentExpense> recentExpenses,
-	MidCycleAnalysisSnapshot midCycleAnalysis
+	MidCycleAnalysisSnapshot midCycleAnalysis,
+	com.mealbudgetdiet.budget.application.BudgetRolloverSnapshot rollover
 ) {
 	public record Period(LocalDate from, LocalDate to) {
 	}

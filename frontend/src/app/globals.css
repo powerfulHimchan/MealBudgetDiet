@@ -258,6 +258,14 @@ h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.045em; }
 .source-chip--monthly_override { background: #e5efff; color: #1d4ed8; }
 .setting-description { margin: 16px 0 20px; color: var(--muted); font-size: .82rem; line-height: 1.55; }
 .budget-form { display: grid; gap: 15px; }
+.budget-form label.rollover-option { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 12px; padding: 14px; border: 1px solid var(--line, #cfd8e6); cursor: pointer; }
+.budget-form .rollover-option input { width: 20px; min-height: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--brand); }
+.rollover-option small { display: block; margin-top: 5px; color: var(--mute, #64748b); font-weight: 400; line-height: 1.5; }
+.budget-rollover-details { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: .76rem; line-height: 1.6; }
+.budget-rollover-details > span { display: inline-block; }
+.budget-rollover-details b { margin-left: 5px; font-weight: 800; }
+.budget-rollover-details small { flex-basis: 100%; }
+.budget-guide > .budget-rollover-details { grid-column: 1 / -1; margin-top: 0; }
 .money-input { position: relative; display: flex; align-items: center; }
 .money-input input { padding-right: 40px; font-size: 1.1rem; font-weight: 850; text-align: right; }
 .money-input b { position: absolute; right: 12px; color: #53637a; }

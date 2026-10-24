@@ -9,6 +9,11 @@ public record BudgetSnapshot(
 	BudgetCycle period,
 	long amount,
 	BudgetSource source,
-	int version
+	int version,
+	BudgetRolloverSnapshot rollover
 ) {
+	public BudgetSnapshot(YearMonth yearMonth, BudgetCycle period, long amount, BudgetSource source, int version) {
+		this(yearMonth, period, amount, source, version, BudgetRolloverSnapshot.disabled(amount));
+	}
+	public long appliedAmount() { return rollover.effectiveAmount(); }
 }

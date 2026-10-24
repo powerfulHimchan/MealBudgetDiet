@@ -1164,6 +1164,8 @@ async function mockExpenseApis(page: import("@playwright/test").Page, authentica
       } else {
         await route.fulfill({ json: statistics });
       }
+    } else if (pathname === "/api/v1/budgets/rollover") {
+      await route.fulfill({ json: { carrySurplus: false, carryDeficit: false, effectiveFrom: "2026-11-01", pending: false, version: ledger.version } });
     } else if (pathname.startsWith("/api/v1/budgets/")) {
       const yearMonth = pathname.split("/").at(-1);
       const period = yearMonth === "current" ? weeklyCycleContaining("2026-09-12", ledger.budgetWeekStartDay) : budgetCycleStarting(yearMonth!, ledger.budgetCycleStartDay);

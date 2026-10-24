@@ -42,6 +42,19 @@ public class Ledger {
 	@Column(name = "default_weekly_budget")
 	private Long defaultWeeklyBudget;
 
+	@Column(name = "carry_surplus", nullable = false)
+	private boolean carrySurplus;
+
+	@Column(name = "carry_deficit", nullable = false)
+	private boolean carryDeficit;
+
+	public boolean isCarrySurplus() { return carrySurplus; }
+	public boolean isCarryDeficit() { return carryDeficit; }
+	public void changeRollover(boolean surplus, boolean deficit) {
+		this.carrySurplus = surplus;
+		this.carryDeficit = deficit;
+	}
+
 	@Column(name = "push_usage_threshold", nullable = false)
 	private int pushUsageThreshold;
 

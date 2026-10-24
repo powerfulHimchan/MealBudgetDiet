@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mealbudgetdiet.ledger.domain.MemberRole;
 import com.mealbudgetdiet.budget.domain.BudgetCycleUnit;
+import com.mealbudgetdiet.budget.application.BudgetRolloverService;
 import com.mealbudgetdiet.ledger.infrastructure.LedgerRepository;
 import com.mealbudgetdiet.shared.api.ApiException;
 
@@ -16,10 +17,12 @@ public class LedgerSettingsService {
 
 	private final LedgerAccessService ledgerAccessService;
 	private final LedgerRepository ledgerRepository;
+	private final BudgetRolloverService rollover;
 
-	public LedgerSettingsService(LedgerAccessService ledgerAccessService, LedgerRepository ledgerRepository) {
+	public LedgerSettingsService(LedgerAccessService ledgerAccessService, LedgerRepository ledgerRepository, BudgetRolloverService rollover) {
 		this.ledgerAccessService = ledgerAccessService;
 		this.ledgerRepository = ledgerRepository;
+		this.rollover = rollover;
 	}
 
 	@Transactional
@@ -41,7 +44,11 @@ public class LedgerSettingsService {
 		if (unit == BudgetCycleUnit.WEEKLY && effectiveWeeklyBudget == null) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "WEEKLY_BUDGET_REQUIRED", "주간 예산을 입력해 주세요.");
 		}
+		boolean calendarChanged = ledger.getBudgetCycleUnit() != unit
+			|| ledger.getBudgetCycleStartDay() != startDay || ledger.getBudgetWeekStartDay() != weekStartDay;
 		ledger.changeBudgetCycle(unit, startDay, weekStartDay, effectiveWeeklyBudget);
+		if (calendarChanged) rollover.resetCalendar(ledger);
+		else if (unit == BudgetCycleUnit.WEEKLY) rollover.recordBaseChange(ledger);
 		ledgerRepository.flush();
 		return new LedgerSettingsSnapshot(ledger.getBudgetCycleUnit(), ledger.getBudgetCycleStartDay(),
 			ledger.getBudgetWeekStartDay(), ledger.getDefaultWeeklyBudget(), ledger.getVersion());

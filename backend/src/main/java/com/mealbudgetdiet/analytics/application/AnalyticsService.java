@@ -84,8 +84,8 @@ public class AnalyticsService {
 		long spent = totalAmount(ledgerId, from, to);
 		long projectedSpent = projectedAmount(spent, from, to, today);
 		long remainingDays = Math.max(0, ChronoUnit.DAYS.between(today, to));
-		BigDecimal usageRate = percentage(spent, budget.amount());
-		DashboardStatus status = usageRate.compareTo(BigDecimal.valueOf(100)) >= 0
+		BigDecimal usageRate = budgetUsageRate(spent, budget.appliedAmount());
+		DashboardStatus status = budget.appliedAmount() <= 0 || usageRate.compareTo(BigDecimal.valueOf(100)) >= 0
 			? DashboardStatus.EXCEEDED
 			: usageRate.compareTo(BigDecimal.valueOf(ledger.getPushUsageThreshold())) >= 0
 				? DashboardStatus.WARNING
@@ -114,10 +114,10 @@ public class AnalyticsService {
 		}, ledgerId, from, to, recentSize);
 
 		return new DashboardSnapshot(
-			cycle.yearMonth(), ledger.getBudgetCycleUnit(), new DashboardSnapshot.Period(from, to), budget.amount(), spent,
-			budget.amount() - spent, projectedSpent, remainingDays, usageRate,
+			cycle.yearMonth(), ledger.getBudgetCycleUnit(), new DashboardSnapshot.Period(from, to), budget.appliedAmount(), spent,
+			Math.subtractExact(budget.appliedAmount(), spent), projectedSpent, remainingDays, usageRate,
 			ledger.getPushUsageThreshold(), status, recent,
-			midCycleRepository.snapshot(ledgerId, cycle, today, clock.instant()));
+			midCycleRepository.snapshot(ledgerId, cycle, today, clock.instant()), budget.rollover());
 	}
 
 	@Transactional(readOnly = true)
@@ -176,6 +176,9 @@ public class AnalyticsService {
 
 		long total = daily.stream().mapToLong(DailyAmount::amount).reduce(0, Math::addExact);
 		long budget = budgetService.proratedBudget(ledgerId, from, to);
+		BudgetCycle firstBudgetCycle = BudgetCycle.containing(from, ledger.getBudgetCycleUnit(),
+			ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
+		var rollover = budgetService.budgetForCycle(ledger, firstBudgetCycle).rollover();
 		var comparison = comparison(ledger, from, to, total, daily);
 
 		List<CategoryAmount> categories = jdbcTemplate.query("""
@@ -196,7 +199,7 @@ public class AnalyticsService {
 		return new StatisticsSnapshot(
 			new StatisticsSnapshot.Period(from, to),
 			total,
-			new StatisticsSnapshot.Budget(budget, percentage(total, budget)),
+			new StatisticsSnapshot.Budget(budget, budgetUsageRate(total, budget), rollover),
 			comparison,
 			daily,
 			categories,
@@ -371,6 +374,11 @@ public class AnalyticsService {
 		}
 		long days = ChronoUnit.DAYS.between(from, to) + 1;
 		return new StatisticsSnapshot.Period(from.minusDays(days), from.minusDays(1));
+	}
+
+	static BigDecimal budgetUsageRate(long spent, long budget) {
+		if (budget <= 0) return BigDecimal.valueOf(spent > 0 || budget < 0 ? 100 : 0).setScale(2);
+		return percentage(spent, budget);
 	}
 
 	private static BigDecimal percentage(long numerator, long denominator) {

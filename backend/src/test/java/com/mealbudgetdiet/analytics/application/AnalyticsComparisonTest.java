@@ -134,6 +134,11 @@ class AnalyticsComparisonTest {
 	private StatisticsSnapshot statistics(Ledger ledger, String from, String to, String instant, Map<LocalDate, Long> expenses) {
 		var access = mock(LedgerAccessService.class);
 		var budget = mock(BudgetService.class);
+		when(budget.budgetForCycle(eq(ledger), any())).thenAnswer(invocation -> {
+			com.mealbudgetdiet.budget.domain.BudgetCycle cycle = invocation.getArgument(1);
+			return new com.mealbudgetdiet.budget.application.BudgetSnapshot(cycle.yearMonth(), cycle,
+				ledger.getDefaultMonthlyBudget(), com.mealbudgetdiet.budget.application.BudgetSource.DEFAULT, 0);
+		});
 		var jdbc = mock(JdbcTemplate.class);
 		UUID userId = UUID.randomUUID();
 		when(access.requireActiveMembership(userId)).thenReturn(new LedgerMember(ledger.getId(), userId, MemberRole.MEMBER));
