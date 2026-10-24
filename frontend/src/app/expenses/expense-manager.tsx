@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { mutation, multipartMutation, request, todayInSeoul } from "../../lib/api";
 import { adjacentCycle, cycleForDate, type BudgetCycleRange, type BudgetCycleUnit } from "../../lib/budget-cycle";
 import { BrandLink } from "../brand-link";
@@ -44,7 +44,7 @@ type Expense = {
 type ExpenseImage = { id: string; contentUrl: string; thumbnailUrl?: string; sortOrder: number };
 type DraftImage = ExpenseImage & { temporary: boolean };
 type UploadedImage = { id: string; contentUrl: string; thumbnailUrl?: string; status: "TEMP"; purpose: "EXPENSE" };
-type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean };
+type ExpensePage = { items: Expense[]; nextCursor: string | null; hasNext: boolean; totalAmount: number };
 type Filters = { from: string; to: string; categoryId: string; keyword: string };
 type CycleSettings = { budgetCycleUnit: BudgetCycleUnit; budgetCycleStartDay: number; budgetWeekStartDay: number };
 type ExpenseDraft = {
@@ -92,6 +92,7 @@ function expenseQuery(filters: Filters, cursor?: string) {
 export function ExpenseManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [totalAmount, setTotalAmount] = useState<number | null>(null);
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [cycleSettings, setCycleSettings] = useState<CycleSettings | null>(null);
@@ -133,6 +134,7 @@ export function ExpenseManager() {
         setAppliedFilters(nextFilters);
         setCategories(categoryItems);
         setExpenses(expenseData.items);
+        setTotalAmount(expenseData.totalAmount);
         setNextCursor(expenseData.nextCursor);
         setHasNext(expenseData.hasNext);
         if (new URLSearchParams(window.location.search).get("new") === "1") {
@@ -151,10 +153,6 @@ export function ExpenseManager() {
     return () => { active = false; controller.abort(); };
   }, []);
 
-  const loadedTotal = useMemo(
-    () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
-    [expenses],
-  );
   const appliedCategoryLabel = appliedFilters.categoryId === "uncategorized"
     ? "분류 없음"
     : categories.find((category) => category.id === appliedFilters.categoryId)?.name;
@@ -197,12 +195,14 @@ export function ExpenseManager() {
     setIsLoading(true);
     setError(null);
     setExpenses([]);
+    setTotalAmount(null);
     setNextCursor(null);
     setHasNext(false);
     try {
       const page = await request<ExpensePage>(expenseQuery(nextFilters));
       if (version !== requestVersion.current) return;
       setExpenses(page.items);
+      setTotalAmount(page.totalAmount);
       setNextCursor(page.nextCursor);
       setHasNext(page.hasNext);
     } catch (reason) {
@@ -373,6 +373,7 @@ export function ExpenseManager() {
       const page = await request<ExpensePage>(expenseQuery(appliedFilters, nextCursor));
       if (version !== requestVersion.current) return;
       setExpenses((current) => [...current, ...page.items]);
+      setTotalAmount(page.totalAmount);
       setNextCursor(page.nextCursor);
       setHasNext(page.hasNext);
     } catch (reason) {
@@ -650,7 +651,7 @@ export function ExpenseManager() {
             <div className="results-heading">
               <div>
                 <p className="eyebrow">{hasNext ? "불러온 내역 · 더 보기를 눌러 확인하세요" : "내역"}</p>
-                <h2 id="expense-results-title">{expenses.length}건 · {won.format(loadedTotal)}원</h2>
+                <h2 id="expense-results-title">{expenses.length}건 · {totalAmount === null ? "집계 중…" : `${won.format(totalAmount)}원`}</h2>
               </div>
               {isLoading && <LoaderCircle className="spin" aria-label="불러오는 중" size={22} />}
             </div>

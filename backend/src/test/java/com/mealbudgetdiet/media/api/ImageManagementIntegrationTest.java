@@ -171,8 +171,9 @@ class ImageManagementIntegrationTest {
 		var page = expenseService.search(userId, LocalDate.of(2020, 1, 1), LocalDate.of(2020, 1, 31),
 			null, false, null, 20, null);
 		assertThat(page.items()).hasSize(20).allSatisfy(expense -> assertThat(expense.images()).hasSize(1));
-		// Membership, expenses with categories, and a single query for all image links.
-		assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
+		assertThat(page.totalAmount()).isEqualTo(20_000);
+		// Membership, expenses with categories, one query for image links, and the full filtered sum.
+		assertThat(statistics.getPrepareStatementCount()).isEqualTo(4);
 	}
 
 	@Test

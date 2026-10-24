@@ -16,6 +16,26 @@ import com.mealbudgetdiet.expense.domain.Expense;
 
 public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 
+	@Query("""
+		select coalesce(sum(expense.amount), 0) from Expense expense
+		where expense.ledgerId = :ledgerId
+		  and expense.spentOn >= :fromDate
+		  and expense.spentOn <= :toDate
+		  and (:filterCategory = false or expense.category.id = :categoryId)
+		  and (:uncategorized = false or expense.category is null)
+		  and (lower(coalesce(expense.merchant, '')) like :keywordPattern
+		       or lower(coalesce(expense.memo, '')) like :keywordPattern)
+		""")
+	long sumAmount(
+		@Param("ledgerId") UUID ledgerId,
+		@Param("fromDate") LocalDate fromDate,
+		@Param("toDate") LocalDate toDate,
+		@Param("filterCategory") boolean filterCategory,
+		@Param("categoryId") UUID categoryId,
+		@Param("uncategorized") boolean uncategorized,
+		@Param("keywordPattern") String keywordPattern
+	);
+
 	@EntityGraph(attributePaths = "category")
 	Optional<Expense> findByIdAndLedgerId(UUID id, UUID ledgerId);
 

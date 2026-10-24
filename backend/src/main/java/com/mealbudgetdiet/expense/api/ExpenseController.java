@@ -170,10 +170,10 @@ public class ExpenseController {
 	) {
 	}
 
-	private record ExpensePageResponse(List<ExpenseResponse> items, String nextCursor, boolean hasNext) {
+	private record ExpensePageResponse(List<ExpenseResponse> items, String nextCursor, boolean hasNext, long totalAmount) {
 		static ExpensePageResponse from(ExpensePage page) {
 			return new ExpensePageResponse(
-				page.items().stream().map(ExpenseResponse::from).toList(), page.nextCursor(), page.hasNext());
+				page.items().stream().map(ExpenseResponse::from).toList(), page.nextCursor(), page.hasNext(), page.totalAmount());
 		}
 	}
 

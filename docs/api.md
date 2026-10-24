@@ -812,7 +812,8 @@ Query:
     }
   ],
   "nextCursor": "opaque-cursor",
-  "hasNext": true
+  "hasNext": true,
+  "totalAmount": 40300
 }
 ```
 
@@ -882,7 +883,9 @@ version 충돌 시 삭제하지 않고 HTTP 409를 반환한다.
 
 `GET /api/v1/expenses/initial?size=20`은 인증된 사용자의 장부 설정과 서버의 서울 시간으로 현재 주기를 계산한다. `size`는 1~100이며 기본값은 20이다.
 
-응답의 `cycleSettings`에는 `budgetCycleUnit`, `budgetCycleStartDay`, `budgetWeekStartDay`가 포함된다. `period`에는 현재 주기의 `yearMonth`, `from`, `to`, `categories`에는 카테고리 목록, `page`에는 기존 식비 목록 응답의 `items`, `nextCursor`, `hasNext`가 포함된다. 다음 페이지와 검색은 `period.from/to` 및 커서를 기존 식비 목록 API에 전달한다.
+응답의 `cycleSettings`에는 `budgetCycleUnit`, `budgetCycleStartDay`, `budgetWeekStartDay`가 포함된다. `period`에는 현재 주기의 `yearMonth`, `from`, `to`, `categories`에는 카테고리 목록, `page`에는 기존 식비 목록 응답의 `items`, `nextCursor`, `hasNext`, `totalAmount`가 포함된다. 다음 페이지와 검색은 `period.from/to` 및 커서를 기존 식비 목록 API에 전달한다.
+
+`totalAmount`는 현재 장부에서 기간·카테고리·분류 없음·검색어 조건에 맞는 전체 내역의 금액 합계다. 커서와 페이지 크기는 합계에 영향을 주지 않으며, 검색 결과가 없으면 0이다. 첫 진입에서도 현재 주기 전체 합계를 반환하고, 화면은 등록·수정·삭제 후 목록과 합계를 함께 갱신한다.
 
 ## 8. 카테고리 API
 
