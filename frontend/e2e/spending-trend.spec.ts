@@ -97,13 +97,15 @@ async function mockStatistics(page: Page, period = { from: "2026-01-15", to: "20
 }
 
 for (const width of [320, 390, 1024]) {
-  test(`shows monthly auto sums, exact details and manual units at ${width}px`, async ({ browser }) => {
+  test(`selects monthly by default and allows manual units at ${width}px`, async ({ browser }) => {
     const page = await browser.newPage({ viewport: { width, height: 900 }, hasTouch: width < 600 });
     const requests = await mockStatistics(page);
     await page.goto("/statistics");
     const controls = page.getByRole("group", { name: "지출 추이 표시 단위", exact: true });
     await expect(page.getByRole("heading", { name: "월별 지출 추이", exact: true })).toBeVisible();
-    await expect(controls.getByRole("button", { name: "자동", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(controls.getByRole("button")).toHaveCount(3);
+    await expect(controls.getByRole("button", { name: "자동", exact: true })).toHaveCount(0);
+    await expect(controls.getByRole("button", { name: "월별", exact: true })).toHaveAttribute("aria-pressed", "true");
     const chart = page.getByRole("img", { name: "월별 지출 추이 차트", exact: true });
     await expect(chart).toHaveAccessibleDescription(/8개 월별 구간/);
     await expect(chart.locator(".recharts-area")).toBeVisible();
@@ -124,7 +126,6 @@ for (const width of [320, 390, 1024]) {
     await expect(page.getByRole("heading", { name: "주별 지출 추이", exact: true })).toBeVisible();
     await controls.getByRole("button", { name: "월별", exact: true }).click();
     await expect(controls.getByRole("button", { name: "월별", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await controls.getByRole("button", { name: "자동", exact: true }).click();
     await expect(page.getByRole("heading", { name: "월별 지출 추이", exact: true })).toBeVisible();
     expect(requests).toEqual(["/api/v1/statistics/initial"]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -133,13 +134,22 @@ for (const width of [320, 390, 1024]) {
   });
 }
 
-test("recalculates automatic units when the queried period changes", async ({ page }) => {
+test("resets manual units to the period default when the queried period changes", async ({ page }) => {
   await mockStatistics(page);
   await page.goto("/statistics");
   await expect(page.getByRole("heading", { name: "월별 지출 추이", exact: true })).toBeVisible();
+  const controls = page.getByRole("group", { name: "지출 추이 표시 단위", exact: true });
+  await controls.getByRole("button", { name: "주별", exact: true }).click();
   await page.getByRole("button", { name: "현재 주기", exact: true }).click();
   await expect(page.getByRole("heading", { name: "일별 지출 추이", exact: true })).toBeVisible();
+  await expect(controls.getByRole("button", { name: "일별", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await controls.getByRole("button", { name: "월별", exact: true }).click();
   await page.getByRole("button", { name: "최근 3개 주기", exact: true }).click();
   await expect(page.getByRole("heading", { name: "주별 지출 추이", exact: true })).toBeVisible();
-  await expect(page.getByRole("group", { name: "지출 추이 표시 단위", exact: true }).getByRole("button", { name: "자동", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(controls.getByRole("button", { name: "주별", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await controls.getByRole("button", { name: "일별", exact: true }).click();
+  await page.getByRole("button", { name: "올해", exact: true }).click();
+  await expect(controls.getByRole("button", { name: "월별", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "현재 주기", exact: true }).click();
+  await expect(controls.getByRole("button", { name: "일별", exact: true })).toHaveAttribute("aria-pressed", "true");
 });

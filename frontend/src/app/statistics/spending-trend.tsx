@@ -7,9 +7,8 @@ import { aggregateSpendingTrend, automaticSpendingTrendUnit, spendingTrendRangeL
 import { PresetChip } from "../ui/preset-chip";
 import styles from "./spending-trend.module.css";
 
-type TrendSelection = "auto" | SpendingTrendUnit;
-const labels = { auto: "자동", daily: "일별", weekly: "주별", monthly: "월별" };
-const units: TrendSelection[] = ["auto", "daily", "weekly", "monthly"];
+const labels = { daily: "일별", weekly: "주별", monthly: "월별" };
+const units: SpendingTrendUnit[] = ["daily", "weekly", "monthly"];
 const won = new Intl.NumberFormat("ko-KR");
 const compactWon = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
 
@@ -42,13 +41,12 @@ export function SpendingTrend({ daily, period, weekStartDay, isLoading }: {
   weekStartDay: number;
   isLoading: boolean;
 }) {
-  const [selection, setSelection] = useState<TrendSelection>("auto");
+  const [unit, setUnit] = useState<SpendingTrendUnit>(() => automaticSpendingTrendUnit(period));
   const [tickLimit, setTickLimit] = useState(4);
   const touchTooltip = useSyncExternalStore(subscribePointer, coarsePointer, serverPointer);
   const id = useId();
   const descriptionId = `${id}-description`;
   const fillId = `${id}-fill`;
-  const unit = selection === "auto" ? automaticSpendingTrendUnit(period) : selection;
   const points = useMemo(() => aggregateSpendingTrend(daily, period, unit, weekStartDay), [daily, period, unit, weekStartDay]);
   const ticks = useMemo(() => spendingTrendTicks(points, tickLimit), [points, tickLimit]);
   const resize = useCallback((width: number) => setTickLimit(width < 480 ? 4 : 6), []);
@@ -60,7 +58,7 @@ export function SpendingTrend({ daily, period, weekStartDay, isLoading }: {
       {isLoading && <LoaderCircle className="spin" aria-label="지출 추이 불러오는 중" size={20} />}
     </div>
     <div className={styles.units} role="group" aria-label="지출 추이 표시 단위">
-      {units.map((value) => <PresetChip className={styles.unit} disabled={isLoading} key={value} selected={selection === value} onClick={() => setSelection(value)}>{labels[value]}</PresetChip>)}
+      {units.map((value) => <PresetChip className={styles.unit} disabled={isLoading} key={value} selected={unit === value} onClick={() => setUnit(value)}>{labels[value]}</PresetChip>)}
     </div>
     <p className="sr-only" id={descriptionId}>{period.from} ~ {period.to}, {points.length}개 {labels[unit]} 구간의 지출 합계.</p>
     <div className="chart-wrap" role="img" aria-label={`${labels[unit]} 지출 추이 차트`} aria-describedby={descriptionId}>

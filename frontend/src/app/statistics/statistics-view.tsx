@@ -231,7 +231,7 @@ export function StatisticsView() {
           </section>
 
           <div className="analytics-grid">
-            <SpendingTrend daily={data.daily} period={data.period} weekStartDay={weekStartDay} isLoading={isLoading} />
+            <SpendingTrend key={`${data.period.from}/${data.period.to}`} daily={data.daily} period={data.period} weekStartDay={weekStartDay} isLoading={isLoading} />
 
             <section className="category-stat-panel">
               <div className="panel-heading"><div><p className="eyebrow">CATEGORY SHARE</p><h2>카테고리별 비중</h2></div></div>
