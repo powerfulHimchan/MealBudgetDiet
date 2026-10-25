@@ -2,7 +2,7 @@ package com.mealbudgetdiet.identity.application;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.CookieSerializer.CookieValue;
 import org.springframework.stereotype.Service;
@@ -14,14 +14,14 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SessionLogoutService {
 
 	private final CookieSerializer cookieSerializer;
-	private final JdbcIndexedSessionRepository sessionRepository;
+	private final JdbcTemplate jdbcTemplate;
 
 	public SessionLogoutService(
 		CookieSerializer cookieSerializer,
-		JdbcIndexedSessionRepository sessionRepository
+		JdbcTemplate jdbcTemplate
 	) {
 		this.cookieSerializer = cookieSerializer;
-		this.sessionRepository = sessionRepository;
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
 	public void logout(HttpServletRequest request, HttpServletResponse response) {
@@ -35,7 +35,8 @@ public class SessionLogoutService {
 			SecurityContextHolder.getContext().getAuthentication()
 		);
 		for (String sessionId : sessionIds) {
-			sessionRepository.deleteById(sessionId);
+			// Explicit logout must also delete non-expiring sessions (timeout = -1).
+			jdbcTemplate.update("delete from spring_session where session_id = ?", sessionId);
 		}
 		cookieSerializer.writeCookieValue(new CookieValue(request, response, ""));
 	}
