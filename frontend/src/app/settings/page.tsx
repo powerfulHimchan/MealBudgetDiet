@@ -1,5 +1,6 @@
 import {
   Bell,
+  PanelsTopLeft,
   Tags,
   TicketCheck,
   UserRoundCog,
@@ -28,6 +29,11 @@ const menuGroups = [
     href: "/settings/notifications",
     icon: Bell,
     label: "푸시 알림",
+  }, {
+    description: "안드로이드 홈 화면에서 남은 예산과 오늘 지출을 확인합니다.",
+    href: "/settings/widget",
+    icon: PanelsTopLeft,
+    label: "홈 화면 위젯",
   }] },
   { key: "ledger", title: "공유 장부", items: [{
     description: "공유 장부의 멤버와 관리자 권한을 확인하고 관리합니다.",

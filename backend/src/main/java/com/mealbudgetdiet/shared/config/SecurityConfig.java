@@ -39,6 +39,7 @@ public class SecurityConfig {
 					"/api/v1/system/health",
 					"/api/v1/bootstrap/**",
 					"/api/v1/auth/csrf",
+					"/api/v1/widget/device/**",
 					"/api/v1/auth/login",
 					"/api/v1/auth/register",
 					"/api/v1/auth/register-ledger",
@@ -48,6 +49,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/v1/admin/ai/**").hasRole("SERVICE_ADMIN")
 				.anyRequest().authenticated())
 			.csrf(csrf -> csrf
+				.ignoringRequestMatchers("/api/v1/widget/device/**")
 				.csrfTokenRepository(csrfRepository)
 				.csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
 			.securityContext(context -> context.securityContextRepository(securityContextRepository()))

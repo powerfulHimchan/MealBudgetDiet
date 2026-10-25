@@ -1,3 +1,5 @@
+import { notifyWidget } from "./native-widget";
+
 const anonymousUnauthorizedPaths = new Set([
   "/api/v1/auth/login",
   "/api/v1/auth/register",
@@ -40,7 +42,7 @@ export async function mutation<T>(
   additionalHeaders?: Record<string, string>,
 ): Promise<T> {
   const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
-  return request<T>(url, {
+  const result = await request<T>(url, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -49,15 +51,19 @@ export async function mutation<T>(
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  notifyWidget(url);
+  return result;
 }
 
 export async function multipartMutation<T>(url: string, formData: FormData): Promise<T> {
   const csrf = await request<{ headerName: string; token: string }>("/api/v1/auth/csrf");
-  return request<T>(url, {
+  const result = await request<T>(url, {
     method: "POST",
     headers: { [csrf.headerName]: csrf.token },
     body: formData,
   });
+  notifyWidget(url);
+  return result;
 }
 
 export function todayInSeoul() {

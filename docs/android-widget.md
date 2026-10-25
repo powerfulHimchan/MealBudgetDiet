@@ -1,37 +1,49 @@
-# Android 홈 화면 위젯 준비
+# Android 홈 화면 위젯
 
-현재 저장소는 `https://sikbi.app`의 PWA와 Bubblewrap 기반 TWA 출시 가이드만 포함한다. 아직 `android/` 네이티브 프로젝트와 서명 키가 없어 이 커밋만으로 홈 화면에 설치할 수 있는 위젯이나 AAB가 만들어지는 것은 아니다. 패키지 ID는 `app.sikbi`로 유지한다.
+Android 앱 1.1.0(versionCode 4)부터 지원한다. 패키지 `app.sikbi`, 운영 도메인 `https://sikbi.app`을 유지한다.
 
-## 첫 위젯의 범위
+## 사용자 흐름
 
-- 장부의 현재 월간/주간 기간, 전체 예산, 사용 금액, 남은 금액 및 사용률을 표시한다.
-- `식비 등록`을 누르면 앱의 `https://sikbi.app/expenses?new=1`을 연다. 장부 홈은 `https://sikbi.app/`이다.
-- 위젯은 잠금 화면이나 다른 사람이 보는 홈 화면에 금액을 노출할 수 있으므로 사용자가 직접 추가했을 때만 표시한다. 로그아웃·장부 탈퇴·인증 만료 시 금액을 지우고 로그인 안내를 보여준다. 마지막 사용자/장부의 값을 다른 계정에 재사용하지 않는다.
-- 사진·상호명·참여자 이름은 위젯에 표시하지 않는다.
+1. 최신 앱 설치 후 홈 화면을 길게 눌러 위젯 목록에서 **Sikbi 식비**를 추가한다. 기본 4×2, 가로 크기 조절을 지원한다.
+2. 위젯의 **연결** → 네이티브 연결 화면 → 웹 로그인 → **이 장부를 위젯에 연결** → **앱으로 돌아가 완료**를 누른다.
+3. 남은 예산과 오늘 지출을 확인한다. **기록**은 `https://sikbi.app/expenses?new=1`로 이동한다.
+4. 설정 → 홈 화면 위젯에서 이 로그인 세션이 승인한 위젯들을 해제할 수 있다. 위젯을 모두 삭제하면 기기의 인증도 삭제한다.
 
-## 위젯용 응답
+## 데이터와 갱신
 
-`GET /api/v1/widget/summary`는 로그인 및 활성 장부 참여가 필요한 읽기 전용 API다. 기존 대시보드와 같은 서버 계산을 사용하되 최근 내역과 개인정보는 응답에 포함하지 않고 `Cache-Control: no-store`를 보낸다.
+- `GET /api/v1/widget/summary`: 기존 웹 세션용. 주기·예산·사용액·잔액·사용률·상태 외 `todaySpent`, `today`를 포함한다.
+- `GET /api/v1/widget/device/summary`: 읽기 전용 위젯 토큰 전용. 기존 요약과 같은 서버 계산을 사용하며 이월 예산도 반영한다.
+- 모든 응답은 `Cache-Control: no-store`. 장부 이름·멤버·메모·사진·상호명은 포함하지 않는다.
+- 오늘은 Asia/Seoul 기준. 초과 예산은 음수와 빨간색으로 표시한다.
+- 설치·앱 진입·수동 새로고침·브라우저 숨김 시 갱신 작업을 요청한다. Android의 30분 주기 갱신도 사용한다. 절전 모드에 따라 실행이 지연될 수 있다.
+- Chrome TWA에서 검증된 postMessage 채널이 연결되면 식비/예산 변경 후 즉시 갱신을 요청하고 로그아웃 시 기기 권한과 표시 금액을 지운다. 지원하지 않는 브라우저나 DAL 미설정 시 앱 진입/숨김·수동·주기 갱신으로 동작한다.
+- 통신 실패 시 이전 금액을 숨기고 새로고침 안내를 표시한다. 401/403은 토큰도 삭제한다. 다른 기기에서 세션이 철회된 경우 다음 갱신 때 반영된다.
 
-```json
-{
-  "cycleUnit": "WEEKLY",
-  "period": { "from": "2026-09-10", "to": "2026-09-16" },
-  "budget": 200000,
-  "spent": 85000,
-  "remaining": 115000,
-  "usageRate": 42.50,
-  "status": "NORMAL"
-}
-```
+## 인증 연결
 
-금액은 원 단위 정수이며 `remaining`은 초과 시 음수가 될 수 있다. 서버 시간대는 `Asia/Seoul`이고, `cycleUnit`은 `MONTHLY`/`WEEKLY`, `status`는 `NORMAL`/`WARNING`/`EXCEEDED`다. 실제 데이터는 사용자 장부에 따라 달라진다.
+TWA 쿠키를 네이티브에서 읽지 않는다. 네이티브가 256비트 무작위 verifier를 생성하고 SHA-256 challenge만 웹에 전달한다. 로그인한 사용자가 CSRF 보호된 `POST /api/v1/widget/connections`에 challenge를 승인한다. 승인 유효기간은 5분이다.
 
-## 네이티브 프로젝트가 생긴 뒤
+브라우저에서 `sikbi-widget://connected?challenge=...`로 돌아오면 네이티브가 보관한 verifier와 challenge를 검증하고 `POST /api/v1/widget/device/claim`에 verifier를 제출한다. 승인은 원자적으로 한 번만 소비되며 서버가 256비트 토큰을 발급한다. 콜백 URL에는 인증 토큰이 없다.
 
-1. [Play 출시 가이드](play-store-release.md)대로 Bubblewrap 프로젝트를 `android/`에 생성하고 패키지·도메인과 Play 앱 서명 지문 검증을 끝낸다. Android Studio 프로젝트에 `AppWidgetProviderInfo`, `AppWidgetProvider` 및 홈 화면용 `RemoteViews` 레이아웃을 추가한다.
-2. TWA 브라우저의 웹 세션 쿠키를 위젯 프로세스가 직접 가져올 수 있다고 가정하지 않는다. 네이티브 인증 또는 서버에서 별도로 발급·철회할 수 있는 위젯 전용 권한 흐름을 설계하고, 비밀은 Android 보안 저장소에만 보관한다. 이 인증 연동 전에는 위젯에 금액 대신 앱 열기/식비 등록 바로가기만 제공한다.
-3. 위젯 갱신은 설치·앱 복귀·식비 변경에 맞춰 요청하고, 네트워크 실패에는 마지막 사용자 값 대신 안전한 비공개 상태를 보여준다. 로그인 해제 및 계정 전환 시 저장된 위젯 데이터와 권한도 제거한다.
-4. Android 에뮬레이터와 실기기에서 작은 화면·글자 확대·세로/가로, 오프라인·만료 세션·다른 장부 전환, 버튼의 앱 딥링크를 검증한다. Play 테스트 트랙에 AAB를 올리기 전 별도로 확인한다.
+- DB에는 토큰의 SHA-256 해시만 저장한다. 최대 30일 유효하며 승인한 원래 세션의 유효기간을 연장하지 않는다.
+- 원래 세션·사용자 ACTIVE·원래 장부 ACTIVE·장부 참여 ACTIVE를 매 요청 확인한다. 일반 API 인증으로 사용할 수 없다.
+- 세션 FK ON DELETE CASCADE로 로그아웃·비밀번호 재설정·계정 변경의 세션 제거 시 권한도 삭제한다.
+- Android Keystore AES/GCM으로 암호화한 인증만 `noBackupFilesDir`에 보관한다. 금액은 기기 파일에 저장하지 않는다.
+- 로그아웃/재연결 중인 이전 네트워크 응답이 금액을 복원하지 않도록 토큰을 재확인한다.
+- Digital Asset Links는 `handle_all_urls`와 `use_as_origin`을 선언한다. 운영 웹의 `ANDROID_APP_SHA256_FINGERPRINTS`에 기존 Play 앱 서명 인증서 지문을 유지해야 한다.
 
-공식 참고: [Android 앱 위젯 구성](https://developer.android.com/develop/ui/views/appwidgets), [Trusted Web Activity 빠른 시작](https://developer.chrome.com/docs/android/trusted-web-activity/quick-start).
+## 검증 및 출시
+
+`Android checks`: 단위 테스트·lint·debug 컴파일, 연결/오프라인/초과 금액 RemoteViews 렌더링 및 기록 딥링크 검사.
+`WidgetConnectionIntegrationTest`: CSRF, 잘못된 verifier, 재사용, 일반 API 접근 거부, 연결 해제, 로그아웃 cascade, 승인/토큰 만료, 탈퇴한 멤버 접근 거부.
+프런트 E2E: 위젯 연결 승인·콜백, 잘못된 challenge, 연결 해제, 로그인 경유 주소 보존.
+
+main의 `Android release AAB`가 기존 업로드 키로 `Sikbi-1.1.0.aab`를 생성한다. Play Console에 AAB를 올린 뒤 기존 설치에서 업데이트하여 실기기로 다음을 검증한다.
+
+- 홈 화면 추가/삭제/크기 조절, 글자 확대, 기록 버튼, 연결 과정
+- 오늘 지출·주기 잔액·이월/예산 초과·날짜 변경
+- 식비 등록/수정/삭제 후 갱신, 오프라인/복구
+- 로그아웃·계정 교체·장부 탈퇴·비밀번호 변경 후 금액 숨김 및 재연결
+- Chrome DAL 검증 성공/미지원 브라우저 대체 갱신
+
+공식 문서: [앱 위젯 갱신](https://developer.android.com/develop/ui/views/appwidgets/advanced), [TWA postMessage](https://developer.chrome.com/docs/android/post-message-twa).

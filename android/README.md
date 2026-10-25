@@ -5,7 +5,7 @@
 - 패키지 ID: `app.sikbi`
 - 최소 API: 24 (Android 7.0 이상, Play 자동 보호 요구사항)
 - 대상 API: 36
-- 새 버전: `1.0.2` (`versionCode 3`)
+- 새 버전: `1.1.0` (`versionCode 4`)
 
 ## 네이비 그라데이션 시작 화면
 
@@ -20,10 +20,10 @@ Android 12 이상에서는 OS의 단색 시작 화면을 거친 뒤 그라데이
 
 ## Play 업데이트
 
-main 병합 후 `Android release AAB`가 기존 업로드 키로 서명한 `Sikbi-1.0.2.aab`를 생성합니다.
-`Sikbi-1.0.2-play-bundle` artifact에는 AAB, 한국어 출시 노트, SHA-256 체크섬이 포함됩니다.
+main 병합 후 `Android release AAB`가 기존 업로드 키로 서명한 `Sikbi-1.1.0.aab`를 생성합니다.
+`Sikbi-1.1.0-play-bundle` artifact에는 AAB, 한국어 출시 노트, SHA-256 체크섬이 포함됩니다.
 기존 키를 새로 만들거나 바꾸지 않습니다. Play 업로드 전 기존 모든 트랙에서 가장 높은 versionCode가
-3 미만인지 확인해야 합니다. 이미 3 이상을 올렸다면 두 버전 설정 파일의 versionCode를 높여 다시 빌드하세요.
+4 미만인지 확인해야 합니다. 이미 4 이상을 올렸다면 두 버전 설정 파일의 versionCode를 높여 다시 빌드하세요.
 Play Console에서 Sikbi를 선택해 해당 트랙의 새 버전 만들기에서 AAB를 업로드하고 출시 노트를 입력합니다.
 기존 버전에서 업데이트한 상태로 확인한 후 프로덕션 검토에 제출합니다.
 
