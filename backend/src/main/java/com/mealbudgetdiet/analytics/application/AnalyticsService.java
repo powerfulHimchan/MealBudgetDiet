@@ -67,6 +67,23 @@ public class AnalyticsService {
 	}
 
 	@Transactional(readOnly = true)
+	public WidgetSummary widgetSummary(UUID userId) {
+		Ledger ledger = ledger(userId);
+		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));
+		BudgetCycle cycle = BudgetCycle.containing(today, ledger.getBudgetCycleUnit(),
+			ledger.getBudgetCycleStartDay(), ledger.getBudgetWeekStartDay());
+		long budget = budgetService.budgetForCycle(ledger, cycle).appliedAmount();
+		long spent = totalAmount(ledger.getId(), cycle.from(), cycle.to());
+		BigDecimal rate = budgetUsageRate(spent, budget);
+		DashboardStatus status = budget <= 0 || rate.compareTo(BigDecimal.valueOf(100)) >= 0
+			? DashboardStatus.EXCEEDED : rate.compareTo(BigDecimal.valueOf(ledger.getPushUsageThreshold())) >= 0
+				? DashboardStatus.WARNING : DashboardStatus.NORMAL;
+		return new WidgetSummary(ledger.getBudgetCycleUnit(), new DashboardSnapshot.Period(cycle.from(), cycle.to()),
+			budget, spent, Math.subtractExact(budget, spent), rate, status,
+			totalAmount(ledger.getId(), today, today), today);
+	}
+
+	@Transactional(readOnly = true)
 	public DashboardSnapshot dashboard(UUID userId, YearMonth requestedMonth, int recentSize) {
 		Ledger ledger = ledger(userId);
 		LocalDate today = LocalDate.now(clock.withZone(SERVICE_ZONE));

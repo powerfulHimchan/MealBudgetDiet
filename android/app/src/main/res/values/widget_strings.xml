@@ -1,0 +1,16 @@
+<resources>
+    <string name="widget_name">Sikbi 식비</string>
+    <string name="widget_description">남은 예산과 오늘 지출을 확인하고 바로 기록하세요.</string>
+    <string name="widget_remaining">남은 예산</string>
+    <string name="widget_today">오늘 지출</string>
+    <string name="widget_record">기록</string>
+    <string name="widget_refresh">새로고침</string>
+    <string name="widget_connect">연결</string>
+    <string name="widget_login">앱에서 장부를 연결해 주세요</string>
+    <string name="widget_loading">불러오는 중…</string>
+    <string name="widget_offline">갱신하지 못했습니다 · 새로고침해 주세요</string>
+    <string name="widget_setup_title">홈 화면 위젯 연결</string>
+    <string name="widget_setup_description">Sikbi에 로그인한 장부를 위젯에 연결합니다. 홈 화면에 남은 예산과 오늘 지출이 표시됩니다.</string>
+    <string name="widget_setup_failed">연결하지 못했습니다. 연결 버튼을 눌러 다시 시작해 주세요.</string>
+    <string name="widget_setup_done">위젯 연결이 완료되었습니다. 홈 화면에서 확인하세요. 위젯이 없다면 홈 화면을 길게 눌러 Sikbi 위젯을 추가하세요.</string>
+</resources>

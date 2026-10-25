@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mealbudgetdiet.analytics.application.AnalyticsService;
+import com.mealbudgetdiet.analytics.application.WidgetSummary;
 import com.mealbudgetdiet.analytics.application.DashboardSnapshot;
 import com.mealbudgetdiet.analytics.application.DashboardStatus;
 import com.mealbudgetdiet.analytics.application.StatisticsSnapshot;
@@ -50,15 +51,9 @@ public class AnalyticsController {
 
 	@GetMapping("/api/v1/widget/summary")
 	ResponseEntity<WidgetSummary> widgetSummary(@AuthenticationPrincipal MealBudgetPrincipal principal) {
-		var dashboard = analyticsService.dashboard(principal.id(), null, 1);
 		return ResponseEntity.ok()
 			.cacheControl(CacheControl.noStore())
-			.body(new WidgetSummary(dashboard.cycleUnit(), dashboard.period(), dashboard.budget(),
-				dashboard.spent(), dashboard.remaining(), dashboard.usageRate(), dashboard.status()));
-	}
-
-	private record WidgetSummary(BudgetCycleUnit cycleUnit, DashboardSnapshot.Period period,
-		long budget, long spent, long remaining, java.math.BigDecimal usageRate, DashboardStatus status) {
+			.body(analyticsService.widgetSummary(principal.id()));
 	}
 
 	@GetMapping("/api/v1/statistics/initial")

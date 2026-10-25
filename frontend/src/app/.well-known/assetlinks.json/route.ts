@@ -8,7 +8,7 @@ export function GET() {
     return Response.json({ code: "ANDROID_APP_LINKS_NOT_CONFIGURED" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
   return Response.json([{
-    relation: ["delegate_permission/common.handle_all_urls"],
+    relation: ["delegate_permission/common.handle_all_urls", "delegate_permission/common.use_as_origin"],
     target: { namespace: "android_app", package_name: "app.sikbi", sha256_cert_fingerprints: [...new Set(values)] },
   }], { headers: { "Cache-Control": "public, max-age=300" } });
 }

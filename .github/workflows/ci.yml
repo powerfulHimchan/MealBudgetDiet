@@ -40,8 +40,8 @@ jobs:
       - run: npm run build
       - name: Install Chromium for budget rollover checks
         run: npx playwright install --with-deps chromium
-      - name: Check budget rollover screens
-        run: npx playwright test e2e/budget-rollover.spec.ts
+      - name: Check budget rollover and widget screens
+        run: npx playwright test e2e/budget-rollover.spec.ts e2e/widget.spec.ts
 
   full-stack-e2e:
     needs: [backend, frontend]

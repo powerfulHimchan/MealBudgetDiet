@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { PwaRegister } from "./pwa-register";
+import { NativeWidgetBridge } from "./native-widget-bridge";
 import "./globals.css";
 import designStyles from "./ui/design-system.module.css";
 
@@ -22,7 +23,7 @@ export const viewport: Viewport = { themeColor: "#080d18", colorScheme: "light" 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko">
-      <body className={designStyles.siteScope}><PwaRegister />{children}</body>
+      <body className={designStyles.siteScope}><PwaRegister /><NativeWidgetBridge />{children}</body>
     </html>
   );
 }

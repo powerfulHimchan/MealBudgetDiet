@@ -17,6 +17,7 @@ package app.sikbi;
 
 import android.os.Bundle;
 import androidx.browser.customtabs.CustomTabsCallback;
+import androidx.browser.customtabs.CustomTabsSession;
 import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
 import com.google.androidbrowserhelper.trusted.SessionStore;
 import com.google.androidbrowserhelper.trusted.SharedPreferencesTokenStore;
@@ -26,10 +27,12 @@ import com.google.androidbrowserhelper.trusted.splashscreens.SplashScreenStrateg
 /** Preserves the browser helper's URL, login, notification and back-stack handling. */
 public class LauncherActivity extends com.google.androidbrowserhelper.trusted.LauncherActivity {
     private SignatureSplashStrategy signatureSplash;
+    private WidgetBridge widgetBridge;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WidgetUpdateService.enqueue(this);
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             getSplashScreen().setOnExitAnimationListener(splash -> splash.remove());
         }
@@ -43,7 +46,18 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
             public void launch(TrustedWebActivityIntentBuilder builder, CustomTabsCallback callback,
                     SplashScreenStrategy unused, Runnable completion, FallbackStrategy fallback) {
                 if (isTaskRoot()) signatureSplash = new SignatureSplashStrategy(LauncherActivity.this);
-                super.launch(builder, callback, signatureSplash, completion, fallback);
+                widgetBridge = new WidgetBridge(LauncherActivity.this, callback);
+                SplashScreenStrategy strategy = new SplashScreenStrategy() {
+                    @Override public void onTwaLaunchInitiated(String provider, TrustedWebActivityIntentBuilder b) {
+                        if (signatureSplash != null) signatureSplash.onTwaLaunchInitiated(provider, b);
+                    }
+                    @Override public void configureTwaBuilder(TrustedWebActivityIntentBuilder b, CustomTabsSession session, Runnable ready) {
+                        widgetBridge.bind(session);
+                        if (signatureSplash != null) signatureSplash.configureTwaBuilder(b, session, ready);
+                        else ready.run();
+                    }
+                };
+                super.launch(builder, widgetBridge, strategy, completion, fallback);
             }
         };
     }
@@ -51,6 +65,7 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
     @Override
     protected void onDestroy() {
         if (signatureSplash != null) signatureSplash.destroy();
+        if (widgetBridge != null) widgetBridge.destroy();
         super.onDestroy();
     }
 }
