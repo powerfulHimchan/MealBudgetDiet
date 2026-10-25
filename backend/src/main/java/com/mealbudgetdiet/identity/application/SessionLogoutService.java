@@ -25,14 +25,16 @@ public class SessionLogoutService {
 	}
 
 	public void logout(HttpServletRequest request, HttpServletResponse response) {
+		// Delete the sessions identified by the presented cookie as well as the servlet session.
+		var sessionIds = new java.util.LinkedHashSet<>(cookieSerializer.readCookieValues(request));
 		var session = request.getSession(false);
-		String sessionId = session == null ? null : session.getId();
+		if (session != null) sessionIds.add(session.getId());
 		new SecurityContextLogoutHandler().logout(
 			request,
 			response,
 			SecurityContextHolder.getContext().getAuthentication()
 		);
-		if (sessionId != null) {
+		for (String sessionId : sessionIds) {
 			sessionRepository.deleteById(sessionId);
 		}
 		cookieSerializer.writeCookieValue(new CookieValue(request, response, ""));

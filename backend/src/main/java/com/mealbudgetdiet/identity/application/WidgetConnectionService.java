@@ -70,7 +70,7 @@ public class WidgetConnectionService {
         var users = jdbc.query("""
             select w.user_id from widget_connections w
             join spring_session s on s.session_id = w.session_id
-            join users u on u.id = w.user_id and u.status = 'ACTIVE'
+            join users u on u.id = w.user_id and u.status = 'ACTIVE' and u.email = s.principal_name
             join ledger_members m on m.user_id = w.user_id and m.ledger_id = w.ledger_id and m.status = 'ACTIVE'
             join ledgers l on l.id = w.ledger_id and l.status = 'ACTIVE'
             where w.token_hash = ? and w.expires_at > ? and s.expiry_time > ?
