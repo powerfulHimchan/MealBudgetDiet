@@ -34,7 +34,7 @@ export function WidgetSettings({ challenge }: { challenge?: string }) {
       <p>자동 갱신과 새로고침을 지원합니다. 로그아웃하거나 연결이 만료되면 다시 연결하세요.</p>
       {!challenge && <Button href="intent://setup#Intent;scheme=sikbi-widget;package=app.sikbi;end">앱에서 위젯 연결</Button>}
     </section>
-    <section className={styles.card} aria-labelledby="widget-connect-title">
+    <section className={`${styles.card} ${challenge ? styles.connectFirst : ""}`} aria-labelledby="widget-connect-title">
       <h2 id="widget-connect-title">{valid ? "현재 장부 연결" : "연결 관리"}</h2>
       {valid && !connected && <><p>이 로그인에서 사용하는 장부의 예산과 지출을 위젯에 표시합니다. 홈 화면에서 금액이 보입니다.</p>
         <Button disabled={busy} onClick={connect}>{busy ? "연결 중…" : "이 장부를 위젯에 연결"}</Button></>}

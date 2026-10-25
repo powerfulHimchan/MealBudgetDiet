@@ -55,13 +55,13 @@ class WidgetConnectionIntegrationTest {
         mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/expenses").with(csrf()).header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
-        mvc.perform(delete("/api/v1/widget/connections").with(csrf()).cookie(session)).andExpect(status().isNoContent());
+        mvc.perform(authenticated(delete("/api/v1/widget/connections"), session)).andExpect(status().isNoContent());
         summaryUnauthorized(token);
 
         String second = "c".repeat(43);
         authorize(session, WidgetConnectionService.hash(second));
         String secondToken = claim(second, 200);
-        mvc.perform(post("/api/v1/auth/logout").with(csrf()).cookie(session)).andExpect(status().isNoContent());
+        mvc.perform(authenticated(post("/api/v1/auth/logout"), session)).andExpect(status().isNoContent());
         summaryUnauthorized(secondToken);
         assertThat(jdbc.queryForObject("select count(*) from widget_connections where token_hash = ?", Integer.class,
             WidgetConnectionService.hash(secondToken))).isZero();
@@ -97,8 +97,15 @@ class WidgetConnectionIntegrationTest {
         return new Cookie("MBD_SESSION", header.split(";", 2)[0].substring("MBD_SESSION=".length()));
     }
     private void authorize(Cookie session, String challenge) throws Exception {
-        mvc.perform(post("/api/v1/widget/connections").with(csrf()).cookie(session).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(authenticated(post("/api/v1/widget/connections"), session).contentType(MediaType.APPLICATION_JSON)
             .content("{\"challenge\":\"" + challenge + "\"}")).andExpect(status().isNoContent());
+    }
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticated(
+        org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request, Cookie session) throws Exception {
+        var response = mvc.perform(get("/api/v1/auth/csrf").cookie(session)).andExpect(status().isOk()).andReturn().getResponse();
+        String token = JsonPath.read(response.getContentAsString(), "$.token");
+        String header = JsonPath.read(response.getContentAsString(), "$.headerName");
+        return request.cookie(session, new Cookie("XSRF-TOKEN", token)).header(header, token);
     }
     private String claim(String verifier, int status) throws Exception {
         var response = mvc.perform(post("/api/v1/widget/device/claim").contentType(MediaType.APPLICATION_JSON)

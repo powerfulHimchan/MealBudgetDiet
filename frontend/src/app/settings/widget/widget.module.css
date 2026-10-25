@@ -3,3 +3,4 @@
 .card h2 { font-size: 20px; margin: 0 0 16px; }
 .card p, .card li { line-height: 1.7; overflow-wrap: anywhere; }
 .card ol { padding-left: 22px; }
+.connectFirst { order: -1; }
