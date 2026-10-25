@@ -96,6 +96,27 @@ class WidgetConnectionIntegrationTest {
         mvc.perform(get("/api/v1/widget/device/summary")).andExpect(status().isUnauthorized());
     }
 
+    @Test void switchingAccountsRevokesThePreviousWidgetAndRequiresNewApproval() throws Exception {
+        Cookie original = register("widget-switch-a");
+        register("widget-switch-b");
+        String verifier = "g".repeat(43);
+        authorize(original, WidgetConnectionService.hash(verifier));
+        String oldToken = claim(verifier, 200);
+        var response = mvc.perform(authenticated(post("/api/v1/auth/login"), original).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"widget-switch-b@example.com\",\"password\":\"widget-password!\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.email").value("widget-switch-b@example.com"))
+            .andReturn().getResponse();
+        summaryUnauthorized(oldToken);
+        mvc.perform(get("/api/v1/auth/me").cookie(original)).andExpect(status().isUnauthorized());
+        String cookie = response.getHeader("Set-Cookie");
+        Cookie switched = new Cookie("MBD_SESSION", cookie.split(";", 2)[0].substring("MBD_SESSION=".length()));
+        verifier = "h".repeat(43);
+        authorize(switched, WidgetConnectionService.hash(verifier));
+        String newToken = claim(verifier, 200);
+        mvc.perform(get("/api/v1/widget/device/summary").header("Authorization", "Bearer " + newToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.todaySpent").value(0));
+    }
+
     private Cookie register(String name) throws Exception {
         var response = mvc.perform(post("/api/v1/auth/register-ledger").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("""
             {"email":"%s@example.com","password":"widget-password!","displayName":"위젯 테스트","ledgerName":"위젯 장부","defaultMonthlyBudget":800000}

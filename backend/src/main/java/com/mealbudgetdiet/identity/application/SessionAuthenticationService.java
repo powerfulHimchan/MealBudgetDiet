@@ -1,6 +1,7 @@
 package com.mealbudgetdiet.identity.application;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -19,13 +20,16 @@ public class SessionAuthenticationService {
 
 	private final AuthenticationManager authenticationManager;
 	private final SecurityContextRepository securityContextRepository;
+	private final JdbcTemplate jdbcTemplate;
 
 	public SessionAuthenticationService(
 		AuthenticationManager authenticationManager,
-		SecurityContextRepository securityContextRepository
+		SecurityContextRepository securityContextRepository,
+		JdbcTemplate jdbcTemplate
 	) {
 		this.authenticationManager = authenticationManager;
 		this.securityContextRepository = securityContextRepository;
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
 	public MealBudgetPrincipal login(
@@ -43,7 +47,10 @@ public class SessionAuthenticationService {
 			SecurityContextHolder.setContext(context);
 			var existingSession = request.getSession(false);
 			if (existingSession != null) {
+				String previousSessionId = existingSession.getId();
 				existingSession.invalidate();
+				// Account switches must revoke capabilities of non-expiring sessions too.
+				jdbcTemplate.update("delete from spring_session where session_id = ?", previousSessionId);
 			}
 			securityContextRepository.saveContext(context, request, response);
 			return (MealBudgetPrincipal) authentication.getPrincipal();
