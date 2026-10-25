@@ -61,7 +61,14 @@ class WidgetConnectionIntegrationTest {
         String second = "c".repeat(43);
         authorize(session, WidgetConnectionService.hash(second));
         String secondToken = claim(second, 200);
+        String cookieSessionId = new String(java.util.Base64.getDecoder().decode(session.getValue()), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(jdbc.queryForObject("select session_id from widget_connections where token_hash = ?", String.class,
+            WidgetConnectionService.hash(secondToken))).as("grant must bind the original cookie session").isEqualTo(cookieSessionId);
         mvc.perform(authenticated(post("/api/v1/auth/logout"), session)).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("select count(*) from spring_session where session_id = ?", Integer.class,
+            cookieSessionId)).as("logout must delete the approving session").isZero();
+        assertThat(jdbc.queryForObject("select count(*) from widget_connections where token_hash = ?", Integer.class,
+            WidgetConnectionService.hash(secondToken))).as("session deletion must cascade to widget capabilities").isZero();
         summaryUnauthorized(secondToken);
         assertThat(jdbc.queryForObject("select count(*) from widget_connections where token_hash = ?", Integer.class,
             WidgetConnectionService.hash(secondToken))).isZero();
