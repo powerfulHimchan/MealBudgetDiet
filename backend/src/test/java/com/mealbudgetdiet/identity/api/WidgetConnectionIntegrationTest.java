@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -13,17 +14,26 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.TestPropertySource;
 import com.jayway.jsonpath.JsonPath;
 import com.mealbudgetdiet.TestcontainersConfiguration;
 import com.mealbudgetdiet.identity.application.WidgetConnectionService;
+import com.mealbudgetdiet.ledger.application.OnboardingService;
 import jakarta.servlet.http.Cookie;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
+@TestPropertySource(properties = "app.bootstrap-token=widget-bootstrap-token")
 class WidgetConnectionIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired OnboardingService onboarding;
+
+    @BeforeEach void prepareServiceAdmin() {
+        if (onboarding.isBootstrapAvailable()) onboarding.bootstrapAdmin("widget-bootstrap-token",
+            "widget-bootstrap@example.com", "widget-password!", "위젯 테스트 관리자", "관리자 장부", 800000);
+    }
 
     @Test void capabilityIsSingleUseReadOnlySessionBoundAndRevocable() throws Exception {
         Cookie session = register("widget-owner");
@@ -70,6 +80,10 @@ class WidgetConnectionIntegrationTest {
         verifier = "f".repeat(43); authorize(session, WidgetConnectionService.hash(verifier));
         token = claim(verifier, 200);
         jdbc.update("update ledger_members set status = 'LEFT' where user_id = (select user_id from widget_connections where token_hash = ?)", WidgetConnectionService.hash(token));
+        summaryUnauthorized(token);
+        jdbc.update("update ledger_members set status = 'ACTIVE' where user_id = (select user_id from widget_connections where token_hash = ?)", WidgetConnectionService.hash(token));
+        mvc.perform(get("/api/v1/widget/device/summary").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
+        jdbc.update("update spring_session set expiry_time = 0 where session_id = (select session_id from widget_connections where token_hash = ?)", WidgetConnectionService.hash(token));
         summaryUnauthorized(token);
         mvc.perform(get("/api/v1/widget/device/summary")).andExpect(status().isUnauthorized());
     }
