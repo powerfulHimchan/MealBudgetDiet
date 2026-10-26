@@ -686,7 +686,7 @@ export function ExpenseManager() {
           <section className="expense-results" aria-labelledby="expense-results-title">
             <div className="results-heading">
               <div>
-                <p className="eyebrow">{hasNext ? "불러온 내역 · 더 보기를 눌러 확인하세요" : "내역"}</p>
+                <p className="eyebrow">내역</p>
                 <h2 id="expense-results-title">{totalCount === null ? "집계 중…" : `${won.format(totalCount)}건`} · {totalAmount === null ? "집계 중…" : `${won.format(totalAmount)}원`}</h2>
               </div>
               {isLoading && <LoaderCircle className="spin" aria-label="불러오는 중" size={22} />}
