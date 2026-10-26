@@ -107,7 +107,11 @@ export function Dashboard() {
                 <span>현재 추이 기준 마지막 날 예상 소비액</span>
                 <strong>{won.format(data.projectedSpent)}원</strong>
               </div>
-              <small>{data.projectedSpent > data.budget ? "현재 속도라면 예산을 초과할 수 있어요." : "현재 속도라면 예산 안에서 마칠 것으로 보여요."}</small>
+              <small>{data.spent > data.budget
+                ? "이미 예산을 초과했어요. 남은 기간의 지출을 확인해 주세요."
+                : data.projectedSpent > data.budget
+                  ? "현재 속도라면 예산을 초과할 수 있어요."
+                  : "현재 속도라면 예산 안에서 마칠 것으로 보여요."}</small>
               {data.midCycleAnalysis && <MidCycleAnalysisView
                 key={`${data.period.from}:${data.period.to}`}
                 period={data.period}
