@@ -68,16 +68,16 @@ jobs:
       - name: Verify signature and prepare Play bundle
         run: |
           jarsigner -verify android/app/build/outputs/bundle/release/app-release.aab
-          cp android/app/build/outputs/bundle/release/app-release.aab Sikbi-1.1.0.aab
-          cp android/release-notes/1.1.0-ko.txt release-notes-ko.txt
-          sha256sum Sikbi-1.1.0.aab > SHA256SUMS.txt
+          cp android/app/build/outputs/bundle/release/app-release.aab Sikbi-1.2.0.aab
+          cp android/release-notes/1.2.0-ko.txt release-notes-ko.txt
+          sha256sum Sikbi-1.2.0.aab > SHA256SUMS.txt
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Sikbi-1.1.0-play-bundle
+          name: Sikbi-1.2.0-play-bundle
           path: |
-            Sikbi-1.1.0.aab
+            Sikbi-1.2.0.aab
             release-notes-ko.txt
             SHA256SUMS.txt
           if-no-files-found: error

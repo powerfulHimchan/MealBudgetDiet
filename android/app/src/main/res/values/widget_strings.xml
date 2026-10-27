@@ -1,9 +1,11 @@
 <resources>
-    <string name="widget_name">Sikbi 식비</string>
+    <string name="widget_name">Sikbi 식비 4×2</string>
+    <string name="widget_compact_name">Sikbi 식비 4×1</string>
+    <string name="widget_brand_name">sikbi</string>
     <string name="widget_description">남은 예산과 오늘 지출을 확인하고 바로 기록하세요.</string>
     <string name="widget_remaining">남은 예산</string>
     <string name="widget_today">오늘 지출</string>
-    <string name="widget_record">기록</string>
+    <string name="widget_record">+ 기록</string>
     <string name="widget_refresh">새로고침</string>
     <string name="widget_connect">연결</string>
     <string name="widget_login">앱에서 장부를 연결해 주세요</string>

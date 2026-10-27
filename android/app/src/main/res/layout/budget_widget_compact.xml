@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="6dp" android:paddingTop="6dp" android:paddingBottom="6dp"
+    android:background="@drawable/widget_panel">
+    <LinearLayout android:id="@+id/widget_brand" android:layout_width="28dp" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/signature_mark" android:importantForAccessibility="no" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/widget_brand_name" android:textColor="#FFFFFF"
+            android:textSize="9sp" android:textStyle="bold" android:includeFontPadding="false" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/widget_metrics" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_vertical" android:layout_marginStart="7dp" android:layout_marginEnd="5dp">
+        <LinearLayout android:id="@+id/widget_remaining_group" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.15" android:orientation="vertical">
+            <TextView android:id="@+id/widget_remaining_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_remaining"
+                android:textColor="#A8B8D7" android:textSize="9sp" android:maxLines="1" android:includeFontPadding="false" />
+            <TextView android:id="@+id/widget_remaining" android:layout_width="match_parent" android:layout_height="23dp"
+                android:text="—" android:textSize="12sp" android:textStyle="bold" android:textColor="#FFFFFF" android:maxLines="1" android:gravity="center_vertical" android:includeFontPadding="false"
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp" android:autoSizeMaxTextSize="18sp" android:autoSizeStepGranularity="1sp" />
+        </LinearLayout>
+        <FrameLayout android:layout_width="1dp" android:layout_height="28dp" android:layout_marginStart="5dp" android:layout_marginEnd="6dp" android:background="#52637F" />
+        <LinearLayout android:id="@+id/widget_today_group" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/widget_today_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_today"
+                android:textColor="#A8B8D7" android:textSize="9sp" android:maxLines="1" android:includeFontPadding="false" />
+            <TextView android:id="@+id/widget_today" android:layout_width="match_parent" android:layout_height="23dp"
+                android:text="—" android:textSize="12sp" android:textStyle="bold" android:textColor="#FFFFFF" android:maxLines="1" android:gravity="center_vertical" android:includeFontPadding="false"
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp" android:autoSizeMaxTextSize="18sp" android:autoSizeStepGranularity="1sp" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/widget_unavailable" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="8dp"
+        android:orientation="vertical" android:gravity="center_vertical" android:visibility="gone">
+        <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_login"
+            android:textColor="#A8B8D7" android:textSize="10sp" android:maxLines="2" android:includeFontPadding="false" />
+        <TextView android:id="@+id/widget_connect" android:layout_width="wrap_content" android:layout_height="22dp" android:gravity="center_vertical"
+            android:text="@string/widget_connect" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="11sp" android:includeFontPadding="false" />
+    </LinearLayout>
+    <TextView android:id="@+id/widget_record" android:layout_width="56dp" android:layout_height="32dp" android:gravity="center"
+        android:text="@string/widget_record" android:textColor="#0B1220" android:textSize="11sp" android:textStyle="bold" android:background="@drawable/widget_button" />
+    <ImageView android:id="@+id/widget_refresh" android:layout_width="28dp" android:layout_height="32dp" android:padding="4dp"
+        android:src="@drawable/widget_refresh" android:contentDescription="@string/widget_refresh" />
+</LinearLayout>

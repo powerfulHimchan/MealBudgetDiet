@@ -1,33 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_panel">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
-        <TextView android:id="@+id/widget_brand" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="@string/launcherName" android:textColor="#0B1220" android:textSize="14sp" android:textStyle="bold" />
-        <TextView android:id="@+id/widget_connect" android:layout_width="wrap_content" android:layout_height="32dp" android:gravity="center"
-            android:paddingHorizontal="8dp" android:text="@string/widget_connect" android:textColor="#2563EB" android:textSize="12sp" />
-        <TextView android:id="@+id/widget_refresh" android:layout_width="44dp" android:layout_height="32dp" android:gravity="center"
-            android:text="↻" android:contentDescription="@string/widget_refresh" android:textSize="24sp" android:textColor="#64748B" />
+    android:orientation="vertical" android:padding="10dp" android:background="@drawable/widget_panel">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="28dp" android:gravity="center_vertical">
+        <LinearLayout android:id="@+id/widget_brand" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_vertical">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/signature_mark" android:importantForAccessibility="no" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="5dp"
+                android:text="@string/widget_brand_name" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:includeFontPadding="false" />
+        </LinearLayout>
+        <TextView android:id="@+id/widget_connect" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center"
+            android:paddingStart="8dp" android:paddingEnd="8dp" android:text="@string/widget_connect" android:textColor="#FFFFFF" android:textSize="12sp" />
+        <ImageView android:id="@+id/widget_refresh" android:layout_width="32dp" android:layout_height="match_parent" android:padding="4dp"
+            android:src="@drawable/widget_refresh" android:contentDescription="@string/widget_refresh" />
     </LinearLayout>
     <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical">
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_remaining" android:textColor="#64748B" android:textSize="12sp" />
-            <TextView android:id="@+id/widget_remaining" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="—" android:textSize="20sp" android:textStyle="bold" android:textColor="#0B1220" android:maxLines="1"
-                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="12sp" android:autoSizeMaxTextSize="20sp" android:autoSizeStepGranularity="1sp" />
+        <LinearLayout android:id="@+id/widget_remaining_group" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:paddingTop="3dp" android:paddingBottom="5dp">
+            <TextView android:id="@+id/widget_remaining_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_remaining"
+                android:textColor="#A8B8D7" android:textSize="11sp" android:includeFontPadding="false" />
+            <TextView android:id="@+id/widget_remaining" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical"
+                android:text="—" android:textSize="32sp" android:textStyle="bold" android:textColor="#FFFFFF" android:maxLines="1" android:includeFontPadding="false"
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="10sp" android:autoSizeMaxTextSize="34sp" android:autoSizeStepGranularity="1sp" />
         </LinearLayout>
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_today" android:textColor="#64748B" android:textSize="12sp" />
-            <TextView android:id="@+id/widget_today" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="—" android:textSize="20sp" android:textStyle="bold" android:textColor="#0B1220" android:maxLines="1"
-                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="12sp" android:autoSizeMaxTextSize="20sp" android:autoSizeStepGranularity="1sp" />
+        <TextView android:id="@+id/widget_period" android:layout_width="86dp" android:layout_height="match_parent" android:gravity="bottom|end" android:paddingBottom="8dp"
+            android:textColor="#A8B8D7" android:textSize="10sp" android:maxLines="1" android:visibility="gone" android:includeFontPadding="false" />
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="1dp" android:background="#664C83F4" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="40dp" android:gravity="center_vertical" android:paddingTop="5dp">
+        <LinearLayout android:id="@+id/widget_today_group" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center_vertical">
+            <TextView android:id="@+id/widget_today_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_today"
+                android:textColor="#A8B8D7" android:textSize="10sp" android:includeFontPadding="false" />
+            <TextView android:id="@+id/widget_today" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical"
+                android:text="—" android:textSize="21sp" android:textStyle="bold" android:textColor="#FFFFFF" android:maxLines="1" android:includeFontPadding="false"
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="10sp" android:autoSizeMaxTextSize="21sp" android:autoSizeStepGranularity="1sp" />
         </LinearLayout>
+        <TextView android:id="@+id/widget_record" android:layout_width="76dp" android:layout_height="32dp" android:layout_marginStart="8dp" android:gravity="center"
+            android:text="@string/widget_record" android:textColor="#0B1220" android:textSize="13sp" android:textStyle="bold" android:background="@drawable/widget_button" />
     </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
-        <TextView android:id="@+id/widget_status" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="@string/widget_login" android:textColor="#64748B" android:textSize="10sp" android:maxLines="2" />
-        <TextView android:id="@+id/widget_record" android:layout_width="64dp" android:layout_height="32dp" android:layout_marginStart="8dp"
-            android:gravity="center" android:text="@string/widget_record" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" android:background="@drawable/widget_button" />
-    </LinearLayout>
+    <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp"
+        android:text="@string/widget_login" android:textColor="#A8B8D7" android:textSize="10sp" android:maxLines="2" android:includeFontPadding="false" />
 </LinearLayout>

@@ -196,6 +196,10 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/budget_widget_info" />
         </receiver>
+        <receiver android:name=".CompactBudgetWidgetProvider" android:exported="false" android:label="@string/widget_compact_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/budget_widget_compact_info" />
+        </receiver>
         <service android:name=".WidgetUpdateService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
         <service android:name="androidx.browser.customtabs.PostMessageService" android:exported="true" />
         <activity android:name=".WidgetSetupActivity" android:exported="true" android:launchMode="singleTop"
